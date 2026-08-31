@@ -370,3 +370,146 @@ result of the previous section intact.
 </picture>
 
 *Left: the return map. With the boundary offset it crosses $`P(r) = r`$ transversally at $`r^{*}`$; with the boundary through the equilibrium it is a ray through the origin that never crosses. Right: the amplitude is exactly proportional to the offset.*
+
+## Frequency of the limit cycle
+
+### What the frequency can depend on
+
+With $`u`$ constant the system is invariant under
+$`(x, v_0) \mapsto (\lambda x, \lambda v_0)`$ for $`\lambda \gt 0`$, and that
+scaling does not touch time. The period therefore cannot depend on the
+offset, on $`u`$, or on amplitude. Only $`\omega_n`$ and the two damping
+ratios are left, and $`\omega_n`$ merely sets the timescale, so
+
+```math
+T = \frac{F(\zeta_{+}, \zeta_{-})}{\omega_n}
+```
+
+with $`F`$ dimensionless. Integrating the cycle at
+$`v_0 = 0.25,\ 1,\ 4,\ 16`$ returns $`T = 6.367077082`$ every time, identical
+to nine decimal places over a sixty four fold range of offset.
+
+### Exact reduction
+
+The cycle is two arcs joined on $`\Sigma`$. Inside each half plane the
+system is an ordinary linear oscillator about that region's own centre
+$`c_{\pm} = 2\zeta_{\pm}v_0/\omega_n`$, so $`\xi = x - c_{\pm}`$ obeys
+$`\ddot{\xi} + 2\zeta_{\pm}\omega_n\dot{\xi} + \omega_n^2\xi = 0`$. An arc
+enters at $`\dot{x} = v_0`$ and leaves when the velocity next returns to
+$`v_0`$, so its transit time is the first positive root of
+
+```math
+e^{-\zeta\omega_n t}\left[v_0\cos\omega_d t
+  - \frac{\xi_0 + \zeta\omega_n v_0}{\omega_d}\sin\omega_d t\right] = v_0
+```
+
+and it leaves at
+
+```math
+\xi(t) = e^{-\zeta\omega_n t}\left[\xi_0\cos\omega_d t
+  + \frac{v_0 + \zeta\omega_n\xi_0}{\omega_d}\sin\omega_d t\right]
+```
+
+where $`\omega_d = \omega_n\sqrt{1-\zeta^2}`$ is that half plane's damped
+natural frequency. Requiring the exit of each arc to be the entry of the
+other closes the cycle and leaves a one dimensional fixed point. The period
+is then simply
+
+```math
+T = t_{+} + t_{-}
+```
+
+This is exact. Against direct integration it agrees to around
+$`10^{-12}`$, and it costs a few root finds rather than integrating to
+convergence. `frequency.py` implements it.
+
+For $`\zeta_{+} = 0.3`$, $`\zeta_{-} = -0.1`$: $`t_{+} = 2.364493`$ and
+$`t_{-} = 4.002584`$, giving $`T = 6.367077082`$. Neither arc is a half
+revolution of its own oscillator — those would be $`3.293`$ and $`3.157`$ —
+because the boundary does not pass through either centre.
+
+### Two exact limits
+
+```math
+\bar{\zeta} \to 0^{+}: \quad
+T \to \frac{\pi}{\omega_d^{+}} + \frac{\pi}{\omega_d^{-}}
+```
+
+The cycle grows without bound relative to $`v_0`$, the offset becomes
+negligible, and each half plane takes half a revolution.
+
+```math
+\zeta_{-} \to 0^{-}: \quad T \to \frac{2\pi}{\omega_d^{-}}
+```
+
+The cycle shrinks onto the boundary and spends the whole revolution in the
+lower region. Both are confirmed numerically to six figures.
+
+### A closed form for weak damping
+
+Treating the cycle as near circular of radius $`R`$ in
+$`(x, \dot{x}/\omega_n)`$, the boundary cuts it at
+$`\sin\alpha = v_0/(\omega_n R)`$, so the upper region occupies
+$`\pi - 2\alpha`$ of the revolution. The cycle sits where the energy put in
+over a revolution cancels the energy taken out.
+
+That balance is **not** the time in each region weighted by its damping
+ratio. The damping force is proportional to $`w`$, not to $`\dot{x}`$, so
+the power is proportional to $`w\dot{x}`$. Doing the integral properly:
+
+```math
+\pi - 2\alpha - \sin 2\alpha = 2\pi\rho,
+\qquad \rho = \frac{-\zeta_{-}}{\zeta_{+} - \zeta_{-}}
+```
+
+$`\rho`$ runs over exactly $`(0, \tfrac{1}{2})`$ on the existence region
+$`\zeta_{-} \lt 0 \lt \bar{\zeta}`$, mapping to $`\alpha`$ in
+$`(0, \pi/2)`$ — the formula is defined on precisely the parameters that
+have a cycle, and nowhere else. It also gives the amplitude,
+$`R = v_0/(\omega_n\sin\alpha)`$, good to about 2% at moderate damping.
+
+Each half plane contributes its own damped period weighted by its share of
+the revolution. Expanding $`1/\sqrt{1-\zeta^2}`$ to second order:
+
+```math
+T \simeq \frac{2\pi}{\omega_n}
+  \left[1 + \frac{\theta_{+}\zeta_{+}^2 + \theta_{-}\zeta_{-}^2}{4\pi}\right],
+\qquad \theta_{\pm} = \pi \mp 2\alpha
+```
+
+```math
+\omega_{\text{osc}} = \frac{2\pi}{T} \simeq \omega_n
+  \left[1 - \frac{\theta_{+}\zeta_{+}^2 + \theta_{-}\zeta_{-}^2}{4\pi}\right]
+```
+
+So the fractional slowing is half the phase weighted mean square damping
+ratio. Over 506 parameter points the formula is within **1.1%** while both
+damping ratios stay inside about 0.35, degrading to 8.5% by 0.5. Use the
+exact reduction when the number matters.
+
+### How the parameters act
+
+- **$`\omega_n`$ sets the scale and nothing else.** $`T\omega_n`$ is a
+  function of the damping ratios alone.
+- **The offset $`v_0`$ does not enter at all.** It fixes the amplitude,
+  exactly proportionally, and leaves the frequency untouched. Amplitude and
+  frequency are independently tunable: $`v_0`$ for one, the damping ratios
+  for the other.
+- **The cycle is always slower than $`\omega_n`$.** The correction goes as
+  $`\zeta^2`$, so it has the same sign whichever way the damping points;
+  the negative damping in the inner region slows the oscillator just as the
+  positive damping does. Across all 506 points tested, not one had
+  $`T \lt 2\pi/\omega_n`$.
+- **The larger damping ratio dominates**, through $`\zeta^2`$ weighted by
+  phase. Raising $`\zeta_{+}`$ at fixed $`\zeta_{-}`$ both slows the
+  oscillator and shrinks the cycle.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/frequency-dark.png">
+  <img alt="Limit cycle period against the outer damping ratio, exact and closed form, with the error of the closed form" src="figures/frequency-light.png">
+</picture>
+
+*Left: period normalised by the undamped period. Every curve stays above
+one, and the dashed closed form tracks the exact reduction closely at small
+damping. Right: the error of the closed form, with the one percent band
+marked.*
