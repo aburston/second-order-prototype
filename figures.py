@@ -1,9 +1,44 @@
 """Generate the phase plane figures used in README.md.
 
-Run:  python3 figures.py          (writes figures/*.png, light and dark)
+Run ``python3 figures.py`` to write every image into ``figures/``. Nothing
+is cached, so a run always reflects the current parameters; regenerate
+after changing any value the README quotes.
 
-Every figure is rendered twice, once per theme, and embedded in the README
-through a <picture> element so GitHub picks the right one.
+Five figures, in the order the README develops the argument:
+
+``linear-prototype``
+    The linear prototype for three damping ratios, phase plane beside time
+    history. Establishes the notation and the single stable equilibrium
+    that the nonlinear cases depart from.
+``switched-damping``
+    Switched damping with the boundary on the x-axis, in three panels for
+    positive, zero and negative mean damping. The middle panel draws three
+    nested orbits to show that the marginal case gives a *continuum* of
+    closed orbits, not one isolated cycle.
+``decrement``
+    Amplitude per full cycle, integrated against the closed form
+    ``exp(-(delta(zp) + delta(zm)) n)``, on a log scale. Straight lines
+    confirm the decay is exactly geometric.
+``limit-cycle``
+    The offset boundary: trajectories starting inside and outside both
+    converging on one closed orbit, with the offset ``v0`` and the
+    equilibrium marked.
+``return-map``
+    The return map crossing the diagonal transversally beside the
+    proportionality of cycle amplitude to offset. The offset and
+    through-equilibrium maps are drawn together because the contrast
+    between them is the whole mechanism.
+
+Each figure is rendered once per entry in ``THEMES`` and saved as
+``<name>-light.png`` and ``<name>-dark.png``. The README embeds the pair in
+a ``<picture>`` element so GitHub serves whichever matches the reader's
+theme. Dark is a separate set of colours chosen for the dark surface, not
+an automatic inversion of the light one.
+
+Colour carries no meaning on its own anywhere in these figures: the
+switching boundary, equilibrium markers and callouts are drawn in chrome
+ink rather than a series colour, and every series is directly labelled as
+well as being in the legend.
 """
 import os
 import numpy as np
@@ -28,13 +63,48 @@ THEMES = {
 
 # ---------------------------------------------------------------- dynamics
 def f_linear(zeta):
+    """Build the right hand side of the linear prototype, unforced.
+
+    Returns the vector field of ``xddot + 2 zeta wn xdot + wn^2 x = 0``
+    written as a first order system in ``y = [x1, x2] = [x, xdot]``, in the
+    ``f(t, y)`` form ``solve_ivp`` expects.
+
+    Args:
+        zeta: damping ratio. Underdamped below 1, overdamped above.
+
+    Returns:
+        A callable ``f(t, y)`` returning ``[x2, -wn^2 x1 - 2 zeta wn x2]``.
+    """
     def f(t, y):
         return [y[1], -WN**2*y[0] - 2*zeta*WN*y[1]]
     return f
 
 
 def f_switched(zp, zm, v0=0.0):
-    """Switched damping acting on the velocity relative to the boundary."""
+    """Build the right hand side of the switched damping prototype.
+
+    The damping ratio takes one value either side of the boundary
+    ``Sigma = {xdot = v0}`` and acts on ``w = x2 - v0``, the velocity
+    *relative to the boundary*. That choice matters: because the damping
+    term carries a factor of ``w``, it vanishes on ``Sigma``, so the two
+    half-plane fields agree there and the field stays continuous. Switching
+    on ``w`` while damping the absolute velocity would make the field jump
+    by ``2 (zp - zm) wn v0`` and reintroduce sliding solutions.
+
+    With ``v0 = 0`` the boundary passes through the equilibrium and the
+    field is positively homogeneous, which is why that case has no isolated
+    limit cycle. Any nonzero ``v0`` breaks the scale invariance.
+
+    Args:
+        zp: damping ratio applied where ``w > 0``.
+        zm: damping ratio applied where ``w < 0``. Negative values feed
+            energy in and make the equilibrium a repelling focus.
+        v0: boundary offset in the velocity direction. Zero puts the
+            boundary on the x-axis, through the equilibrium.
+
+    Returns:
+        A callable ``f(t, y)`` suitable for ``solve_ivp``.
+    """
     def f(t, y):
         w = y[1] - v0
         return [y[1], -WN**2*y[0] - 2*(zp if w > 0 else zm)*WN*w]
@@ -42,18 +112,74 @@ def f_switched(zp, zm, v0=0.0):
 
 
 def traj(f, y0, T, n=4000):
+    """Integrate a trajectory and return it densely enough to plot smoothly.
+
+    Tolerances are far tighter than a picture needs. They are kept there so
+    that a closed orbit in the marginal case visibly closes rather than
+    drifting open under integration error, which would misrepresent the
+    result being illustrated.
+
+    Args:
+        f: vector field in ``f(t, y)`` form.
+        y0: initial state ``[x, xdot]``.
+        T: end time. Chosen per figure to give enough revolutions to read
+            the behaviour without the spiral becoming a solid disc.
+        n: number of evenly spaced output samples.
+
+    Returns:
+        Tuple ``(x, xdot, t)`` of equal-length arrays.
+    """
     s = solve_ivp(f, (0, T), y0, t_eval=np.linspace(0, T, n),
                   rtol=1e-11, atol=1e-13)
     return s.y[0], s.y[1], s.t
 
 
 def xeq(zm, v0):
-    """Equilibrium of the offset system (u = 0)."""
+    """Return the displacement of the offset system's equilibrium, for u = 0.
+
+    At equilibrium ``x2 = 0``, so the relative velocity is ``w = -v0``. For
+    ``v0 > 0`` that puts the point in the ``w < 0`` region, whose damping is
+    ``zm``, and balancing the spring against the damping term gives
+    ``x1 = 2 zm v0 / wn``.
+
+    The sign here is easy to get backwards and was wrong once already. It is
+    checked by evaluating the field at the returned point rather than by
+    re-reading the algebra.
+
+    Args:
+        zm: damping ratio in the region containing the equilibrium.
+        v0: boundary offset.
+
+    Returns:
+        The equilibrium displacement ``x1``; the equilibrium is
+        ``(x1, 0)``.
+    """
     return 2*zm*v0/WN
 
 
 def preturn(zp, zm, v0, r):
-    """One return to the section {x2 = 0, x1 > xeq}."""
+    """Advance one turn of the Poincare map on the section x2 = 0.
+
+    Starts on the section at radius ``r`` measured from the equilibrium,
+    integrates one full revolution and returns the radius at the next
+    downward crossing of ``x2 = 0``.
+
+    The trajectory begins *on* the section, so the event at ``t = 0`` is
+    discarded; without that filter the solver returns the starting point and
+    the map looks like the identity. Only downward crossings are counted, so
+    one call is a full cycle rather than a half cycle.
+
+    Args:
+        zp: damping ratio where ``w > 0``.
+        zm: damping ratio where ``w < 0``.
+        v0: boundary offset.
+        r: radius on the section, as displacement from the equilibrium.
+
+    Returns:
+        The radius after one cycle, or NaN if no crossing occurs within the
+        integration window (an overdamped half plane, where the trajectory
+        decays without recrossing).
+    """
     xe = xeq(zm, v0)
 
     def ev(t, y):
@@ -66,6 +192,26 @@ def preturn(zp, zm, v0, r):
 
 
 def rstar(zp, zm, v0, r=None, n=400, tol=1e-11):
+    """Locate the limit cycle by iterating the return map to its fixed point.
+
+    Iteration rather than a root find: the map is a contraction near the
+    cycle (multiplier about 0.54 for the parameters the README uses), so
+    successive images converge geometrically and the iteration doubles as
+    evidence that the orbit attracts.
+
+    Args:
+        zp: damping ratio where ``w > 0``.
+        zm: damping ratio where ``w < 0``.
+        v0: boundary offset.
+        r: starting radius. Defaults to ``2.2 * v0``, which is near the
+            cycle because amplitude is exactly proportional to the offset.
+        n: iteration cap, so a diverging case terminates.
+        tol: relative convergence tolerance on successive radii.
+
+    Returns:
+        The fixed point radius, or NaN if the orbit escaped or decayed
+        instead of converging.
+    """
     r = 2.2*v0 if r is None else r
     for _ in range(n):
         rn = preturn(zp, zm, v0, r)
@@ -79,6 +225,20 @@ def rstar(zp, zm, v0, r=None, n=400, tol=1e-11):
 
 # ------------------------------------------------------------------ chrome
 def style(ax, th, xlabel, ylabel, title=None):
+    """Apply the shared chart chrome to one axes.
+
+    Keeps grid, spines and ticks recessive so the data reads first: the top
+    and right spines are dropped, the remainder are hairlines in the theme's
+    axis colour, and all text is in ink tokens rather than any series
+    colour.
+
+    Args:
+        ax: the axes to style.
+        th: theme dict from ``THEMES``.
+        xlabel: x axis label, may contain mathtext.
+        ylabel: y axis label, may contain mathtext.
+        title: optional axes title, drawn in primary ink.
+    """
     ax.set_facecolor(th["surface"])
     ax.grid(True, color=th["grid"], linewidth=0.6, zorder=0)
     ax.set_axisbelow(True)
@@ -95,6 +255,20 @@ def style(ax, th, xlabel, ylabel, title=None):
 
 
 def legend(ax, th, **kw):
+    """Draw a legend that stays readable where it overlaps the data.
+
+    The phase portraits are dense enough that a frameless legend becomes
+    unreadable over the trajectories, so this gives it the surface colour
+    and lifts it above the data.
+
+    Args:
+        ax: the axes to attach the legend to.
+        th: theme dict from ``THEMES``.
+        **kw: passed through to ``Axes.legend``, typically ``loc``.
+
+    Returns:
+        The Legend instance.
+    """
     lg = ax.legend(fontsize=8, labelcolor=th["ink2"], frameon=True,
                    facecolor=th["surface"], edgecolor="none", framealpha=0.92,
                    **kw)
@@ -103,7 +277,20 @@ def legend(ax, th, **kw):
 
 
 def boundary(ax, th, y, label):
-    """Draw the switching boundary as chrome, not as a data series."""
+    """Draw the switching boundary Sigma as chrome rather than a data series.
+
+    The boundary is part of the coordinate system, not one of the things
+    being compared, so it takes ink rather than a series colour. Its label
+    is anchored to the right edge in axes coordinates, with a surface
+    coloured background: pinning it to a data coordinate put it on top of
+    the trajectories whenever the axis limits changed.
+
+    Args:
+        ax: the axes to draw on.
+        th: theme dict from ``THEMES``.
+        y: velocity at which the boundary sits, ``v0``.
+        label: text for the line, may contain mathtext.
+    """
     ax.axhline(y, color=th["ink2"], linewidth=1.2, linestyle=(0, (5, 3)),
                zorder=5)
     ax.text(0.985, y, label, transform=ax.get_yaxis_transform(), fontsize=8,
@@ -112,6 +299,17 @@ def boundary(ax, th, y, label):
 
 
 def save(fig, th_name, name):
+    """Write one figure to ``figures/<name>-<theme>.png`` and close it.
+
+    The face colour is passed explicitly because ``bbox_inches="tight"``
+    otherwise reverts the margin around the axes to white, which would
+    frame every dark figure in a white border.
+
+    Args:
+        fig: the figure to write.
+        th_name: theme key, becoming the filename suffix.
+        name: figure stem, matching the name the README embeds.
+    """
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, f"{name}-{th_name}.png")
     fig.savefig(path, dpi=200, bbox_inches="tight",
@@ -121,6 +319,17 @@ def save(fig, th_name, name):
 
 
 def newfig(th, *a, **kw):
+    """Create a figure whose canvas already carries the theme surface.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        *a: positional arguments for ``plt.subplots``, e.g. row and column
+            counts.
+        **kw: keyword arguments for ``plt.subplots``, e.g. ``figsize``.
+
+    Returns:
+        The ``(figure, axes)`` pair from ``plt.subplots``.
+    """
     fig, ax = plt.subplots(*a, **kw)
     fig.patch.set_facecolor(th["surface"])
     return fig, ax
@@ -128,7 +337,18 @@ def newfig(th, *a, **kw):
 
 # ------------------------------------------------------------- the figures
 def fig_linear(th, name):
-    """Linear prototype: phase portrait and time history for three zetas."""
+    """Draw the linear prototype: phase portrait beside time history.
+
+    Three damping ratios from one common initial condition, spanning
+    underdamped through overdamped, so the reader can connect the spiral in
+    the phase plane to the decaying oscillation in time. This is the
+    baseline the nonlinear sections depart from: one equilibrium, every
+    trajectory converging to it, no dependence on amplitude.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
     cases = [(0.15, "ζ = 0.15"), (0.50, "ζ = 0.50"), (1.20, "ζ = 1.20")]
     fig, axes = newfig(th, 1, 2, figsize=(9.4, 3.9))
     for (z, lab), c in zip(cases, th["series"]):
@@ -153,7 +373,27 @@ def fig_linear(th, name):
 
 
 def fig_switched(th, name):
-    """Boundary through the equilibrium: the three stability cases."""
+    """Draw the three stability cases with the boundary on the x-axis.
+
+    One panel each for positive, zero and negative mean damping, with
+    ``Sigma`` and the two half planes labelled and the damping ratio
+    annotated in each. Every panel has a half plane with negative damping,
+    which is the point: stability follows the mean over a cycle, not the
+    sign on either side.
+
+    The marginal panel draws three nested orbits from different starting
+    radii rather than one. The closed orbits there form a continuum, one
+    through every point, and a single orbit would read as an isolated limit
+    cycle, which is precisely the wrong conclusion.
+
+    Axis limits are squared off per panel so the orbit geometry is not
+    distorted, but the scales differ between panels because the growing case
+    covers a far wider range.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
     cases = [
         (0.30, -0.10, "$\\bar{\\zeta} > 0$: decays", [2.6]),
         (0.20, -0.20, "$\\bar{\\zeta} = 0$: closed orbits", [1.0, 1.8, 2.6]),
@@ -184,7 +424,22 @@ def fig_switched(th, name):
 
 
 def fig_decrement(th, name):
-    """Measured amplitude per cycle against the closed form decrement."""
+    """Plot amplitude per cycle against the closed form, on a log scale.
+
+    Markers are integrated from the return map; the dashed lines are
+    ``exp(-(delta(zp) + delta(zm)) n)``. Straight parallel lines on a log
+    axis make two things visible at once: the decay is exactly geometric,
+    and its direction is set by the sign of the mean damping rather than by
+    either damping ratio alone.
+
+    The three cases share a starting amplitude so the lines fan out from a
+    common point and the divergence is attributable to the parameters rather
+    than the initial condition.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
     d = lambda z: np.pi*z/np.sqrt(1 - z**2)
     cases = [(0.30, -0.10), (0.20, -0.20), (0.10, -0.30)]
     fig, ax = newfig(th, figsize=(6.4, 4.2))
@@ -212,7 +467,23 @@ def fig_decrement(th, name):
 
 
 def fig_limit_cycle(th, name):
-    """Offset boundary: the hyperbolic limit cycle and its basin."""
+    """Draw the offset boundary portrait with its attracting limit cycle.
+
+    Trajectories from inside and outside the cycle are drawn in different
+    colours converging on the same closed orbit, which is what distinguishes
+    an attractor from the continuum of the marginal case. The cycle itself
+    is drawn heavier so it reads as the object the others approach.
+
+    The equilibrium is marked and annotated, and the gap between it and
+    ``Sigma`` is dimensioned, because the offset is the parameter the whole
+    section turns on. Starting radii and integration times are tuned so both
+    trajectories complete enough turns to be unambiguous without filling the
+    frame.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
     zp, zm, v0 = 0.3, -0.1, 1.0
     xe, rs = xeq(zm, v0), rstar(zp, zm, v0)
     fig, ax = newfig(th, figsize=(6.6, 5.6))
@@ -249,7 +520,25 @@ def fig_limit_cycle(th, name):
 
 
 def fig_map_scaling(th, name):
-    """Return map, and the exact proportionality of amplitude to offset."""
+    """Draw the return map beside the amplitude-offset proportionality.
+
+    Left panel: the return map for an offset boundary and for a boundary
+    through the equilibrium, over the diagonal ``P(r) = r``. Both are drawn
+    together deliberately. The offset map bends across the diagonal and
+    crosses it transversally at ``r*``; the through-equilibrium map is a ray
+    through the origin that never can, because a homogeneous field gives a
+    return map that is an exact scaling. That contrast is the mechanism, and
+    it is far clearer as one comparison than as two separate figures.
+
+    Right panel: fixed point radius against offset, with the fitted
+    proportionality. The points lie on a line through the origin because the
+    system is self-similar in ``(x, v0)`` when unforced, so the amplitude is
+    exactly proportional to the offset rather than approximately so.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
     zp, zm = 0.3, -0.1
     fig, axes = newfig(th, 1, 2, figsize=(9.8, 4.2))
 
