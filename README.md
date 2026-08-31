@@ -206,3 +206,132 @@ $\Sigma$, and the same analysis applies in the shifted coordinate $x_1 - u$.
   place a step boundary at the switch.
 - $\bar{\zeta} = 0$ is non-hyperbolic and structurally fragile: integration
   error alone will make the orbits drift in or out.
+
+## Offsetting the boundary from the equilibrium
+
+The previous prototype has no isolated limit cycle. The reason was scale
+invariance, and that points at what has to change: not the position of the
+boundary relative to the *axis*, but its position relative to the
+*equilibrium*.
+
+Positive homogeneity, $f(\lambda x) = \lambda f(x)$, holds precisely when the
+switching set is a cone through the fixed point — for a straight boundary,
+a line through the equilibrium. Every equilibrium of a second order system has
+$\dot{x} = 0$ and so lies on the x-axis. Putting the boundary on the x-axis
+therefore *forces* it through the equilibrium, which is exactly what made the
+return map a pure scaling. Moving the boundary off the axis is the way to move
+it off the equilibrium, and that is what breaks the degeneracy.
+
+### Keeping the field continuous
+
+Offsetting needs a little care. Switching on $\dot{x} - v_0$ while the damping
+still acts on the absolute velocity $\dot{x}$ makes the field jump across the
+boundary by $2(\zeta_{+}-\zeta_{-})\omega_n v_0 \neq 0$, which brings Filippov
+solutions and sliding back. To isolate the offset as the only new ingredient,
+let the damping act on the velocity *relative to the boundary*,
+$w = \dot{x} - v_0$:
+
+```math
+\ddot{x} + 2\zeta(w)\,\omega_n w + \omega_n^2 x = \omega_n^2 u(t),
+\qquad
+\zeta(w) =
+\begin{cases}
+\zeta_{+} & w > 0 \\
+\zeta_{-} & w < 0
+\end{cases}
+```
+
+The damping term vanishes on $\Sigma = \{ \dot{x} = v_0 \}$, so the field is
+again continuous there and solutions stay unique. This is the geometry of a
+mass on a belt moving at speed $v_0$.
+
+The equilibrium sits at
+
+```math
+x^{*} = \left( u + \frac{2\zeta_{-}v_0}{\omega_n},\; 0 \right)
+```
+
+a distance $v_0$ from $\Sigma$ in the $x_2$ direction. For $v_0 > 0$ it lies in
+the $w < 0$ region, so its local stability is governed by $\zeta_{-}$ alone.
+
+### Why this produces a limit cycle
+
+The offset makes the share of each cycle spent on either side of $\Sigma$
+depend on amplitude, which is precisely what the through-equilibrium case
+could not do:
+
+- orbits small enough never reach $\Sigma$ and see damping $\zeta_{-}$ only;
+- as amplitude grows the fraction of the cycle spent in $w > 0$ rises towards
+  one half, so the effective damping tends to the mean $\bar{\zeta}$.
+
+The effective damping therefore runs from $\zeta_{-}$ at small amplitude to
+$\bar{\zeta}$ at large amplitude. If those two have opposite signs it must
+vanish somewhere in between, and that amplitude is a limit cycle:
+
+```math
+\zeta_{-} < 0 < \bar{\zeta} = \frac{\zeta_{+} + \zeta_{-}}{2}
+```
+
+Small oscillations grow because the equilibrium is an unstable focus; large
+ones decay because the cycle average is dissipative. The cycle is where the
+two balance.
+
+### The cycle is hyperbolic, not a conservative artefact
+
+This is the substantive difference from the marginal case $\bar{\zeta} = 0$ of
+the previous section, where the closed orbits came in a continuum and existed
+only on a knife edge. Taking $\omega_n = 1$, $u = 0$, $\zeta_{+} = 0.3$,
+$\zeta_{-} = -0.1$, $v_0 = 1$ and the section
+$\{x_2 = 0,\; x_1 > x_1^{*}\}$ with $r = x_1 - x_1^{*}$, the return map $P$ has
+
+```math
+r^{*} = 2.150651224, \qquad T = 6.367077, \qquad
+\left.\frac{dP}{dr}\right|_{r^{*}} = 0.5390
+```
+
+The multiplier is strictly inside the unit circle, so the orbit is hyperbolic
+and attracting: trajectories starting anywhere from $r_0 = 0.02$ to
+$r_0 = 40$ converge to the same orbit. Perturbing $\zeta_{+}$ by $\pm 10\%$
+moves $r^{*}$ smoothly over $2.34 \ldots 2.01$ without destroying the cycle.
+Nothing here rests on a conserved quantity, a centre, or a family of
+neutrally stable orbits — the cycle is a dissipative attractor with a basin,
+and it survives perturbation.
+
+The existence condition behaves as predicted:
+
+| $\zeta_{+}$ | $\zeta_{-}$ | $\bar{\zeta}$ | result |
+| --- | --- | --- | --- |
+| $+0.30$ | $-0.10$ | $+0.100$ | limit cycle, $r^{*} = 2.1507$ |
+| $+0.05$ | $-0.10$ | $-0.025$ | grows unbounded |
+| $+0.30$ | $+0.10$ | $+0.200$ | decays to the equilibrium |
+| $+0.10$ | $-0.30$ | $-0.100$ | grows unbounded |
+
+Setting $v_0 = 0$ with the same damping ratios restores the pure scaling of
+the previous section: successive radii $0.510562,\ 0.260674,\ 0.133090,\ldots$
+in constant ratio $0.510562 = e^{-(\delta(\zeta_{+}) + \delta(\zeta_{-}))}$,
+with no fixed point away from the origin.
+
+### The offset is the unfolding parameter
+
+With $u = 0$ the system is invariant under
+$(x, v_0) \mapsto (\lambda x, \lambda v_0)$ for $\lambda > 0$, because $\zeta$
+depends only on the sign of $w$. The limit cycle amplitude is therefore
+*exactly* proportional to the offset,
+
+```math
+r^{*}(v_0) = v_0\, r^{*}(1)
+```
+
+confirmed numerically as $r^{*}/v_0 = 2.150651224$ to ten significant figures
+for $v_0 = 0.25, 1, 4, 16$. So $v_0$ unfolds the degeneracy: as
+$v_0 \to 0$ the cycle shrinks onto the equilibrium and collides with the
+boundary, recovering the scale invariant case. This is a
+discontinuity-induced (boundary equilibrium) bifurcation rather than a smooth
+Hopf, and the linear growth $r^{*} \propto v_0$ rather than
+$\sqrt{\text{parameter}}$ is its signature.
+
+Two caveats. Uniqueness of the crossing is observed numerically over the
+amplitudes tested, not proved here. And the offset only helps because it
+separates the boundary from the equilibrium: a boundary that still passes
+through the equilibrium, at any angle, leaves the system homogeneous and the
+result of the previous section intact.
