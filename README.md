@@ -151,8 +151,8 @@ differentiable there, so stability is decided by the half-cycle map rather
 than by linearisation.
 
 Within $`S^{-}`$, a trajectory leaving the boundary at $`(x_1, 0)`$ with
-$`x_1 = A_n > 0`$ follows the linear system with damping $`\zeta_{-}`$, and for
-$`\lvert\zeta_{-}\rvert < 1`$ returns to the boundary after exactly half a
+$`x_1 = A_n \gt 0`$ follows the linear system with damping $`\zeta_{-}`$, and for
+$`\lvert\zeta_{-}\rvert \lt 1`$ returns to the boundary after exactly half a
 damped period at $`(-A_n e^{-\delta(\zeta_{-})},\, 0)`$, where the logarithmic
 decrement per half cycle is
 
@@ -168,7 +168,7 @@ A_{n+1} = A_n\,e^{-\left(\delta(\zeta_{+}) + \delta(\zeta_{-})\right)}
 ```
 
 The origin is asymptotically stable exactly when
-$`\delta(\zeta_{+}) + \delta(\zeta_{-}) > 0`$. Since $`\delta`$ is odd and
+$`\delta(\zeta_{+}) + \delta(\zeta_{-}) \gt 0`$. Since $`\delta`$ is odd and
 strictly increasing on $`(-1, 1)`$, this collapses to a condition on the mean
 damping alone:
 
@@ -186,12 +186,12 @@ Three cases follow:
 
 | condition | behaviour |
 | --- | --- |
-| $`\bar{\zeta} > 0`$ | origin asymptotically stable |
+| $`\bar{\zeta} \gt 0`$ | origin asymptotically stable |
 | $`\bar{\zeta} = 0`$ | full cycle map is the identity — a continuum of closed orbits |
-| $`\bar{\zeta} < 0`$ | origin unstable, oscillation grows without bound |
+| $`\bar{\zeta} \lt 0`$ | origin unstable, oscillation grows without bound |
 
 **There is no limit cycle.** With $`u = 0`$ the field is positively homogeneous
-of degree one, $`f(\lambda x) = \lambda f(x)`$ for $`\lambda > 0`$, so the return
+of degree one, $`f(\lambda x) = \lambda f(x)`$ for $`\lambda \gt 0`$, so the return
 map is an exact scaling and its behaviour cannot depend on amplitude.
 Stability is global, and the marginal case gives a continuum of periodic
 orbits rather than an isolated one. Producing an isolated limit cycle requires
@@ -217,7 +217,7 @@ $`\Sigma`$, and the same analysis applies in the shifted coordinate $`x_1 - u`$.
 
 ### Notes for numerical work
 
-- Both half planes must be underdamped, $`\lvert\zeta_{\pm}\rvert < 1`$, for the
+- Both half planes must be underdamped, $`\lvert\zeta_{\pm}\rvert \lt 1`$, for the
   half cycle map above to be defined. If the trajectory enters a half plane
   with $`\zeta_{\pm} \ge 1`$ it decays monotonically to the equilibrium without
   recrossing $`\Sigma`$; with $`\zeta_{\pm} \le -1`$ it diverges monotonically.
@@ -272,8 +272,8 @@ The equilibrium sits at
 x^{*} = \left( u + \frac{2\zeta_{-}v_0}{\omega_n},\; 0 \right)
 ```
 
-a distance $`v_0`$ from $`\Sigma`$ in the $`x_2`$ direction. For $`v_0 > 0`$ it lies in
-the $`w < 0`$ region, so its local stability is governed by $`\zeta_{-}`$ alone.
+a distance $`v_0`$ from $`\Sigma`$ in the $`x_2`$ direction. For $`v_0 \gt 0`$ it lies in
+the $`w \lt 0`$ region, so its local stability is governed by $`\zeta_{-}`$ alone.
 
 ### Why this produces a limit cycle
 
@@ -282,7 +282,7 @@ depend on amplitude, which is precisely what the through-equilibrium case
 could not do:
 
 - orbits small enough never reach $`\Sigma`$ and see damping $`\zeta_{-}`$ only;
-- as amplitude grows the fraction of the cycle spent in $`w > 0`$ rises towards
+- as amplitude grows the fraction of the cycle spent in $`w \gt 0`$ rises towards
   one half, so the effective damping tends to the mean $`\bar{\zeta}`$.
 
 The effective damping therefore runs from $`\zeta_{-}`$ at small amplitude to
@@ -310,7 +310,7 @@ This is the substantive difference from the marginal case $`\bar{\zeta} = 0`$ of
 the previous section, where the closed orbits came in a continuum and existed
 only on a knife edge. Taking $`\omega_n = 1`$, $`u = 0`$, $`\zeta_{+} = 0.3`$,
 $`\zeta_{-} = -0.1`$, $`v_0 = 1`$ and the section
-$`\{x_2 = 0,\; x_1 > x_1^{*}\}`$ with $`r = x_1 - x_1^{*}`$, the return map $`P`$ has
+$`\{x_2 = 0,\; x_1 \gt x_1^{*}\}`$ with $`r = x_1 - x_1^{*}`$, the return map $`P`$ has
 
 ```math
 r^{*} = 2.150651224, \qquad T = 6.367077, \qquad
@@ -342,7 +342,7 @@ with no fixed point away from the origin.
 ### The offset is the unfolding parameter
 
 With $`u = 0`$ the system is invariant under
-$`(x, v_0) \mapsto (\lambda x, \lambda v_0)`$ for $`\lambda > 0`$, because $`\zeta`$
+$`(x, v_0) \mapsto (\lambda x, \lambda v_0)`$ for $`\lambda \gt 0`$, because $`\zeta`$
 depends only on the sign of $`w`$. The limit cycle amplitude is therefore
 *exactly* proportional to the offset,
 
