@@ -17,14 +17,33 @@ $\bar{\zeta}$, $\Sigma$).
 
 Do **not** merge into `main` directly. For every change:
 
-1. branch off the current `main`
+1. branch off the current `main`, onto a **new** branch named for that
+   change — never reuse a branch across pull requests, not even one whose
+   pull request has already merged
 2. commit and push the branch
 3. open a pull request against `main` and hand over the link
 4. leave it for the repository owner to review and merge
 
-Ref deletion is blocked for remote sessions, so merged branches cannot be
-cleaned up from a session — leave them and let GitHub's "automatically
-delete head branches" setting handle it.
+One branch per pull request keeps each change reviewable on its own and
+allows more than one to be open at a time.
+
+### Branches cannot be deleted from a session
+
+Deleting a remote branch is blocked by the agent proxy, by both routes:
+
+- `git push origin --delete <branch>` fails with HTTP 403
+- `DELETE /repos/.../git/refs/heads/<branch>` returns *"Write access to
+  this GitHub API path is not permitted through this proxy"*
+
+So never promise to delete a head branch after closing a pull request —
+it cannot be done from here. Say plainly that it needs doing outside the
+session.
+
+The durable fix is the repository's **Settings → General → Automatically
+delete head branches**, which removes each head branch on merge and needs
+no session involvement at all. That setting is likewise not writable from
+a session (*"Repository settings writes are not permitted through this
+proxy"*), so it has to be turned on by hand, once.
 
 ## Maths in markdown
 
