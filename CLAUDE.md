@@ -36,6 +36,19 @@ which silently breaks any `aligned` or `bmatrix` environment. Inline
 Fenced math blocks are a GitHub extension: they render on github.com but
 show as plain code in editor previews without a math extension.
 
+## Figures
+
+`figures.py` generates every image in the README into `figures/`, each one
+rendered twice — `-light.png` and `-dark.png` — and embedded through a
+`<picture>` element so GitHub serves the right one for the reader's theme.
+Regenerate with `python3 figures.py` after changing any parameter the README
+quotes, and commit the PNGs alongside the code.
+
+Colours come from a validated categorical palette (slots 1-3: blue, orange,
+aqua) with the switching boundary, equilibrium markers and callouts drawn in
+chrome ink rather than a series colour, so colour never carries identity on
+its own. Every series is also directly labelled.
+
 ## Verify before committing
 
 The README states quantitative results — decay factors, stability
