@@ -28,13 +28,40 @@ delete head branches" setting handle it.
 
 ## Maths in markdown
 
-Write display equations as fenced ` ```math ` blocks, not `$$ ... $$`.
-GitHub's markdown pass strips the `\\` line breaks inside `$$` blocks,
-which silently breaks any `aligned` or `bmatrix` environment. Inline
-`$ ... $` on a single line is fine.
+Three rules, each of which was a real rendering bug before it was one:
 
-Fenced math blocks are a GitHub extension: they render on github.com but
-show as plain code in editor previews without a math extension.
+1. **Display equations** go in fenced ` ```math ` blocks, never `$$ ... $$`.
+   GitHub's markdown pass strips the `\\` line breaks inside `$$`, which
+   silently breaks any `aligned` or `bmatrix` environment.
+2. **Inline maths** uses the `` $`...`$ `` form, never bare `$ ... $`. The
+   backticks shield the content from the markdown pass. With bare `$`, a
+   mis-paired delimiter desynchronises matching for the rest of the
+   paragraph and takes neighbouring expressions down with it — 17 of 131
+   inline expressions were silently not rendering.
+3. **Never put a literal `<` or `>` inside inline maths.** Use `\lt` and
+   `\gt`. GitHub HTML-escapes the characters to `&lt;` and `&gt;` inside
+   the maths, and MathJax then draws the entity text literally. Display
+   blocks escape correctly and do not need this.
+
+Fenced math blocks and `` $`...`$ `` are GitHub extensions: they render on
+github.com but show as plain code in editor previews without a math
+extension.
+
+### Checking that the maths actually renders
+
+Do not trust a local preview — GitHub's pipeline is what matters, and it
+fails silently. Push the branch and read back GitHub's own server-side
+render:
+
+```
+curl -sS -H "User-Agent: Mozilla/5.0" \
+  "https://github.com/aburston/second-order-prototype/tree/<branch>" > page.html
+```
+
+Count `js-inline-math` and `js-display-math` elements in the result and
+compare against the expressions in the file. Any expression missing an
+element is not rendering; any element containing `&lt;`, `&gt;` or `&amp;`
+will show entity text to the reader. Both should be zero.
 
 ## Figures
 
