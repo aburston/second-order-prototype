@@ -47,6 +47,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 
+import frequency
+
 WN = 1.0
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "figures")
 
@@ -581,6 +583,62 @@ def fig_map_scaling(th, name):
     save(fig, name, "return-map")
 
 
+def fig_frequency(th, name):
+    """Draw how the limit cycle period depends on the two damping ratios.
+
+    Left: period normalised by the undamped period, against the damping in
+    the outer region, for three inner dampings. Every curve starts at the
+    existence boundary and stays above one, because the correction to the
+    undamped period goes as the square of the damping ratio and so has the
+    same sign whichever way the damping points.
+
+    Right: error of the closed form against the exact reduction, with the
+    one percent band marked, so the figure says where the formula can be
+    trusted rather than only that it exists.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
+    fig, axes = newfig(th, 1, 2, figsize=(10.0, 4.2))
+    for zm, c in zip([-0.05, -0.15, -0.30], th["series"]):
+        zps = np.linspace(-zm*1.03, 0.92, 24)
+        Te = np.array([frequency.period_exact(z, zm)[0] for z in zps])
+        Ts = np.array([frequency.period_series(z, zm) for z in zps])
+        lab = "$\\zeta_{-} = %.2f$" % zm
+        axes[0].plot(zps, Te/(2*np.pi), color=c, linewidth=1.9, label=lab,
+                     zorder=3)
+        axes[0].plot(zps, Ts/(2*np.pi), color=c, linewidth=1.1,
+                     linestyle=(0, (4, 3)), zorder=3)
+        axes[0].annotate(lab, xy=(zps[-1], Te[-1]/(2*np.pi)), xytext=(5, -2),
+                         textcoords="offset points", fontsize=8,
+                         color=th["ink2"], va="center")
+        axes[1].plot(zps, 100*(Ts - Te)/Te, color=c, linewidth=1.9, label=lab,
+                     zorder=3)
+    axes[0].axhline(1.0, color=th["ink2"], linewidth=1.0,
+                    linestyle=(0, (5, 3)), zorder=2)
+    axes[0].text(0.985, 1.0, "undamped, $T = 2\\pi/\\omega_n$",
+                 transform=axes[0].get_yaxis_transform(), fontsize=8,
+                 color=th["ink2"], va="top", ha="right", zorder=4,
+                 bbox=dict(boxstyle="round,pad=0.25", fc=th["surface"],
+                           ec="none"))
+    style(axes[0], th, "$\\zeta_{+}$", "$T\\,\\omega_n / 2\\pi$",
+          "Solid: exact reduction.  Dashed: closed form")
+    legend(axes[0], th, loc="upper left")
+    axes[1].axhspan(-1, 1, color=th["grid"], zorder=1)
+    axes[1].text(0.98, 1.0, "$\\pm 1\\%$", transform=axes[1].get_yaxis_transform(),
+                 fontsize=8, color=th["ink2"], ha="right", va="bottom", zorder=4)
+    axes[1].axhline(0.0, color=th["axis"], linewidth=0.8, zorder=2)
+    style(axes[1], th, "$\\zeta_{+}$", "error in $T$  (%)",
+          "Where the closed form can be trusted")
+    legend(axes[1], th, loc="upper left")
+    fig.suptitle("Limit cycle period: set by $\\omega_n$ and the two damping "
+                 "ratios alone, never by the offset",
+                 color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "frequency")
+
+
 if __name__ == "__main__":
     for name, th in THEMES.items():
         print(f"{name}:")
@@ -589,3 +647,4 @@ if __name__ == "__main__":
         fig_decrement(th, name)
         fig_limit_cycle(th, name)
         fig_map_scaling(th, name)
+        fig_frequency(th, name)
