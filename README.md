@@ -52,6 +52,13 @@ y = \begin{bmatrix}1 & 0\end{bmatrix}
 \begin{bmatrix}x_1 \\ x_2\end{bmatrix}
 ```
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/linear-prototype-dark.png">
+  <img alt="Phase plane and time history of the linear prototype for three damping ratios" src="figures/linear-prototype-light.png">
+</picture>
+
+*The linear prototype for three damping ratios. Every trajectory spirals into the single equilibrium at the origin; larger $\zeta$ removes the overshoot entirely.*
+
 ## Nonlinear prototype: switched damping across a boundary on the x-axis
 
 The first nonlinear prototype keeps the dynamics linear on either side of a
@@ -194,6 +201,20 @@ not pass through the equilibrium.
 For constant $u \neq 0$ the equilibrium moves to $(u, 0)$, which still lies on
 $\Sigma$, and the same analysis applies in the shifted coordinate $x_1 - u$.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/switched-damping-dark.png">
+  <img alt="Phase portraits for positive, zero and negative mean damping with the boundary on the x-axis" src="figures/switched-damping-light.png">
+</picture>
+
+*The three cases, with $\Sigma$ on the x-axis. Note the middle panel: at $\bar{\zeta} = 0$ the closed orbits come in a continuum, one through every starting point, rather than as one isolated cycle.*
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/decrement-dark.png">
+  <img alt="Amplitude per cycle on a log scale against the closed form decrement" src="figures/decrement-light.png">
+</picture>
+
+*Amplitude after each full cycle, integrated (markers) against $e^{-(\delta(\zeta_+)+\delta(\zeta_-))n}$ (dashed). Straight lines on a log scale: the decay is exactly geometric and its direction is set by the sign of $\bar{\zeta}$, not by the sign of either $\zeta_{\pm}$ alone.*
+
 ### Notes for numerical work
 
 - Both half planes must be underdamped, $\lvert\zeta_{\pm}\rvert < 1$, for the
@@ -276,6 +297,13 @@ Small oscillations grow because the equilibrium is an unstable focus; large
 ones decay because the cycle average is dissipative. The cycle is where the
 two balance.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/limit-cycle-dark.png">
+  <img alt="Phase portrait of the offset boundary system showing an attracting limit cycle" src="figures/limit-cycle-light.png">
+</picture>
+
+*The equilibrium sits a distance $v_0$ below $\Sigma$ and is an unstable focus, so trajectories starting inside spiral outwards and those starting outside spiral inwards, both onto the same closed orbit.*
+
 ### The cycle is hyperbolic, not a conservative artefact
 
 This is the substantive difference from the marginal case $\bar{\zeta} = 0$ of
@@ -335,3 +363,10 @@ amplitudes tested, not proved here. And the offset only helps because it
 separates the boundary from the equilibrium: a boundary that still passes
 through the equilibrium, at any angle, leaves the system homogeneous and the
 result of the previous section intact.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/return-map-dark.png">
+  <img alt="Return map crossing the diagonal, and limit cycle amplitude proportional to the offset" src="figures/return-map-light.png">
+</picture>
+
+*Left: the return map. With the boundary offset it crosses $P(r) = r$ transversally at $r^{*}$; with the boundary through the equilibrium it is a ray through the origin that never crosses. Right: the amplitude is exactly proportional to the offset.*
