@@ -4,6 +4,9 @@ This project covers the second order nonlinear prototype. The starting point is
 the second order **linear** prototype; the nonlinear prototype builds on it by
 introducing a switching boundary in the phase plane.
 
+`EXAMPLES.md` fits physical systems to each prototype — Maxwell's governor
+and a transistor LC oscillator — with the numbers produced by `examples.py`.
+
 ## Second order linear prototype
 
 As a single second order ordinary differential equation:
