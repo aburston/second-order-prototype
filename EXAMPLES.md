@@ -113,19 +113,14 @@ with $`H`$ the unit step. The equilibrium is $`\xi = \dot{\xi} = 0`$,
 that is $`\dot{x} = V`$ exactly, and the brake switches on
 $`\dot{\xi} = 0`$: the boundary passes **through the equilibrium**. This
 is the README's first nonlinear prototype, switched damping on the
-x-axis, with $`\zeta_{+} = (F - c)/2\sqrt{MG}`$ on the braked side and
-$`\zeta_{-} = -c/2\sqrt{MG}`$ on the free side.
+x-axis, with $`\zeta_{+} = (F - c)/(2\sqrt{MG})`$ on the braked side and
+$`\zeta_{-} = -c/(2\sqrt{MG})`$ on the free side.
 
 Everything the README derived for that prototype now reads as a
 statement about governors:
 
 - **Stability is decided by the mean damping**, $`\bar{\zeta} \gt 0`$,
-  which here is
-
-  ```math
-  F \gt 2c
-  ```
-
+  which here is $`F \gt 2c`$.
   Maxwell's linear analysis of the same reduced system gives $`F \gt c`$.
   The one-sided brake needs to be **twice** as strong, because it acts for
   only half of each hunt. At $`F = c`$, which the linear analysis calls
