@@ -878,3 +878,123 @@ orbit bounds the basin.
 The deadzone results above do not depend on any of this: they are direct
 integration, cross-checked against the exact reduction, which does track
 the physical cycle there.
+
+## Switching on displacement: the complete set of four
+
+The two nonlinear models so far switch the damping on **velocity** — a
+single boundary at $`\dot{x} = v_0`$, or a band $`\lvert\dot{x}\rvert \lt v_0`$.
+The same pair exists with the boundary on **displacement**, and together the
+four are the complete set:
+
+```math
+\ddot{x} + 2\zeta(x)\,\omega_n\dot{x} + \omega_n^2 x = 0,
+\qquad
+\zeta =
+\begin{cases}
+\zeta_{+} & x \gt x_0 \ \ \text{(asymmetric)} \\
+\zeta_{+} & \lvert x \rvert \gt x_0 \ \ \text{(symmetric)} \\
+\zeta_{-} & \text{otherwise}
+\end{cases}
+```
+
+The symmetric one is a piecewise constant Van der Pol: negative damping near
+the origin, positive damping outside, switched on displacement.
+
+### The field is discontinuous, but nothing slides
+
+The velocity models could be kept continuous because the switched term
+carried a factor vanishing on the boundary. That is impossible here — a
+damping force must be proportional to $`\dot{x}`$, so it cannot also vanish
+on a line of constant $`x`$. The jump across the boundary is
+
+```math
+2(\zeta_{+}-\zeta_{-})\,\omega_n\dot{x}
+```
+
+zero only where the boundary meets $`\dot{x} = 0`$.
+
+Sliding is nevertheless impossible. The boundary is a vertical line in the
+phase plane, so the component of the field normal to it is $`\dot{x}`$ —
+which is continuous, and therefore *identical* on both sides. The two sides
+can never point at each other, so every crossing is transversal except at
+the two tangency points $`(\pm x_0, 0)`$. The discontinuity lives entirely
+in the tangential component. What it does leave is a genuine corner in the
+orbit at each crossing, visible in the figure below.
+
+One simplification comes free: the damping term vanishes at $`\dot{x} = 0`$
+whatever $`x`$ is, so the equilibrium is the origin in every region and
+there are no virtual centres. Every arc is an oscillation about the same
+point.
+
+### The amplitude equations keep their shape
+
+With the orbit meeting the boundary where $`\cos\phi = x_0/R`$, and the
+power now weighted by $`\dot{x}^2`$:
+
+```math
+2\phi - \sin 2\phi = 2\pi\rho \quad \text{(asymmetric)},
+\qquad
+2\phi - \sin 2\phi = \pi\rho \quad \text{(symmetric)}
+```
+
+with the same $`\rho = -\zeta_{-}/(\zeta_{+}-\zeta_{-})`$ and the same
+halving between asymmetric and symmetric. The left side runs from zero to
+$`\pi`$, so the first needs $`\rho \lt 1/2`$ and the second only
+$`\rho \lt 1`$ — the same two existence conditions as before, and again
+they fall out of the formula rather than being imposed:
+
+| | asymmetric | symmetric |
+| --- | --- | --- |
+| existence | $`\zeta_{-} \lt 0 \lt \bar{\zeta}`$ | $`\zeta_{-} \lt 0 \lt \zeta_{+}`$ |
+
+The amplitude is $`R = x_0/\cos\phi`$, within about 1% of the integrated
+value. And this is the *same function of angle* as the velocity models'
+equation under $`\alpha = \pi/2 - \phi`$: switching on displacement instead
+of velocity measures the chord from the other axis.
+
+### The period is identical to the velocity model
+
+Not approximately — exactly, to machine precision, and it is the sharpest
+result of the set. Comparing the two exact reductions:
+
+| $`\zeta_{+}`$ | $`\zeta_{-}`$ | asym on $`\dot{x}`$ | asym on $`x`$ | sym on $`\dot{x}`$ | sym on $`x`$ |
+| --- | --- | --- | --- | --- | --- |
+| 0.30 | $`-0.10`$ | 6.3670771 | 6.3670771 | 6.3193874 | 6.3193874 |
+| 0.20 | $`-0.15`$ | 6.3786659 | 6.3786659 | 6.3182093 | 6.3182093 |
+| 0.60 | $`-0.30`$ | 6.8978517 | 6.8978517 | 6.5061243 | 6.5061243 |
+| 0.90 | $`-0.40`$ | 7.6788014 | 7.6788014 | 6.7358171 | 6.7358171 |
+
+Agreement is to $`10^{-14}`$ or exact. The individual dwell times match too,
+not merely their sum — at $`\zeta_{+} = 0.3`$, $`\zeta_{-} = -0.1`$ both
+symmetric models give $`t_{\text{out}} = 1.784550`$ and
+$`t_{\text{in}} = 1.375143`$ per half cycle. Since $`\Lambda`$ depends only
+on the dwell times, the Floquet multipliers coincide as well: $`0.203640`$
+for both symmetric models, $`0.538925`$ for both asymmetric ones.
+
+The amplitudes do **not** coincide — $`2.5090`$ against $`2.1507`$ for the
+asymmetric pair, $`1.5773`$ against $`1.5895`$ for the symmetric pair. So
+moving the boundary from velocity to displacement rotates *which part* of
+the cycle is damped without changing *how long* the orbit spends damped.
+
+Why the timing is preserved exactly is only partly explained. In the near
+circular picture the phase splits are forced to agree, because
+$`\alpha = \pi/2 - \phi`$ turns one angle allocation into the other. That
+accounts for the leading order agreement, not for exactness to fourteen
+digits. Treat the exactness as an observed result.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/four-models-dark.png">
+  <img alt="Phase portraits of all four switched damping models at the same parameters" src="figures/four-models-light.png">
+</picture>
+
+*The four models at the same damping ratios and the same boundary value.
+Period matches along each row; the orbit does not. The corners on the right
+hand orbits are real — those fields are discontinuous, so curvature jumps
+at every crossing.*
+
+### Numerical note
+
+The displacement-switched fields being discontinuous, an integrator without
+event detection will step across a boundary and smear the corner. Bound the
+step size or detect the crossing. The exact reduction has no such problem:
+it solves each arc analytically and matches at the crossing.
