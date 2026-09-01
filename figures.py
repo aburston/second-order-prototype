@@ -56,10 +56,12 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "figures")
 THEMES = {
     "light": dict(surface="#fcfcfb", ink="#0b0b0b", ink2="#52514e",
                   grid="#e1e0d9", axis="#c3c2b7",
-                  series=("#2a78d6", "#eb6834", "#1baf7a")),
+                  series=("#2a78d6", "#eb6834", "#1baf7a"),
+                  div_pos="#2a78d6", div_neg="#e34948"),
     "dark":  dict(surface="#1a1a19", ink="#ffffff", ink2="#c3c2b7",
                   grid="#2c2c2a", axis="#383835",
-                  series=("#3987e5", "#d95926", "#199e70")),
+                  series=("#3987e5", "#d95926", "#199e70"),
+                  div_pos="#3987e5", div_neg="#e66767"),
 }
 
 
@@ -639,6 +641,156 @@ def fig_frequency(th, name):
     save(fig, name, "frequency")
 
 
+def fig_poles(th, name):
+    """Draw the s-plane pole locus of the two half-plane subsystems.
+
+    Each half plane is an ordinary second order system with characteristic
+    polynomial ``s^2 + 2 zeta wn s + wn^2``, so its poles sit at
+    ``wn(-zeta +/- sqrt(zeta^2 - 1))``. While ``|zeta| < 1`` they are a
+    complex pair on the circle of radius ``wn``, at ``cos(theta) = zeta``
+    from the negative real axis; at ``|zeta| = 1`` they meet on the real
+    axis and split along it.
+
+    The radius is ``wn`` for both half planes, so switching moves the pole
+    pair between two points on one fixed circle. Colour runs on the
+    diverging blue-red scale because the quantity it encodes, the damping
+    ratio, has a meaningful zero: the imaginary axis, where the poles cross
+    from decaying to growing.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
+    fig, ax = newfig(th, figsize=(6.6, 6.0))
+    ax.axhspan(-2, 2, xmin=0, xmax=0.5, color=th["grid"], zorder=0)
+
+    def poles(z):
+        d = complex(z*z - 1)**0.5
+        return np.array([-z + d, -z - d])
+
+    zz = np.linspace(-2.2, 2.2, 900)
+    for z in zz:
+        p = poles(z)
+        c = th["div_neg"] if z < 0 else th["div_pos"]
+        a = min(1.0, 0.18 + 0.8*abs(z)/2.2)
+        ax.plot(p.real, p.imag, ".", color=c, markersize=2.2, alpha=a, zorder=2)
+
+    marks = [(2.0, "$\\zeta = 2$"), (1.0, "$\\zeta = 1$"), (0.5, "$\\zeta = 0.5$"),
+             (0.0, "$\\zeta = 0$"), (-0.5, "$\\zeta = -0.5$"),
+             (-1.0, "$\\zeta = -1$"), (-2.0, "$\\zeta = -2$")]
+    for z, lab in marks:
+        p = poles(z)
+        c = th["ink2"] if z == 0 else (th["div_neg"] if z < 0 else th["div_pos"])
+        ax.plot(p.real, p.imag, "x", color=c, markersize=9, markeredgewidth=2.0,
+                zorder=4)
+        k = 0 if p[0].imag >= 0 else 1
+        ax.annotate(lab, xy=(p[k].real, p[k].imag), xytext=(6, 6),
+                    textcoords="offset points", fontsize=8, color=th["ink2"],
+                    zorder=5, bbox=dict(boxstyle="round,pad=0.18",
+                                        fc=th["surface"], ec="none"))
+
+    t = np.linspace(0, 2*np.pi, 400)
+    ax.plot(np.cos(t), np.sin(t), color=th["ink2"], linewidth=1.0,
+            linestyle=(0, (5, 3)), zorder=1)
+    ax.annotate("$|s| = \\omega_n$", xy=(np.cos(3.6), np.sin(3.6)),
+                xytext=(-6, -14), textcoords="offset points", fontsize=8,
+                color=th["ink2"], zorder=5,
+                bbox=dict(boxstyle="round,pad=0.18", fc=th["surface"], ec="none"))
+    ax.axhline(0, color=th["axis"], linewidth=0.9, zorder=1)
+    ax.axvline(0, color=th["axis"], linewidth=0.9, zorder=1)
+    ax.text(-1.95, 1.85, "left half plane\ndecaying", fontsize=8.5,
+            color=th["ink2"], va="top", zorder=5)
+    ax.text(1.95, 1.85, "right half plane\ngrowing", fontsize=8.5,
+            color=th["ink2"], va="top", ha="right", zorder=5)
+    ax.set_xlim(-2.3, 2.3)
+    ax.set_ylim(-2.0, 2.0)
+    ax.set_aspect("equal")
+    style(ax, th, "$\\mathrm{Re}\\,s / \\omega_n$",
+          "$\\mathrm{Im}\\,s / \\omega_n$",
+          "Poles of one half plane: $s^2 + 2\\zeta\\omega_n s + \\omega_n^2$")
+    fig.tight_layout()
+    save(fig, name, "pole-zero")
+
+
+def fig_stability_map(th, name):
+    """Draw the stability classification over the whole damping ratio plane.
+
+    Left: the boundary through the equilibrium. Whether a half plane
+    carries an invariant ray decides everything. A half plane with
+    ``zeta <= -1`` holds an escaping ray, one with ``zeta >= 1`` holds a
+    decaying sector, and each is invariant, so a trajectory that enters
+    never leaves. Where neither half plane has real poles the rotation is
+    complete, the return map applies, and the sign of the mean damping
+    decides globally.
+
+    Right: the same plane for an offset boundary, where the interest is
+    whether a limit cycle exists rather than whether the origin attracts.
+
+    Regions are labelled in place rather than by colour alone.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
+    def rule(zp, zm):
+        esc, dec = (zp <= -1) or (zm <= -1), (zp >= 1) or (zm >= 1)
+        if esc and dec: return 2
+        if esc: return 1
+        if dec: return 0
+        return 0 if zp + zm > 0 else 1
+
+    fig, axes = newfig(th, 1, 2, figsize=(11.0, 5.0))
+    g = np.linspace(-2.2, 2.2, 601)
+    ZP, ZM = np.meshgrid(g, g)
+    Z = np.vectorize(rule)(ZP, ZM)
+    cmap = matplotlib.colors.ListedColormap(list(th["series"]))
+    axes[0].pcolormesh(g, g, Z, cmap=cmap, vmin=-0.5, vmax=2.5,
+                       shading="nearest", zorder=1)
+    axes[0].plot([-2.2, 2.2], [2.2, -2.2], color=th["ink"], linewidth=1.4,
+                 linestyle=(0, (5, 3)), zorder=3)
+    for v in (-1, 1):
+        axes[0].axvline(v, color=th["ink"], linewidth=0.9, alpha=0.55, zorder=3)
+        axes[0].axhline(v, color=th["ink"], linewidth=0.9, alpha=0.55, zorder=3)
+    def tag(ax, x, y, txt):
+        ax.text(x, y, txt, fontsize=8.5, color=th["ink"], ha="center",
+                va="center", zorder=6,
+                bbox=dict(boxstyle="round,pad=0.3", fc=th["surface"],
+                          ec=th["grid"], lw=0.8, alpha=0.94))
+    tag(axes[0], 1.15, 1.15, "decays")
+    tag(axes[0], -1.5, -1.5, "escapes")
+    tag(axes[0], 1.55, -1.6, "mixed:\nseparatrix")
+    tag(axes[0], -1.6, 1.55, "mixed:\nseparatrix")
+    tag(axes[0], 0.72, -0.72, "$\\bar{\\zeta} = 0$")
+    style(axes[0], th, "$\\zeta_{+}$", "$\\zeta_{-}$",
+          "Boundary through the equilibrium")
+    axes[0].set_aspect("equal")
+    axes[0].set_xlim(-2.2, 2.2)
+    axes[0].set_ylim(-2.2, 2.2)
+
+    gg = np.linspace(-1.0, 1.0, 601)
+    A, B = np.meshgrid(gg, gg)
+    lc = (B < 0) & (A + B > 0)
+    # same colour, same meaning as the left panel: blue decays, orange
+    # escapes, and the third slot carries whatever else the panel shows
+    axes[1].pcolormesh(gg, gg, np.where(lc, 2, np.where(A + B > 0, 0, 1)),
+                       cmap=cmap, vmin=-0.5, vmax=2.5, shading="nearest",
+                       zorder=1)
+    axes[1].plot([-1, 1], [1, -1], color=th["ink"], linewidth=1.4,
+                 linestyle=(0, (5, 3)), zorder=3)
+    axes[1].axhline(0, color=th["ink"], linewidth=1.4, linestyle=(0, (5, 3)),
+                    zorder=3)
+    tag(axes[1], 0.62, -0.34, "limit cycle")
+    tag(axes[1], -0.05, 0.62, "decays to\nequilibrium")
+    tag(axes[1], -0.55, -0.55, "escapes")
+    style(axes[1], th, "$\\zeta_{+}$", "$\\zeta_{-}$",
+          "Offset boundary, both half planes underdamped")
+    axes[1].set_aspect("equal")
+    fig.suptitle("Where each behaviour lives in the damping ratio plane",
+                 color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "stability-map")
+
+
 if __name__ == "__main__":
     for name, th in THEMES.items():
         print(f"{name}:")
@@ -648,3 +800,5 @@ if __name__ == "__main__":
         fig_limit_cycle(th, name)
         fig_map_scaling(th, name)
         fig_frequency(th, name)
+        fig_poles(th, name)
+        fig_stability_map(th, name)
