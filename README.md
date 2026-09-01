@@ -657,3 +657,141 @@ exact reduction when the number matters.
 one, and the dashed closed form tracks the exact reduction closely at small
 damping. Right: the error of the closed form, with the one percent band
 marked.*
+
+## Symmetric variant: a deadzone instead of one boundary
+
+The offset prototype puts the destabilising damping on one side of a single
+boundary. This variant makes the transition symmetric about the axis: the
+damping ratio is $`\zeta_{-}`$ inside a band $`\lvert\dot{x}\rvert \lt v_0`$
+and $`\zeta_{+}`$ outside it, above and below alike.
+
+### Keeping the field continuous forces a deadzone
+
+The switched term has to vanish on **both** boundaries at once, so it can no
+longer act through a relative velocity. It acts through a deadzone:
+
+```math
+\ddot{x} + 2\omega_n\left[\zeta_{-}\dot{x}
+  + (\zeta_{+}-\zeta_{-})\,\mathrm{dz}_{v_0}(\dot{x})\right]
+  + \omega_n^2 x = 0
+```
+
+```math
+\mathrm{dz}_{v_0}(v) =
+\begin{cases}
+v - v_0 & v \gt v_0 \\
+0 & \lvert v \rvert \le v_0 \\
+v + v_0 & v \lt -v_0
+\end{cases}
+```
+
+Inside the band this is the linear oscillator with damping $`\zeta_{-}`$
+about the origin. Outside it, the linear oscillator with damping
+$`\zeta_{+}`$ about a virtual centre at
+$`\pm 2(\zeta_{+}-\zeta_{-})v_0/\omega_n`$.
+
+The field is now **odd**, $`f(-z) = -f(z)`$. Two things follow. The
+equilibrium sits at the origin rather than offset, and the cycle is
+symmetric under $`(x, \dot{x}) \mapsto (-x, -\dot{x})`$, so a half cycle
+determines the whole orbit.
+
+### The mean damping drops out of the existence condition
+
+This is the substantive change. A large orbit now spends almost all of its
+time *outside* the band rather than half of it, so the effective damping
+runs from $`\zeta_{-}`$ at small amplitude to $`\zeta_{+}`$ at large
+amplitude — not to the mean. The two only need opposite signs:
+
+```math
+\zeta_{-} \lt 0 \lt \zeta_{+}
+```
+
+with no condition on $`\bar{\zeta}`$ at all. Pairs that escape in the
+single-boundary version because their mean damping is negative have a limit
+cycle here. Integrating $`\zeta_{+} = 0.1`$, $`\zeta_{-} = -0.3`$
+($`\bar{\zeta} = -0.1`$) gives a cycle at $`r^{*} = 5.0741`$, and
+$`\zeta_{+} = 0.05`$, $`\zeta_{-} = -0.5`$ ($`\bar{\zeta} = -0.225`$) gives
+one at $`r^{*} = 14.0048`$.
+
+### The amplitude equation keeps its shape and halves its right hand side
+
+The orbit crosses the band at $`\sin\beta = v_0/(\omega_n R)`$ and spends
+$`4\beta`$ of each revolution inside it. Balancing the energy over a
+revolution, with the damping force acting through the deadzone:
+
+```math
+\pi - 2\beta - \sin 2\beta = \pi\rho,
+\qquad \rho = \frac{-\zeta_{-}}{\zeta_{+} - \zeta_{-}}
+```
+
+The same left hand side as the single-boundary case, and the same $`\rho`$;
+only the right hand side changes from $`2\pi\rho`$ to $`\pi\rho`$. Since
+the left side runs from $`\pi`$ down to zero, one needs $`\rho \lt 1/2`$
+and the other only $`\rho \lt 1`$ — which are exactly the two existence
+conditions, falling out of the formula rather than being imposed on it.
+The amplitude is $`R = v_0/(\omega_n\sin\beta)`$, within about 1% of the
+integrated value.
+
+### Period
+
+The exact reduction is *simpler* here. A half cycle is one arc outside the
+band followed by one arc inside it, and oddness closes it: the inner arc
+must end at minus where the outer arc began. That is one scalar condition,
+so a single root find replaces the fixed point iteration the asymmetric
+case needed. It reproduces direct integration to seven decimal places.
+
+The closed form keeps its shape, with the band taking $`4\beta`$ of the
+revolution:
+
+```math
+T \simeq \frac{2\pi}{\omega_n}\left[1 +
+  \frac{4\beta\,\zeta_{-}^2 + (2\pi - 4\beta)\,\zeta_{+}^2}{4\pi}\right]
+```
+
+It is looser than its counterpart — 1.3% while both ratios stay within 0.2,
+3.9% by 0.35, 14% by 0.7 — because the two regions' circularising frames
+differ more here, and the measured phase angles sum to noticeably less than
+$`2\pi`$, which the expression assumes. Use the exact reduction when the
+number matters.
+
+### What changes and what does not
+
+For $`\zeta_{+} = 0.3`$, $`\zeta_{-} = -0.1`$, $`v_0 = 1`$:
+
+| | single boundary | deadzone |
+| --- | --- | --- |
+| equilibrium | offset to $`2\zeta_{-}v_0/\omega_n`$ | at the origin |
+| symmetry | none | odd |
+| existence | $`\zeta_{-} \lt 0 \lt \bar{\zeta}`$ | $`\zeta_{-} \lt 0 \lt \zeta_{+}`$ |
+| large orbit damping tends to | $`\bar{\zeta}`$ | $`\zeta_{+}`$ |
+| amplitude equation | $`\pi - 2\alpha - \sin 2\alpha = 2\pi\rho`$ | $`\pi - 2\beta - \sin 2\beta = \pi\rho`$ |
+| phase split | $`\pi \mp 2\alpha`$ | $`4\beta`$ inside, $`2\pi - 4\beta`$ outside |
+| closing the cycle | fixed point in two arcs | one root find, closed by symmetry |
+| period | $`6.367077`$ | $`6.319387`$ |
+| amplitude $`r^{*}`$ | $`2.150651`$ | $`1.589462`$ |
+| Floquet multiplier | $`0.538923`$ | $`0.203634`$ |
+
+Unchanged: the period is still fixed by $`\omega_n`$ and the two damping
+ratios alone — identical to nine decimals across a sixty four fold range of
+$`v_0`$ — the amplitude is still exactly proportional to $`v_0`$, the
+multiplier is still $`e^{2\Lambda}`$ with $`\Lambda`$ the dwell weighted sum
+of pole real parts (predicting $`0.203640`$ against $`0.203634`$), and the
+cycle is still always slower than $`\omega_n`$, with none of 49 tested
+points below $`2\pi/\omega_n`$.
+
+The cycle also attracts far harder: multiplier $`0.204`$ against $`0.539`$
+at the same damping ratios, because the orbit now spends more of each
+revolution in the damped region — about $`3.5`$ radians against about
+$`2.3`$, on the near circular estimate that both phase splits come from.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/symmetric-dark.png">
+  <img alt="Phase portrait of the deadzone variant and the region where each version has a limit cycle" src="figures/symmetric-light.png">
+</picture>
+
+*Left: the deadzone variant, band shaded, converging onto one odd-symmetric
+cycle from inside and outside. Right: where a limit cycle exists. The single
+boundary needs the mean damping positive, a triangle; the deadzone needs
+only $`\zeta_{+} \gt 0`$, the whole quadrant. The wedge between them is
+where symmetrising the transition creates a cycle that was not there
+before.*
