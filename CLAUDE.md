@@ -39,11 +39,17 @@ So never promise to delete a head branch after closing a pull request —
 it cannot be done from here. Say plainly that it needs doing outside the
 session.
 
-The durable fix is the repository's **Settings → General → Automatically
-delete head branches**, which removes each head branch on merge and needs
-no session involvement at all. That setting is likewise not writable from
-a session (*"Repository settings writes are not permitted through this
-proxy"*), so it has to be turned on by hand, once.
+That does not leave branches lying around, because the repository has
+**Settings → General → Automatically delete head branches** switched on.
+GitHub removes each head branch when its pull request merges, with no
+session involvement at all. Nothing needs doing about branch cleanup.
+
+If merged branches ever start accumulating again, that setting is what to
+check. It is not writable from a session (*"Repository settings writes are
+not permitted through this proxy"*), so it has to be set by hand. The
+reliable way to confirm it is on is to merge a pull request and see whether
+its branch disappears — the setting once read as off while a person
+believed they had enabled it.
 
 ## Maths in markdown
 
