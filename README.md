@@ -795,3 +795,86 @@ boundary needs the mean damping positive, a triangle; the deadzone needs
 only $`\zeta_{+} \gt 0`$, the whole quadrant. The wedge between them is
 where symmetrising the transition creates a cycle that was not there
 before.*
+
+## Overdamped regions
+
+Everything above assumes both regions underdamped,
+$`\lvert\zeta_{\pm}\rvert \lt 1`$, so that each arc oscillates. Relaxing
+that needs no new formulas, only a wider reading of the ones already here.
+
+### The transit equations continue analytically
+
+The two kernels the arcs are built from, $`\cos\omega_d t`$ and
+$`\sin(\omega_d t)/\omega_d`$, are entire functions of $`\omega_d^2`$. They
+stay real when $`\omega_d`$ turns imaginary — $`\cos`$ becomes $`\cosh`$,
+and $`\sin(\omega_d t)/\omega_d`$ becomes $`\sinh(\mu t)/\mu`$ with
+$`\mu = \omega_n\sqrt{\zeta^2-1}`$ — so one complex expression covers both
+branches and the overdamped case needs no separate derivation.
+
+`frequency.kernels` does this, and returns the kernels already multiplied by
+$`e^{-\zeta\omega_n t}`$. That last part matters numerically: forming
+$`\cosh\mu t`$ first and applying the decay afterwards overflows for a
+strongly overdamped arc, and the resulting `0 * inf` puts NaN into the root
+search. Writing the product as a sum of exponentials of the two
+characteristic roots never forms the large intermediate.
+
+The continuation reproduces every previously verified underdamped period
+exactly, and agrees with direct integration to about $`10^{-10}`$ in the
+overdamped cases below.
+
+### Overdamping the outer region costs nothing
+
+Both variants keep their limit cycle for $`\zeta_{+}`$ far beyond 1, tested
+to $`\zeta_{+} = 20`$. The outer region is where energy is removed; making
+that removal aperiodic does not stop the orbit closing.
+
+### The deadzone variant tolerates arbitrary damping
+
+It keeps a cycle at every pair tried, including both ratios at magnitude 10:
+
+| $`\zeta_{+}`$ | $`\zeta_{-}`$ | $`r^{*}`$ | period |
+| --- | --- | --- | --- |
+| 0.5 | $`-1`$ | 4.04 | 6.73 |
+| 0.5 | $`-3`$ | 9.66 | 6.98 |
+| 0.5 | $`-10`$ | 29.15 | 7.15 |
+| 3 | $`-0.2`$ | 1.34 | 6.72 |
+| 10 | $`-0.2`$ | 1.32 | 6.87 |
+| 3 | $`-3`$ | 6.54 | 14.93 |
+| 10 | $`-10`$ | 20.27 | 44.77 |
+
+The reason is that the band is bounded in velocity. Every trajectory must
+leave it, and the amplitude grows until the entry point is far enough out
+for the crossing to happen — which is what $`r^{*}`$ running
+$`4.04, 9.66, 29.15`$ as $`\zeta_{-}`$ goes $`-1, -3, -10`$ is showing. So
+the existence condition $`\zeta_{-} \lt 0 \lt \zeta_{+}`$ appears to hold
+with no restriction on magnitude.
+
+Every period measured stayed above $`2\pi/\omega_n`$, so that result
+survives overdamping, though the margin grows from a fraction of a percent
+to a factor of seven.
+
+### The offset variant with a strongly negative inner damping is unresolved
+
+Left open deliberately rather than guessed at. Two methods disagree and the
+disagreement is not understood:
+
+- Integrating from a fixed start at $`r_0 = 2v_0`$, trajectories stop
+  converging to a cycle once $`\zeta_{-}`$ falls below roughly $`-0.98`$,
+  with the measured period diverging on approach — 12, 30, 51, 78, 130 as
+  $`\zeta_{-}`$ runs $`-0.5`$ to $`-0.98`$ at $`\zeta_{+} = 4`$.
+- The exact reduction still returns closed orbits past that point, with
+  valid arcs, but at radii of $`10^{7}`$ and beyond — nothing like the
+  orbit of radius $`\approx 2.7`$ that integration follows just before it
+  gives up.
+
+So the fixed point iteration is converging on something other than the
+physical cycle in this regime, and the integrated threshold depends on
+where the trajectory starts, which makes it a statement about basins rather
+than about the system. Neither number should be relied on. Settling it
+means finding the physical cycle by continuation from the underdamped side
+rather than from a fixed seed, and checking whether a second, repelling
+orbit bounds the basin.
+
+The deadzone results above do not depend on any of this: they are direct
+integration, cross-checked against the exact reduction, which does track
+the physical cycle there.
