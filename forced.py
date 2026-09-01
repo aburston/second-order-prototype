@@ -81,26 +81,40 @@ WN = 1.0
 ZP, ZM, V0 = 0.3, -0.1, 0.25
 
 #: A response counts as locked at order ``q`` when the strobe point repeats
-#: after ``q`` drive periods to within this distance.
+#: after ``q`` drive periods to within this fraction **of the orbit's own
+#: size**. Every threshold here has to be relative, for the same reason the
+#: integrator's tolerance is: the drive can change the orbit's scale by an
+#: order of magnitude, and an absolute threshold then means something
+#: different at each grid point.
 #:
-#: Getting this test right took three goes. Clustering the strobe points at a
-#: fixed radius of 1e-4 was wrong twice over. A weakly contracting case
-#: settles onto an invariant curve only a few thousandths across, which the
-#: fixed radius chopped into around twenty phantom clusters and reported as a
-#: lock of order twenty; the give-away was that the count drifted with the
-#: length of the discarded transient, 23 points after 200 drive periods and
-#: 21 after 2000, which a real lock never does. Making the radius relative to
-#: the section's own spread fixed that but left two subtler failures: a
-#: *chain of small invariant curves*, one per island, clusters exactly like a
-#: lock of the same order, and an orbit still spiralling in splits each of
-#: its points into several tight clusters.
+#: Getting this test right took four goes, and each failure invented locks or
+#: chaos that were not there. Clustering the strobe points at a fixed radius
+#: of 1e-4 was wrong three ways: a weakly contracting case settles onto an
+#: invariant curve a few thousandths across, which the fixed radius chopped
+#: into around twenty phantom clusters and reported as a lock of order twenty
+#: -- the give-away being that the count drifted with the discarded
+#: transient, 23 points after 200 drive periods and 21 after 2000, which a
+#: real lock never does; a *chain of small invariant curves*, one per island,
+#: clusters exactly like a lock of the same order; and an orbit still
+#: spiralling in splits each of its points into several tight clusters.
 #:
-#: Testing recurrence directly kills all three. A genuine period ``q``
-#: response repeats to integration accuracy, around 1e-9. An island chain
-#: sits at 1e-4 to 1e-5 and stays there however long the transient is run. A
-#: drifting orbit fails outright. The margin between 1e-9 and 1e-5 is four
-#: orders, so the threshold is not delicate.
-LOCK_SCATTER = 1e-7
+#: Testing recurrence directly kills all three, but an *absolute* recurrence
+#: threshold then failed a fourth way, and this one manufactured chaos. At
+#: the centre of the 1:1 tongue the resonant orbit is ten times bigger than
+#: it is off resonance -- scale 25 against 2.4 at one tested pair -- so the
+#: integrator's own error grows with it and pushed the residual over a fixed
+#: 1e-7 while the *relative* residual, 1e-8, was identical to the locked
+#: cells either side. Those cells were then handed to the Lyapunov estimate,
+#: which read them as chaotic with exponents up to +0.30. They are periodic.
+#:
+#: Relative to the orbit, a genuine lock repeats to about 1e-8, an island
+#: chain sits at 1e-4 however long the transient is run, and a drifting orbit
+#: fails outright. Two orders of margin either side of 1e-6.
+LOCK_SCATTER_REL = 1e-6
+
+#: Floor for that, so a section whose scale underflows is not divided by
+#: something near zero.
+LOCK_SCATTER_FLOOR = 1e-12
 
 #: Largest lock order the strobe count will report. Beyond this a response is
 #: indistinguishable from a torus over any affordable run.
@@ -172,15 +186,18 @@ def lock_order(pts, qmax=QMAX):
     """Order of the lock, or ``None`` if the response is not periodic.
 
     Returns the smallest ``q`` for which the strobe point repeats after
-    ``q`` drive periods to within ``LOCK_SCATTER``, which is the definition
-    of a period ``q`` orbit of the stroboscopic map. ``None`` means the
+    ``q`` drive periods to within ``LOCK_SCATTER_REL`` of the orbit's own
+    size, which is the definition of a period ``q`` orbit of the
+    stroboscopic map. ``None`` means the
     section is a curve, an island chain or a cloud rather than a finite set
     — or that a genuine lock has not settled yet, which is answered by a
     longer ``n_skip`` rather than a looser threshold.
     """
+    tol = max(LOCK_SCATTER_FLOOR,
+              LOCK_SCATTER_REL*float(np.max(np.abs(pts))))
     for k in range(1, qmax + 1):
         d = np.linalg.norm(pts[k:] - pts[:-k], axis=1)
-        if d.size and np.max(d) < LOCK_SCATTER:
+        if d.size and np.max(d) < tol:
             return k
     return None
 
@@ -210,14 +227,24 @@ def rotation_number(amp, om, zp=ZP, zm=ZM, v0=V0, n_skip=150, n_keep=300,
     return (th[-1] - th[0])/(2.0*np.pi)/n_keep
 
 
-def lyapunov(amp, om, zp=ZP, zm=ZM, v0=V0, n_skip=100, n=300, d0=1e-8,
+#: Twin trajectory separation, as a fraction of the orbit's size. It has to
+#: sit well above the integrator's own relative error and well below the
+#: attractor's curvature. An *absolute* 1e-8 fell below the integration
+#: error on the large resonant orbits described at ``LOCK_SCATTER_REL``, so
+#: the exponent there was measuring nothing but noise.
+D0_REL = 1e-6
+
+
+def lyapunov(amp, om, zp=ZP, zm=ZM, v0=V0, n_skip=100, n=300, d0=None,
              y0=None):
     """Largest Lyapunov exponent, per unit time, by two-trajectory tracking.
 
     A twin trajectory is started ``d0`` away and rescaled back to ``d0``
     once per drive period; the exponent is the mean log stretch divided by
     the period. ``n_skip`` periods are run before accumulating so the
-    separation aligns with the local expanding direction.
+    separation aligns with the local expanding direction. ``d0`` defaults to
+    ``D0_REL`` times the size the orbit actually reaches, measured after the
+    transient, rather than to a fixed number.
 
     The field is only piecewise smooth, so this is a finite-difference
     estimate rather than a variational one: read the sign, not the digits.
@@ -234,9 +261,13 @@ def lyapunov(amp, om, zp=ZP, zm=ZM, v0=V0, n_skip=100, n=300, d0=1e-8,
 
     a = np.array(y0, float)
     t0 = 0.0
+    scale = 0.0
     for _ in range(n_skip):
         a = step(a, t0)
         t0 += td
+        scale = max(scale, float(np.max(np.abs(a))))
+    if d0 is None:
+        d0 = max(LOCK_SCATTER_FLOOR, D0_REL*scale)
     b = a + np.array([d0, 0.0])
     total = 0.0
     for _ in range(n):
