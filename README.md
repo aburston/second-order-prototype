@@ -853,30 +853,55 @@ Every period measured stayed above $`2\pi/\omega_n`$, so that result
 survives overdamping, though the margin grows from a fraction of a percent
 to a factor of seven.
 
-### The offset variant with a strongly negative inner damping is unresolved
+### The offset variant with a strongly negative inner damping
 
-Left open deliberately rather than guessed at. Two methods disagree and the
-disagreement is not understood:
+The cycle survives all the way to $`\zeta_{-} \to -1`$. There is no floor
+short of it. What happens instead is that the orbit becomes enormously
+elongated, and a naive escape test mistakes that for divergence.
 
-- Integrating from a fixed start at $`r_0 = 2v_0`$, trajectories stop
-  converging to a cycle once $`\zeta_{-}`$ falls below roughly $`-0.98`$,
-  with the measured period diverging on approach — 12, 30, 51, 78, 130 as
-  $`\zeta_{-}`$ runs $`-0.5`$ to $`-0.98`$ at $`\zeta_{+} = 4`$.
-- The exact reduction still returns closed orbits past that point, with
-  valid arcs, but at radii of $`10^{7}`$ and beyond — nothing like the
-  orbit of radius $`\approx 2.7`$ that integration follows just before it
-  gives up.
+The mechanism is in the inner arc. As $`\zeta_{-} \to -1`$ the inner
+region's damped frequency $`\omega_d^{-} = \omega_n\sqrt{1-\zeta_{-}^2}`$
+goes to zero, while the angle that arc has to sweep stays close to constant
+at about $`3.23`$ radians. The time it takes therefore diverges like
+$`1/\omega_d^{-}`$, and over that time the unstable inner region amplifies
+the state by $`e^{\lvert\zeta_{-}\rvert t_{-}}`$. The period grows slowly;
+the spatial extent grows exponentially.
 
-So the fixed point iteration is converging on something other than the
-physical cycle in this regime, and the integrated threshold depends on
-where the trajectory starts, which makes it a statement about basins rather
-than about the system. Neither number should be relied on. Settling it
-means finding the physical cycle by continuation from the underdamped side
-rather than from a fixed seed, and checking whether a second, repelling
-orbit bounds the basin.
+| $`\zeta_{-}`$ | period | $`t_{-}`$ | $`t_{-}\omega_d^{-}`$ | extent at $`\dot{x}=v_0`$ | $`e^{\lvert\zeta_{-}\rvert t_{-}}`$ |
+| --- | --- | --- | --- | --- | --- |
+| $`-0.50`$ | 12.33 | 4.80 | 4.16 | 12.3 | 11.0 |
+| $`-0.80`$ | 30.33 | 6.20 | 3.72 | 158 | 143 |
+| $`-0.90`$ | 50.51 | 8.13 | 3.54 | $`1.68\times10^{3}`$ | $`1.50\times10^{3}`$ |
+| $`-0.95`$ | 77.76 | 10.97 | 3.42 | $`3.75\times10^{4}`$ | $`3.34\times10^{4}`$ |
+| $`-0.98`$ | 130.19 | 16.68 | 3.32 | $`1.41\times10^{7}`$ | $`1.26\times10^{7}`$ |
+| $`-0.99`$ | 188.50 | 23.16 | 3.27 | $`1.02\times10^{10}`$ | $`9.08\times10^{9}`$ |
+| $`-0.995`$ | 270.54 | 32.34 | 3.23 | $`1.07\times10^{14}`$ | $`9.48\times10^{13}`$ |
 
-The deadzone results above do not depend on any of this: they are direct
-integration, cross-checked against the exact reduction, which does track
+at $`\zeta_{+} = 4`$, $`v_0 = 1`$. The swept angle converges, and the extent
+tracks the predicted amplification to about ten percent throughout.
+
+The exact reduction and direct integration agree once the integration is
+allowed to follow the orbit: both give $`130.1909`$ at $`\zeta_{-} = -0.98`$
+and $`188.4971`$ at $`-0.99`$. Verified down to $`\zeta_{-} = -0.995`$,
+where the orbit spans $`10^{14}`$. Past that the numerics fail for a reason
+that is arithmetic rather than dynamics: the cycle balances a growth of
+$`e^{+72}`$ against an equal contraction, and double precision cannot carry
+it.
+
+Two earlier claims are withdrawn. There is no constant floor at
+$`\zeta_{-} \approx -0.984`$ independent of $`\zeta_{+}`$ — that number was
+the point where the orbit outgrew an escape threshold of $`10^{8}`$, not a
+bifurcation. And the exact reduction was not converging on a spurious
+solution: its entry point of $`-1678.86`$ at $`\zeta_{-} = -0.9`$ is exactly
+where the integrated orbit crosses $`\dot{x} = v_0`$. The two methods never
+actually disagreed; the escape test did.
+
+The practical lesson is that these orbits reach far in $`x`$ while staying
+modest in $`\dot{x}`$ — a radius of $`2.56`$ at $`\dot{x} = 0`$ alongside an
+extent of $`1.68\times10^{3}`$ at $`\dot{x} = v_0`$ — so an escape test on
+the state norm has to be scaled to the expected extent, or it reports
+divergence for a perfectly good limit cycle.
+
 the physical cycle there.
 
 ## Switching on displacement: the complete set of four
