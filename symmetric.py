@@ -54,6 +54,8 @@ import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.optimize import brentq
 
+from frequency import kernels, TMAX_STEPS
+
 WN = 1.0
 
 
@@ -107,27 +109,27 @@ def amplitude(zp, zm, v0=1.0):
     return np.nan if not np.isfinite(b) else v0/(WN*np.sin(b))
 
 
-def _arc(zeta, xi0, u0, utarget, ngrid=4000):
+def _arc(zeta, xi0, u0, utarget, ngrid=24000):
     """One arc of a linear oscillator, from ``xdot = u0`` to ``xdot = utarget``.
 
     Returns the transit time and the displacement at the end, both measured
     from that region's own centre. ``t = 0`` solves the condition whenever
     ``u0 == utarget``, so the root taken is always the next one.
     """
-    w = WN*np.sqrt(1 - zeta**2)
     def vel(t):
-        return np.exp(-zeta*WN*t)*(u0*np.cos(w*t)
-                                   - ((xi0 + zeta*WN*u0)/w)*np.sin(w*t)) - utarget
-    g = np.linspace(1e-9, 2.5*2*np.pi/w, ngrid)
-    val = vel(g)
-    idx = np.nonzero(np.sign(val) == -np.sign(val[0]))[0]
-    if len(idx) == 0:
-        return np.nan, np.nan
-    k = idx[0]
-    t = brentq(vel, g[k-1], g[k], xtol=1e-15, rtol=8.9e-16)
-    xi = np.exp(-zeta*WN*t)*(xi0*np.cos(w*t)
-                             + ((u0 + zeta*WN*xi0)/w)*np.sin(w*t))
-    return t, xi
+        c, s = kernels(zeta, t)
+        return u0*c - (xi0 + zeta*WN*u0)*s - utarget
+    for tmax in TMAX_STEPS:
+        g = np.linspace(1e-9, tmax, ngrid)
+        val = vel(g)
+        ok = np.isfinite(val)
+        idx = np.nonzero(ok & (np.sign(val) == -np.sign(val[0])))[0]
+        if len(idx):
+            k = idx[0]
+            t = brentq(vel, g[k-1], g[k], xtol=1e-15, rtol=8.9e-16)
+            c, s = kernels(zeta, t)
+            return t, xi0*c + (u0 + zeta*WN*xi0)*s
+    return np.nan, np.nan
 
 
 def period_exact(zp, zm, v0=1.0):
@@ -160,15 +162,20 @@ def period_exact(zp, zm, v0=1.0):
     R = amplitude(zp, zm, v0)
     if not np.isfinite(R):
         return np.nan, None
-    grid = np.linspace(-1.8*R - 2*v0, -0.05*R, 120)
-    prev, pt = closure(grid[0])[0], grid[0]
-    for t in grid[1:]:
-        cur = closure(t)[0]
-        if np.isfinite(prev) and np.isfinite(cur) and prev*cur < 0:
-            a = brentq(lambda z: closure(z)[0], pt, t, xtol=1e-14)
-            _, dw = closure(a)
-            return 2*(dw[0] + dw[1]), dw
-        prev, pt = cur, t
+    # The near-circular estimate seeds the bracket, but it understates the
+    # radius badly once either region is strongly overdamped -- at
+    # zp = 10, zm = -10 the true radius is over ten times it -- so widen
+    # the search until the closure condition actually changes sign.
+    for span in (2.6, 10.0, 40.0, 160.0):
+        grid = np.linspace(-span*R - 3*v0, -0.03*R, 260)
+        prev, pt = closure(grid[0])[0], grid[0]
+        for t in grid[1:]:
+            cur = closure(t)[0]
+            if np.isfinite(prev) and np.isfinite(cur) and prev*cur < 0:
+                a = brentq(lambda z: closure(z)[0], pt, t, xtol=1e-14)
+                _, dw = closure(a)
+                return 2*(dw[0] + dw[1]), dw
+            prev, pt = cur, t
     return np.nan, None
 
 

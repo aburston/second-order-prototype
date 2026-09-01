@@ -44,10 +44,54 @@ from scipy.integrate import solve_ivp
 
 WN = 1.0
 
+# Arc search windows, tried shortest first. An overdamped arc has no period
+# to scale by, and near the offset variant's existence boundary a single arc
+# runs past t = 100, so the horizon has to be able to grow; starting short
+# keeps the resolution fine for ordinary arcs.
+TMAX_STEPS = (16.0/WN, 60.0/WN, 240.0/WN)
+NGRID = 24000
+
 
 def wd(zeta):
-    """Damped natural frequency of a half-plane with this damping ratio."""
+    """Damped natural frequency of a half-plane with this damping ratio.
+
+    Imaginary once ``|zeta| > 1``; use ``kernels`` rather than this directly
+    if the damping may be overdamped.
+    """
     return WN*np.sqrt(1 - zeta**2)
+
+
+def kernels(zeta, t):
+    """``exp(-zeta wn t)`` times ``cos(wd t)`` and ``sin(wd t)/wd``.
+
+    These two products are what the transit equations actually use, and
+    forming them directly is what keeps the overdamped branch usable. Both
+    factors are entire functions of ``wd^2``, so they stay real when ``wd``
+    turns imaginary — ``cos`` becomes ``cosh``, ``sin(wd t)/wd`` becomes
+    ``sinh(mu t)/mu`` — which means one expression covers underdamped and
+    overdamped alike and the transit equations need no separate form.
+
+    Computing ``cosh`` first and multiplying by the decay afterwards
+    overflows for strongly overdamped arcs: ``cosh(mu t)`` reaches infinity
+    while the product is perfectly finite, and ``0 * inf`` then poisons the
+    search grid with NaN. Writing the product as a sum of exponentials of
+    the two characteristic roots avoids forming the large intermediate at
+    all.
+
+    Args:
+        zeta: damping ratio, any magnitude.
+        t: time, scalar or array.
+
+    Returns:
+        Tuple of the two damped kernels, real, shaped like ``t``.
+    """
+    d = np.sqrt(complex(zeta**2 - 1))*WN          # roots at -zeta*wn +/- d
+    lp, lm = -zeta*WN + d, -zeta*WN - d
+    with np.errstate(over="ignore", invalid="ignore"):
+        ep, em = np.exp(lp*t), np.exp(lm*t)
+        c = np.real((ep + em)/2)
+        s = np.real((ep - em)/(2*d)) if abs(d) > 1e-12 else np.real(t*ep)
+    return c, s
 
 
 def transit(zeta, xi0, v0=1.0):
@@ -70,19 +114,20 @@ def transit(zeta, xi0, v0=1.0):
         Tuple ``(t, xi)`` of transit time and exit displacement from the
         same centre, or ``(nan, nan)`` if the arc never returns.
     """
-    w = wd(zeta)
     def vel(t):
-        return np.exp(-zeta*WN*t)*(v0*np.cos(w*t)
-                                   - ((xi0 + zeta*WN*v0)/w)*np.sin(w*t)) - v0
-    grid = np.linspace(1e-7, 3.0*2*np.pi/w, 20000)
-    vals = vel(grid)
-    idx = np.nonzero(np.sign(vals) == -np.sign(vals[0]))[0]
-    if len(idx) == 0:
-        return np.nan, np.nan
-    k = idx[0]
-    t = brentq(vel, grid[k-1], grid[k], xtol=1e-15, rtol=8.9e-16)
-    xi = np.exp(-zeta*WN*t)*(xi0*np.cos(w*t) + ((v0 + zeta*WN*xi0)/w)*np.sin(w*t))
-    return t, xi
+        c, s = kernels(zeta, t)
+        return v0*c - (xi0 + zeta*WN*v0)*s - v0
+    for tmax in TMAX_STEPS:
+        grid = np.linspace(1e-7, tmax, NGRID)
+        vals = vel(grid)
+        ok = np.isfinite(vals)
+        idx = np.nonzero(ok & (np.sign(vals) == -np.sign(vals[0])))[0]
+        if len(idx):
+            k = idx[0]
+            t = brentq(vel, grid[k-1], grid[k], xtol=1e-15, rtol=8.9e-16)
+            c, s = kernels(zeta, t)
+            return t, xi0*c + (v0 + zeta*WN*xi0)*s
+    return np.nan, np.nan
 
 
 def period_exact(zp, zm, v0=1.0, n=600, tol=1e-13):
