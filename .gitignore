@@ -1,0 +1,3 @@
+# Python bytecode, regenerated whenever the analysis modules are imported
+__pycache__/
+*.py[cod]
