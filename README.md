@@ -215,6 +215,150 @@ $`\Sigma`$, and the same analysis applies in the shifted coordinate $`x_1 - u`$.
 
 *Amplitude after each full cycle, integrated (markers) against $`e^{-(\delta(\zeta_+)+\delta(\zeta_-))n}`$ (dashed). Straight lines on a log scale: the decay is exactly geometric and its direction is set by the sign of $`\bar{\zeta}`$, not by the sign of either $`\zeta_{\pm}`$ alone.*
 
+### Pole locations of the two half planes
+
+Each half plane is an ordinary second order system, so it has a
+characteristic polynomial and a pole pair:
+
+```math
+s^2 + 2\zeta\omega_n s + \omega_n^2 = 0,
+\qquad s = \omega_n\left(-\zeta \pm \sqrt{\zeta^2 - 1}\right)
+```
+
+While $`\lvert\zeta\rvert \lt 1`$ the poles are a complex conjugate pair of
+modulus $`\omega_n`$, so they sit on a circle of radius $`\omega_n`$ at
+$`\cos\theta = \zeta`$ from the negative real axis. At
+$`\lvert\zeta\rvert = 1`$ they meet on the real axis and split along it.
+
+| $`\zeta`$ | poles | where | that half plane alone |
+| --- | --- | --- | --- |
+| $`\zeta \gt 1`$ | real, distinct, negative | LHP real axis | overdamped, decays without oscillating |
+| $`\zeta = 1`$ | real, repeated, at $`-\omega_n`$ | LHP real axis | critically damped |
+| $`0 \lt \zeta \lt 1`$ | complex pair, LHP | arc of $`\lvert s\rvert = \omega_n`$ | decaying spiral |
+| $`\zeta = 0`$ | $`\pm j\omega_n`$ | imaginary axis | undamped, closed circle |
+| $`-1 \lt \zeta \lt 0`$ | complex pair, RHP | arc of $`\lvert s\rvert = \omega_n`$ | growing spiral |
+| $`\zeta = -1`$ | real, repeated, at $`+\omega_n`$ | RHP real axis | grows without oscillating |
+| $`\zeta \lt -1`$ | real, distinct, positive | RHP real axis | escapes without oscillating |
+
+Both half planes share the same $`\omega_n`$, so the two pole pairs lie on
+**one** circle. Crossing $`\Sigma`$ hops the pole pair between two points on
+it. Nothing else about the poles changes.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/pole-zero-dark.png">
+  <img alt="s-plane pole locus of one half plane as the damping ratio varies" src="figures/pole-zero-light.png">
+</picture>
+
+*The pole pair as $`\zeta`$ runs from $`-2`$ to $`2`$. Colour is on a
+diverging scale because the encoded quantity has a meaningful zero: the
+imaginary axis, where the poles cross from decaying to growing.*
+
+### Stability is the dwell weighted sum of the pole real parts
+
+Write $`\sigma_{\pm} = -\zeta_{\pm}\omega_n`$ for the real parts and
+$`t_{\pm}`$ for the time spent in each half plane per cycle. The single
+quantity that governs everything is
+
+```math
+\Lambda = \sigma_{+}t_{+} + \sigma_{-}t_{-}
+```
+
+**Boundary through the equilibrium.** Each arc is half a revolution, so
+$`t_{\pm} = \pi/\omega_d^{\pm}`$ and
+
+```math
+\Lambda = -\left[\frac{\pi\zeta_{+}}{\sqrt{1-\zeta_{+}^2}}
+  + \frac{\pi\zeta_{-}}{\sqrt{1-\zeta_{-}^2}}\right]
+  = -\left[\delta(\zeta_{+}) + \delta(\zeta_{-})\right]
+```
+
+which is exactly the decrement of the earlier section. The amplitude gain
+per cycle is $`e^{\Lambda}`$, so the origin attracts when $`\Lambda \lt 0`$,
+which collapses to $`\bar{\zeta} \gt 0`$.
+
+**Offset boundary.** For a planar periodic orbit the Floquet multiplier is
+$`\exp\oint \nabla\!\cdot\! f\,dt`$, and here
+$`\nabla\!\cdot\! f = -2\zeta\omega_n`$, so
+
+```math
+\text{multiplier} = e^{2\Lambda}
+```
+
+For $`\zeta_{+} = 0.3`$, $`\zeta_{-} = -0.1`$ that gives $`0.538925`$
+against a measured $`0.538923`$. The same $`\Lambda`$ that decides whether
+the origin attracts also decides whether the limit cycle attracts. It is a
+weighted sum of pole real parts in both cases — only the weights change,
+because the offset changes how long the state dwells on each side.
+
+This is the control engineering moral of the prototype: **you cannot read
+the switched system off the two pole pairs separately.** A pole pair in the
+right half plane is perfectly survivable provided the other pair sits far
+enough into the left half plane, in the dwell weighted sense.
+
+### The complete classification
+
+Once $`\lvert\zeta\rvert \ge 1`$ on either side the poles are real, and real
+poles bring **invariant rays** $`x_2 = \lambda x_1`$. The sign always places
+at least one inside its own half plane:
+
+- $`\zeta \le -1`$: both $`\lambda \gt 0`$, so an **escaping ray** lies in
+  that half plane. A trajectory reaching it leaves along it and never
+  returns.
+- $`\zeta \ge 1`$: both $`\lambda \lt 0`$, so a **decaying sector** lies in
+  that half plane — for $`\zeta \gt 1`$ the whole open wedge between the two
+  rays is invariant and runs to the equilibrium without ever crossing
+  $`\Sigma`$.
+
+Whether each exists gives four cases:
+
+| escaping ray | decaying sector | outcome |
+| --- | --- | --- |
+| no | no | mean damping decides: $`\bar{\zeta} \gt 0`$ decays, $`\bar{\zeta} = 0`$ neutral, $`\bar{\zeta} \lt 0`$ escapes |
+| no | yes | every trajectory decays |
+| yes | no | every trajectory escapes |
+| yes | yes | **mixed**: a separatrix splits the plane, some initial conditions decay and others escape |
+
+Case by case:
+
+1. **Both underdamped**, $`\lvert\zeta_{\pm}\rvert \lt 1`$. Every trajectory
+   rotates, so the return map applies and the result is global. If both
+   damping ratios are positive the system is stable and no argument is
+   needed; the interesting part is that one may be negative provided
+   $`\bar{\zeta} \gt 0`$.
+2. **One side overdamped and stable**, $`\zeta \ge 1`$, with neither side
+   at $`\zeta \le -1`$. The decaying sector captures everything and the
+   origin attracts globally, however negative the other damping ratio is.
+   The unstable spiral cannot escape, because it must eventually enter the
+   sector.
+3. **One side overdamped and unstable**, $`\zeta \le -1`$, with neither
+   side at $`\zeta \ge 1`$. The escaping ray is reachable from everywhere,
+   so every trajectory escapes, however positive the other damping ratio.
+4. **One side at $`\zeta \le -1`$ and the other at $`\zeta \ge 1`$.** Both
+   invariant sets exist at once, neither can be reached from the other, and
+   the plane divides. This is the only case in which the outcome depends on
+   where the system starts.
+
+Case 4 is worth pausing on: it is the only place in the prototype where the
+initial condition matters at all. Everywhere else the behaviour is global,
+because positive homogeneity makes the phase portrait scale invariant and
+the dynamics depend only on the direction of the state.
+
+Verified by sampling 32 initial directions per cell over a 9 by 9 grid
+spanning $`\zeta_{\pm} \in [-2, 2]`$: the rule matches at every cell. The
+only apparent exceptions are on the line $`\bar{\zeta} = 0`$, where the
+measured growth rates are within $`10^{-3}`$ of zero — numerically neutral,
+as the rule says.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/stability-map-dark.png">
+  <img alt="Classification of behaviour over the plane of the two damping ratios" src="figures/stability-map-light.png">
+</picture>
+
+*Where each behaviour lives. Blue decays and orange escapes in both panels.
+Left: boundary through the equilibrium, the whole plane. Right: offset
+boundary, restricted to the underdamped square, where the third region is
+the limit cycle rather than a separatrix.*
+
 ### Notes for numerical work
 
 - Both half planes must be underdamped, $`\lvert\zeta_{\pm}\rvert \lt 1`$, for the
