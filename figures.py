@@ -48,6 +48,7 @@ import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 
 import frequency
+import symmetric
 
 WN = 1.0
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "figures")
@@ -791,6 +792,79 @@ def fig_stability_map(th, name):
     save(fig, name, "stability-map")
 
 
+def fig_symmetric(th, name):
+    """Draw the symmetric deadzone version beside its existence region.
+
+    Left: the phase portrait. The band ``|xdot| < v0`` is shaded, both
+    boundaries drawn, and trajectories converge onto one odd-symmetric
+    cycle from inside and outside. The equilibrium is at the origin here,
+    not offset, because the field is odd.
+
+    Right: where a limit cycle exists, for both versions. The single
+    boundary needs the mean damping positive, which is a triangle. The
+    deadzone needs only ``zp > 0``, which is the whole quadrant — so the
+    wedge between them is where symmetrising the transition creates a cycle
+    that did not exist before.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
+    zp, zm, v0 = 0.3, -0.1, 1.0
+    fig, axes = newfig(th, 1, 2, figsize=(11.0, 5.0))
+
+    r, _ = symmetric.cycle_integrated(zp, zm, v0)
+    axes[0].axhspan(-v0, v0, color=th["grid"], zorder=0)
+    for y in (v0, -v0):
+        axes[0].axhline(y, color=th["ink2"], linewidth=1.2,
+                        linestyle=(0, (5, 3)), zorder=5)
+    f = symmetric.field(zp, zm, v0)
+    for r0, c, lab in [(0.30*r, th["series"][1], "from inside"),
+                       (2.0*r, th["series"][2], "from outside")]:
+        x, v, _ = traj(f, [r0, 0.0], 46)
+        axes[0].plot(x, v, color=c, linewidth=1.2, label=lab, zorder=3)
+    xc, vc, _ = traj(f, [r, 0.0], symmetric.period_exact(zp, zm, v0)[0])
+    axes[0].plot(xc, vc, color=th["series"][0], linewidth=2.6,
+                 label="limit cycle", zorder=4)
+    axes[0].plot([0], [0], "o", color=th["ink"], markersize=6, zorder=6)
+    axes[0].text(0.985, 0.0, "deadzone  $|\\dot{x}| < v_0$",
+                 transform=axes[0].get_yaxis_transform(), fontsize=8,
+                 color=th["ink2"], ha="right", va="center", zorder=7,
+                 bbox=dict(boxstyle="round,pad=0.25", fc=th["surface"],
+                           ec="none"))
+    style(axes[0], th, "$x$", "$\\dot{x}$",
+          "Symmetric band: $\\zeta_{+}=0.3$, $\\zeta_{-}=-0.1$, $v_0=1$")
+    axes[0].set_aspect("equal")
+    legend(axes[0], th, loc="lower right")
+
+    g = np.linspace(-1.0, 1.0, 601)
+    A, B = np.meshgrid(g, g)
+    both = (B < 0) & (A + B > 0)
+    sym_only = (B < 0) & (A > 0) & (A + B <= 0)
+    Z = np.where(both, 0, np.where(sym_only, 1, np.nan))
+    axes[1].pcolormesh(g, g, Z, cmap=matplotlib.colors.ListedColormap(
+        list(th["series"][:2])), vmin=-0.5, vmax=1.5, shading="nearest",
+        zorder=1)
+    axes[1].plot([-1, 1], [1, -1], color=th["ink"], linewidth=1.4,
+                 linestyle=(0, (5, 3)), zorder=3)
+    axes[1].axhline(0, color=th["ink"], linewidth=1.4, zorder=3)
+    axes[1].axvline(0, color=th["ink"], linewidth=1.4, zorder=3)
+    for x, y, t in [(0.62, -0.22, "both versions"),
+                    (0.30, -0.72, "deadzone only"),
+                    (-0.5, 0.5, "no cycle in\neither version")]:
+        axes[1].text(x, y, t, fontsize=8.5, color=th["ink"], ha="center",
+                     va="center", zorder=6,
+                     bbox=dict(boxstyle="round,pad=0.3", fc=th["surface"],
+                               ec=th["grid"], lw=0.8, alpha=0.94))
+    style(axes[1], th, "$\\zeta_{+}$", "$\\zeta_{-}$",
+          "Where a limit cycle exists")
+    axes[1].set_aspect("equal")
+    fig.suptitle("Symmetrising the transition drops the condition on the "
+                 "mean damping", color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "symmetric")
+
+
 if __name__ == "__main__":
     for name, th in THEMES.items():
         print(f"{name}:")
@@ -802,3 +876,4 @@ if __name__ == "__main__":
         fig_frequency(th, name)
         fig_poles(th, name)
         fig_stability_map(th, name)
+        fig_symmetric(th, name)
