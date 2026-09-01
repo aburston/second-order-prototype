@@ -100,7 +100,8 @@ quotes, and commit the PNGs alongside the code.
 and printing every number that file quotes. It imports the plotting chrome
 from `figures.py`, so the two stay in one style. The prototypes are never
 altered in `EXAMPLES.md`: a physical system is either one of them exactly or
-is integrated separately as the reference a tuned prototype is compared with.
+is integrated separately as the reference the prototype is compared with.
+Systems whose nonlinearity is not a damping switch are left out.
 
 Colours come from a validated categorical palette (slots 1-3: blue, orange,
 aqua) with the switching boundary, equilibrium markers and callouts drawn in

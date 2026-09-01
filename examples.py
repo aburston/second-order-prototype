@@ -7,7 +7,7 @@ one light and one dark rendering of each, in the same style as
 ``python3 examples.py figures`` writes the figures only; the full run takes
 a while because every table is re-integrated at tight tolerance.
 
-Four systems, each mapped onto the prototype it fits:
+Two systems, each mapped onto the prototypes they fit:
 
 ``governor``
     Maxwell's governor (1868), reduced to second order. A true governor
@@ -19,37 +19,22 @@ Four systems, each mapped onto the prototype it fits:
     own form, and is exactly the relative-velocity damping the README needs
     to keep the field continuous.
 
-``pendulum``
-    The pendulum at high deviation. Its nonlinearity is a softening
-    stiffness, not a damping switch, so the prototypes model it the only
-    way their fixed structure allows: by tuning ``wn`` to the operating
-    amplitude, ``wn_eff = pi wn / (2 K(k))``. The exact period is the
-    reference the tuning is read from.
-
-``driven pendulum``
-    A pendulum sustained by a drive coil under its rest position is the
-    symmetric displacement-switched model; a velocity-feedback drive with
-    an eddy current plate on one side is the asymmetric one. The physical
-    pendulum, with its ``sin`` restoring torque, is integrated as the
-    reference, and the prototype -- unchanged in structure, with ``wn``
-    tuned to the amplitude it predicts -- is compared against it to
-    measure what the fixed structure can and cannot capture at high
-    deviation.
-
 ``oscillator``
     A single-transistor LC oscillator with inductive feedback, the
     transistor's gain collapsing outside its linear range. This is Van der
     Pol's triode with the characteristic replaced by a clip, and it is the
     README's piecewise Van der Pol exactly. A smooth ``tanh`` saturation
     with the same small-signal gain and the same saturation current is
-    integrated alongside to measure what the hard switch costs.
+    integrated alongside to measure what the hard switch costs. A stage
+    that clips on one side only is the asymmetric displacement model,
+    bounded only while the loop gain is below two.
 
 Everything is in the README's normalised units, ``wn = 1`` and the band
 half-width equal to one, with the physical parameters mapped onto the two
 damping ratios in the docstring of each section. The prototypes are never
-altered: every physical system is either one of them exactly, or is
-integrated separately as the reference that a prototype with tuned
-parameters is compared against.
+altered: every physical system is one of them exactly, and where a real
+nonlinearity is smoother than the switch (the transistor's saturation) it
+is integrated separately as the reference the prototype is compared with.
 """
 import numpy as np
 import matplotlib
@@ -57,7 +42,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 from scipy.optimize import brentq
-from scipy.special import ellipk
 
 import figures
 from figures import THEMES, style, legend, save, newfig, traj
@@ -137,6 +121,18 @@ def offset_rstar(zp, zm, v0=1.0, r=6.0, n=400, tol=1e-11):
     return r
 
 
+def rstar_bounded(zp, zm, v0=1.0, r=6.0, n=400, tol=1e-11):
+    """``figures.rstar`` with an escape cap, so a diverging case ends early."""
+    for _ in range(n):
+        rn = figures.preturn(zp, zm, v0, r)
+        if not np.isfinite(rn) or rn > 1e6:
+            return np.nan
+        if abs(rn - r) < tol*max(1.0, abs(r)):
+            return rn
+        r = rn
+    return r
+
+
 def cycle_ratio(zp, zm):
     """Amplitude ratio over one full cycle by integration, and the period."""
     def f(t, y):
@@ -201,72 +197,15 @@ def check_governor():
         print(f"  {F:>4.1f}  {c:>4.1f}  {zp:>+5.2f}  {zm:>+5.2f}   {got}")
 
 
-# ================================================================ pendulum
-# theta'' + 2 zeta wn theta' + wn^2 sin(theta) = 0, wn = sqrt(g/l).
+# ============================================================== oscillator
+# Shared cycle finder, then the LC oscillator.
 
-def pendulum_field(zeta=0.0):
-    def f(t, y):
-        return [y[1], -np.sin(y[0]) - 2*zeta*y[1]]
-    return f
-
-
-def pendulum_period(A):
-    """Exact period of the undamped pendulum at amplitude ``A``: 4 K(k)/wn."""
-    return 4*ellipk(np.sin(A/2)**2)/WN
-
-
-def period_integrated(f, A, tmax=400.0):
-    """Period by integration from rest at amplitude ``A``."""
-    def ev(t, y):
-        return y[1]
-    ev.direction = -1
-    s = solve_ivp(f, (0, tmax), [A, 0.0], events=ev, rtol=1e-12, atol=1e-14)
-    return [t for t in s.t_events[0] if t > 1e-6][0]
-
-
-def wn_tuned(A):
-    """Natural frequency the linear prototype needs to match the pendulum.
-
-    The prototype's structure is fixed, so the only handle on the
-    pendulum's amplitude dependence is ``wn`` itself: retuning it to
-    ``2 pi / T(A)`` makes the prototype's period exact at amplitude ``A``.
-    """
-    return 2*np.pi/pendulum_period(A)
-
-
-def check_pendulum():
-    print("\nPendulum at high deviation: period over the small-angle period,")
-    print("and the wn the linear prototype must be tuned to at that amplitude")
-    print("   amplitude   exact T/T0   integrated   wn_tuned / wn")
-    for deg in [10, 30, 60, 90, 120, 150, 170, 179]:
-        A = np.radians(deg)
-        T0 = 2*np.pi/WN
-        print(f"   {deg:>6.1f} deg   {pendulum_period(A)/T0:.4f}      "
-              f"{period_integrated(pendulum_field(), A)/T0:.4f}       "
-              f"{wn_tuned(A)/WN:.4f}")
-
-
-# ========================================================= driven pendulum
-# Damping switched on displacement, restoring torque sin(theta):
-#   symmetric   zeta_minus for |theta| < th0 (drive coil), zeta_plus outside
-#   asymmetric  zeta_plus for theta > th0 (eddy plate), zeta_minus elsewhere
-
-def driven_field(zp, zm, th0, sym=True, linear=False):
-    def f(t, y):
-        out = abs(y[0]) > th0 if sym else y[0] > th0
-        z = zp if out else zm
-        rest = y[0] if linear else np.sin(y[0])
-        return [y[1], -rest - 2*z*y[1]]
-    return f
-
-
-def driven_cycle(f, r0, n=400, tol=1e-11, cap=np.pi):
+def driven_cycle(f, r0, n=400, tol=1e-11, cap=None):
     """Limit cycle by iterating the return map on ``{thetadot = 0}``.
 
     Returns ``(R+, R-, T, status)``: the positive and negative extremes,
     the period, and ``"cycle"``, ``"over the top"`` (the displacement
-    reached ``cap``, the inverted position for a pendulum) or
-    ``"no return"``. Pass ``cap=None`` for a system with no such limit.
+    reached ``cap``) or ``"no return"``.
     """
     def ev(t, y):
         return y[1]
@@ -290,44 +229,6 @@ def driven_cycle(f, r0, n=400, tol=1e-11, cap=np.pi):
             return rn, neg, T, "cycle"
         r = rn
     return r, neg, T, "cycle"
-
-
-def check_driven():
-    zp, zm = 0.3, -0.1
-    Tl = displacement.period_exact(zp, zm, symmetric=True)[0]
-    Rl = displacement.cycle_integrated(zp, zm, symmetric=True)[0]
-    print(f"\nDriven pendulum, drive coil |theta| < th0, zeta+={zp} zeta-={zm}")
-    print(f"   prototype: R = {Rl:.4f} th0,  T = {Tl:.4f} / wn")
-    print("   physical pendulum            prototype, wn tuned at its own R")
-    print("   th0     R      R/th0    T        T_pred    error")
-    for th0 in [0.1, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6]:
-        R, _, T, st = driven_cycle(driven_field(zp, zm, th0), Rl*th0)
-        if st != "cycle":
-            print(f"   {th0:.2f}   {st}")
-            continue
-        Tp = Tl/wn_tuned(Rl*th0)
-        print(f"   {th0:.2f}  {R:.4f}  {R/th0:.4f}  {T:.4f}   {Tp:.4f}"
-              f"   {100*(Tp - T)/T:+.2f}%")
-    for th0 in [1.64, 1.68, 1.72, 1.76, 1.80]:
-        R, _, T, st = driven_cycle(driven_field(zp, zm, th0), Rl*th0)
-        print(f"   {th0:.2f}   {st}" + (f"  R = {R:.4f} ({np.degrees(R):.0f} deg)"
-                                        if st == "cycle" else ""))
-
-    Ra = displacement.cycle_integrated(zp, zm, symmetric=False)[0]
-    Ta = displacement.period_exact(zp, zm, symmetric=False)[0]
-    print(f"\nDriven pendulum, eddy plate theta > th0, zeta+={zp} zeta-={zm}")
-    print(f"   prototype: R+ = {Ra:.4f} th0,  T = {Ta:.4f} / wn")
-    print("   physical pendulum                       prototype, tuned")
-    print("   th0     R+       R-      R+/th0    T        T_pred    error")
-    for th0 in [0.1, 0.4, 0.8, 0.88, 0.90, 0.92]:
-        R, neg, T, st = driven_cycle(driven_field(zp, zm, th0, sym=False),
-                                     Ra*th0)
-        if st != "cycle":
-            print(f"   {th0:.2f}   {st}")
-            continue
-        Tp = Ta/wn_tuned(Ra*th0)
-        print(f"   {th0:.2f}  {R:.4f}  {neg:+.4f}  {R/th0:.4f}  {T:.4f}"
-              f"   {Tp:.4f}   {100*(Tp - T)/T:+.2f}%")
 
 
 # ============================================================== oscillator
@@ -377,6 +278,15 @@ def check_oscillator():
         print(f"   {Q:>2}  {A:>3.1f}  {zp:+.3f}  {zm:+.3f}   {Rc:.4f}   "
               f"{Re:.4f}   {Rt:.4f}   {Tc:.5f}  {Tt:.5f}   "
               f"(exact reduction {Tx:.5f})")
+    print("  clipping on one side only (asymmetric model), Q = 10:")
+    print("    A    zeta-    mean     R integrated   energy balance   T")
+    for A in [1.2, 1.5, 1.8, 1.95, 2.5]:
+        zp, zm = 0.05, (1 - A)*0.05
+        R, T = displacement.cycle_integrated(zp, zm, 1.0, symmetric=False)
+        Re = displacement.amplitude(zp, zm, 1.0, symmetric=False)
+        got = (f"{R:12.4f}   {Re:12.4f}   {T:.5f}" if np.isfinite(Re)
+               else "grows unbounded")
+        print(f"   {A:>4.2f}  {zm:+.3f}  {(zp+zm)/2:+.4f}   {got}")
     print("  large loop gain: R / (A v0) against the hard limiter's 4/pi "
           f"= {4/np.pi:.4f}")
     for A in [2, 5, 10, 20, 50]:
@@ -449,126 +359,15 @@ def fig_governor(th, name):
     save(fig, name, "example-governor")
 
 
-def fig_pendulum(th, name):
-    """Phase plane at high deviation beside period against amplitude."""
-    fig, axes = newfig(th, 1, 2, figsize=(11.0, 4.8))
-    ax = axes[0]
-    g = np.linspace(-1.5*np.pi, 1.5*np.pi, 800)
-    ax.plot(g, 2*np.cos(g/2), color=th["ink2"], linewidth=1.2,
-            linestyle=(0, (5, 3)), zorder=5)
-    ax.plot(g, -2*np.cos(g/2), color=th["ink2"], linewidth=1.2,
-            linestyle=(0, (5, 3)), zorder=5)
-    ax.text(0.0, 2.05, "separatrix", fontsize=8, color=th["ink2"],
-            ha="center", va="bottom", zorder=6,
-            bbox=dict(boxstyle="round,pad=0.25", fc=th["surface"], ec="none"))
-    f = pendulum_field(0.04)
-    x, v, _ = traj(f, [np.radians(170), 0.0], 60)
-    ax.plot(x, v, color=th["series"][0], linewidth=1.2,
-            label="libration from $170^\\circ$", zorder=3)
-    x, v, _ = traj(f, [-1.5*np.pi, 2.35], 60)
-    ax.plot(x, v, color=th["series"][1], linewidth=1.2,
-            label="rotation, then captured", zorder=3)
-    for p in (-np.pi, np.pi):
-        ax.plot([p], [0], "o", color=th["ink"], markersize=5,
-                markerfacecolor=th["surface"], zorder=6)
-    ax.plot([0], [0], "o", color=th["ink"], markersize=5, zorder=6)
-    ax.set_xticks([-np.pi, 0, np.pi])
-    ax.set_xticklabels(["$-\\pi$", "0", "$\\pi$"])
-    ax.set_xlim(-1.5*np.pi, 1.5*np.pi)
-    style(ax, th, "$\\theta$", "$\\dot{\\theta}/\\omega_n$",
-          "Damped pendulum, $\\zeta = 0.04$")
-    legend(ax, th, loc="upper right")
-
-    ax = axes[1]
-    A = np.linspace(0.01, np.radians(179.5), 600)
-    T0 = 2*np.pi/WN
-    ax.plot(np.degrees(A), [pendulum_period(a)/T0 for a in A],
-            color=th["series"][0], linewidth=2.0,
-            label="pendulum, $T = 4K(k)/\\omega_n$", zorder=4)
-    ax.plot(np.degrees(A), [wn_tuned(a)/WN for a in A],
-            color=th["series"][1], linewidth=1.5,
-            label="$\\omega_{n,\\mathrm{tuned}} / \\omega_n$ the prototype needs",
-            zorder=3)
-    ax.axhline(1.0, color=th["series"][2], linewidth=1.5,
-               label="prototype at the small-angle $\\omega_n$", zorder=2)
-    ax.set_ylim(0.2, 3.8)
-    style(ax, th, "amplitude (degrees)", "$T / T_0$  and  $\\omega_{n,\\mathrm{tuned}}/\\omega_n$",
-          "Period against amplitude, and the retuning it needs")
-    legend(ax, th, loc="upper left")
-    fig.suptitle("The pendulum at high deviation: a stiffness nonlinearity, "
-                 "modelled by retuning $\\omega_n$", color=th["ink"],
-                 fontsize=11)
-    fig.tight_layout()
-    save(fig, name, "example-pendulum")
+_CURVES = {}
 
 
-def fig_driven(th, name):
-    """The coil-driven pendulum with the true restoring torque."""
-    zp, zm = 0.3, -0.1
-    Rl = displacement.cycle_integrated(zp, zm, symmetric=True)[0]
-    Tl = displacement.period_exact(zp, zm, symmetric=True)[0]
-    fig, axes = newfig(th, 1, 3, figsize=(13.5, 4.4))
-
-    ax = axes[0]
-    th0 = 1.0
-    ax.axvspan(-th0, th0, color=th["grid"], zorder=0)
-    for xv in (th0, -th0):
-        ax.axvline(xv, color=th["ink2"], linewidth=1.2, linestyle=(0, (5, 3)),
-                   zorder=5)
-    f = driven_field(zp, zm, th0)
-    x, v, _ = traj(f, [0.3, 0.0], 60)
-    ax.plot(x, v, color=th["series"][1], linewidth=1.0, label="from inside",
-            zorder=3)
-    R, _, T, _ = driven_cycle(f, Rl*th0)
-    x, v, _ = traj(f, [R, 0.0], T)
-    ax.plot(x, v, color=th["series"][0], linewidth=2.4,
-            label="physical pendulum's cycle", zorder=4)
-    fl = driven_field(zp, zm, th0, linear=True)
-    x, v, _ = traj(fl, [Rl*th0, 0.0], Tl)
-    ax.plot(x, v, color=th["ink"], linewidth=1.2, linestyle=(0, (2, 2)),
-            label="prototype's cycle", zorder=4)
-    ax.text(0.0, 0.03, "drive coil\n$|\\theta| < \\theta_0$", fontsize=8,
-            color=th["ink2"], ha="center", va="bottom", zorder=6,
-            transform=ax.get_xaxis_transform(),
-            bbox=dict(boxstyle="round,pad=0.25", fc=th["surface"], ec="none"))
-    style(ax, th, "$\\theta$", "$\\dot{\\theta}/\\omega_n$",
-          "Coil half-width $\\theta_0 = 1$ rad")
-    ax.set_aspect("equal")
-    legend(ax, th, loc="upper right")
-
-    ths = np.linspace(0.05, 1.6, 32)
-    Rs, Ts = [], []
-    for t0 in ths:
-        R, _, T, st = driven_cycle(driven_field(zp, zm, t0), Rl*t0)
-        Rs.append(R if st == "cycle" else np.nan)
-        Ts.append(T if st == "cycle" else np.nan)
-    Rs, Ts = np.array(Rs), np.array(Ts)
-
-    ax = axes[1]
-    ax.plot(ths, Rs/ths, color=th["series"][0], linewidth=2.0,
-            label="physical pendulum", zorder=3)
-    ax.axhline(Rl, color=th["series"][2], linewidth=1.5,
-               label=f"prototype, {Rl:.4f} at any $\\omega_n$", zorder=2)
-    style(ax, th, "$\\theta_0$ (rad)", "$R / \\theta_0$",
-          "Amplitude over coil half-width")
-    legend(ax, th, loc="upper left")
-
-    ax = axes[2]
-    ax.plot(ths, Ts/(2*np.pi), color=th["series"][0], linewidth=2.0,
-            label="physical pendulum", zorder=3)
-    pred = np.array([Tl/wn_tuned(Rl*t0) for t0 in ths])
-    ax.plot(ths, pred/(2*np.pi), color=th["series"][1], linewidth=1.4,
-            linestyle=(0, (5, 3)), label="prototype, $\\omega_n$ tuned at its $R$",
-            zorder=3)
-    ax.axhline(Tl/(2*np.pi), color=th["series"][2], linewidth=1.5,
-               label="prototype, small-angle $\\omega_n$", zorder=2)
-    style(ax, th, "$\\theta_0$ (rad)", "$T / T_0$", "Period")
-    legend(ax, th, loc="upper left")
-    fig.suptitle("Coil-driven pendulum against the symmetric displacement "
-                 "prototype, $\\zeta_+=0.3$, $\\zeta_-=-0.1$",
-                 color=th["ink"], fontsize=11)
-    fig.tight_layout()
-    save(fig, name, "example-driven-pendulum")
+def _amplitude_curve(Q, As, smooth):
+    """Cycle amplitudes over loop gain, computed once and reused per theme."""
+    key = (Q, smooth, len(As))
+    if key not in _CURVES:
+        _CURVES[key] = [oscillator_cycle(Q, a, smooth)[0] for a in As]
+    return _CURVES[key]
 
 
 def fig_oscillator(th, name):
@@ -612,6 +411,12 @@ def fig_oscillator(th, name):
                  for a in As], color=th["series"][1], linewidth=1.4,
             linestyle=(0, (5, 3)), label="energy balance $v_0/\\cos\\phi$",
             zorder=3)
+    A1 = np.linspace(1.05, 1.97, 60)
+    ax.plot(A1, [displacement.amplitude(1/(2*Q), (1 - a)/(2*Q), 1.0, False)
+                 for a in A1], color=th["ink2"], linewidth=1.2,
+            linestyle=(0, (2, 2)), label="clip on one side only", zorder=3)
+    ax.axvline(2.0, color=th["axis"], linewidth=0.8, zorder=1)
+    ax.set_ylim(0, 11)
     style(ax, th, "small-signal loop gain $A = g_m/G$", "$R / v_0$",
           "Amplitude against loop gain")
     legend(ax, th, loc="upper left")
@@ -626,8 +431,6 @@ if __name__ == "__main__":
     what = sys.argv[1] if len(sys.argv) > 1 else "all"
     if what in ("all", "checks"):
         check_governor()
-        check_pendulum()
-        check_driven()
         check_oscillator()
         print()
     if what not in ("all", "figures"):
@@ -635,6 +438,4 @@ if __name__ == "__main__":
     for name, th in THEMES.items():
         print(f"{name}:")
         fig_governor(th, name)
-        fig_pendulum(th, name)
-        fig_driven(th, name)
         fig_oscillator(th, name)

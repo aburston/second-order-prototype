@@ -11,43 +11,40 @@ and $`\Sigma`$ for the boundary. Every number quoted is produced by
 
 | prototype (README section) | boundary | physical example here |
 | --- | --- | --- |
-| linear prototype | none | the pendulum at small angles; Maxwell's linearised governor |
+| linear prototype | none | an LC tank with loss; Maxwell's linearised governor |
 | switched damping on the x-axis | $`\dot{x} = 0`$, through the equilibrium | a true governor with a one-sided flyball brake |
 | offset boundary | $`\dot{x} = v_0`$ | an overspeed brake on a synchronised machine, set above synchronous speed |
 | symmetric band in velocity | $`\lvert\dot{x}\rvert = v_0`$ | a governor deadband |
-| symmetric band in displacement | $`\lvert x\rvert = x_0`$ | a pendulum sustained by a drive coil; a transistor LC oscillator |
-| asymmetric boundary in displacement | $`x = x_0`$ | a driven pendulum with an eddy current plate on one side |
+| symmetric band in displacement | $`\lvert x\rvert = x_0`$ | a transistor LC oscillator clipping on both sides |
+| asymmetric boundary in displacement | $`x = x_0`$ | the same oscillator clipping on one side only |
 | overdamped regions | as above | a brake strong enough to overdamp its half plane |
-| linear prototype, $`\omega_n`$ tuned to the amplitude | none | the pendulum at high deviation |
 
 The prototypes are used exactly as the README defines them. Their
-structure is never altered; only their parameters are tuned. Each
-physical system below is either one of the prototypes outright, or is
-integrated on its own as the reference that a prototype with tuned
-parameters is compared against. The pendulum at high deviation is the
-case that tests this discipline, because its nonlinearity is in the
-restoring torque rather than the damping, and the only handle the
-prototypes offer on it is $`\omega_n`$.
+structure is never altered; only their parameters are tuned to the
+system in hand. Every example below is one of the prototypes outright.
+Where a physical system has a smoother nonlinearity than the switch —
+the transistor's saturation — it is integrated separately as the
+reference the prototype is compared against, and the prototype is not
+bent to meet it. Systems whose nonlinearity is not a damping switch,
+the pendulum among them, are left for a prototype of their own.
 
-## The linear prototype: the pendulum at small angles
+## The linear prototype: an LC tank, and Maxwell's governor linearised
 
-A pendulum of length $`l`$ with viscous damping $`c_\theta`$ and drive
-torque $`\tau`$:
-
-```math
-m l^2\ddot{\theta} + c_\theta\dot{\theta} + m g l\sin\theta = \tau(t)
-```
-
-For small angles $`\sin\theta \simeq \theta`$ and this is the README's
-linear prototype with
+A parallel LC tank with loss conductance $`G`$, written for the tank
+voltage $`v`$:
 
 ```math
-\omega_n = \sqrt{\frac{g}{l}}, \qquad
-\zeta = \frac{c_\theta}{2 m l^2\omega_n} = \frac{c_\theta}{2 m l\sqrt{g l}}
+C\ddot{v} + G\dot{v} + \frac{v}{L} = 0,
+\qquad
+\omega_0 = \frac{1}{\sqrt{LC}}, \quad \zeta = \frac{1}{2Q}, \quad Q = \frac{\omega_0 C}{G}
 ```
 
-Maxwell's governor, linearised as he linearised it, is the other
-instance and is taken up next.
+is the README's linear prototype with the quality factor standing in for
+the damping ratio. The transistor oscillator below is this tank with its
+loss switched. Maxwell's governor, linearised as he linearised it, is the
+other instance and is taken up next: it is the linear prototype with
+$`\omega_n = \sqrt{G/M}`$ and $`\zeta = (F - c)/(2\sqrt{MG})`$ in the
+notation of the next section.
 
 ## Maxwell's governor: the velocity-switched family
 
@@ -213,9 +210,7 @@ Read as engineering:
 - **Weaker braking hunts harder and slower**: $`F = 0.5`$ gives two and a
   half times the amplitude of $`F = 0.8`$.
 - Below $`F = 2c`$ the swings grow without bound. In the linearised swing
-  equation that is loss of synchronism — and the full swing equation has
-  $`\sin\delta`$ in place of $`K\delta`$, which is the pendulum at high
-  deviation of the next section.
+  equation that is loss of synchronism.
 
 ### A governor deadband: the symmetric band
 
@@ -272,191 +267,6 @@ distinction between the offset boundary and the boundary through the
 equilibrium: a governor forces the equilibrium speed onto the set point,
 a moderator leaves them apart, and the gap between them is what the
 README calls $`v_0`$.
-
-## The pendulum at high deviation
-
-Back to the pendulum, without the small-angle approximation and with
-$`\omega_n = \sqrt{g/l}`$:
-
-```math
-\ddot{\theta} + 2\zeta\omega_n\dot{\theta} + \omega_n^2\sin\theta = 0
-```
-
-### What kind of nonlinearity it is
-
-Every prototype in the README keeps $`\omega_n`$ fixed and switches
-$`\zeta`$. The pendulum does the opposite: its damping is linear, and
-its restoring torque is a smooth, softening function of the
-displacement. There is no switching boundary anywhere in the phase
-plane, and with $`\zeta \gt 0`$ every libration decays to the bottom and
-every rotation is eventually captured into a well. Nothing in the
-pendulum can produce a limit cycle; it dissipates energy and has no way
-to feed it back. Its period is
-
-```math
-T = \frac{4}{\omega_n}K(k), \qquad k = \sin\frac{\theta_{\max}}{2}
-```
-
-with $`K`$ the complete elliptic integral of the first kind, and it
-diverges logarithmically as the amplitude approaches the inverted
-position, because the separatrix through $`(\pm\pi, 0)`$ passes through
-a saddle.
-
-### What the prototype can do with it: tune $`\omega_n`$
-
-The prototype's stiffness is linear and stays linear. The one parameter
-that touches the pendulum's amplitude dependence is $`\omega_n`$ itself,
-so the prototype models the pendulum at a given amplitude by being
-retuned to that amplitude:
-
-```math
-\omega_{n,\text{tuned}}(\theta_{\max}) = \frac{2\pi}{T(\theta_{\max})}
-= \frac{\pi\,\omega_n}{2K(k)}
-```
-
-This makes the prototype's period exact at the amplitude it is tuned
-for, and its orbit an ellipse of the right period through the right
-turning point. The retuning is not small at high deviation:
-
-| amplitude | $`T/T_0`$, exact and integrated | $`\omega_{n,\text{tuned}}/\omega_n`$ |
-| --- | --- | --- |
-| $`10^\circ`$ | 1.0019 | 0.9981 |
-| $`30^\circ`$ | 1.0174 | 0.9829 |
-| $`60^\circ`$ | 1.0732 | 0.9318 |
-| $`90^\circ`$ | 1.1803 | 0.8472 |
-| $`120^\circ`$ | 1.3729 | 0.7284 |
-| $`150^\circ`$ | 1.7622 | 0.5675 |
-| $`170^\circ`$ | 2.4394 | 0.4099 |
-| $`179^\circ`$ | 3.9011 | 0.2563 |
-
-What the tuned prototype captures is the period and the timescale of
-the decay at one amplitude. What it cannot capture, at any tuning, is
-the amplitude dependence *within* a single decaying swing — every orbit
-of the prototype has the same period, so a pendulum ringing down from
-$`150^\circ`$ to $`10^\circ`$ passes through a range of tunings and no
-single one follows it — and the separatrix, the saddles at $`\pm\pi`$
-and the rotations beyond them, none of which a linear stiffness has.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="figures/example-pendulum-dark.png">
-  <img alt="Phase plane of the damped pendulum at high deviation, and period against amplitude with the natural frequency the prototype must be retuned to" src="figures/example-pendulum-light.png">
-</picture>
-
-*Left: the damped pendulum. A libration from $`170^\circ`$ decays to the bottom; a rotation loses energy until it is captured by a well. The separatrix through the saddles at $`\pm\pi`$ has no counterpart in a prototype. Right: period against amplitude, the prototype at the small-angle $`\omega_n`$ (flat), and the ratio by which $`\omega_n`$ has to be lowered for the prototype to match at each amplitude.*
-
-### Verdict
-
-The pendulum at high deviation is not one of the switched damping
-prototypes and cannot be made one: its nonlinearity is a smooth
-softening stiffness with no boundary and no energy source. The
-prototypes model it the one way their fixed structure allows, by
-retuning $`\omega_n`$ to the operating amplitude, and that is exact for
-the period at that amplitude and blind to everything that varies with
-amplitude. The next section puts a damping switch on the pendulum, where
-the prototypes apply directly and the retuning is all that high
-deviation asks of them.
-
-## Switched damping on a pendulum: the displacement-switched pair
-
-Viscous damping localised in *position* is easy to build with a magnet
-on the bob. A coil under the rest position senses the bob's velocity as
-an induced voltage and, driven back through the coil, pushes with a
-force proportional to that velocity — negative viscous damping that
-exists only while the magnet is over the coil, $`\lvert\theta\rvert \lt \theta_0`$.
-A copper plate does the reverse: eddy currents brake the magnet with a
-force proportional to velocity, only while it is over the plate. Both
-are switched on displacement and both are proportional to velocity,
-which is exactly what the README's displacement models assume.
-
-### A drive coil under the rest position: the symmetric model
-
-With air damping $`\zeta_a`$ everywhere and the coil's negative damping
-$`\zeta_d \gt \zeta_a`$ inside the band:
-
-```math
-\ddot{\theta} + 2\zeta(\theta)\,\omega_n\dot{\theta} + \omega_n^2\sin\theta = 0,
-\qquad
-\zeta(\theta) =
-\begin{cases}
-\zeta_{-} = \zeta_a - \zeta_d \lt 0 & \lvert\theta\rvert \lt \theta_0 \\
-\zeta_{+} = \zeta_a \gt 0 & \lvert\theta\rvert \gt \theta_0
-\end{cases}
-```
-
-This is the README's symmetric displacement model — the piecewise
-constant Van der Pol — with the pendulum's $`\sin\theta`$ in place of the
-prototype's linear stiffness. The prototype is not changed to match it.
-Instead the physical pendulum is integrated as the reference, and the
-prototype models it with its structure intact: for $`\zeta_{+} = 0.3`$,
-$`\zeta_{-} = -0.1`$ it predicts a cycle of amplitude
-$`R = 1.5773\,\theta_0`$ whatever $`\omega_n`$ is, and a period of
-$`6.3194/\omega_n`$, with $`\omega_n`$ tuned to the amplitude it has
-just predicted, as in the previous section:
-
-| $`\theta_0`$ (rad) | pendulum $`R`$ (rad) | $`R/\theta_0`$ | pendulum $`T\omega_n`$ | prototype, tuned at $`1.5773\,\theta_0`$ | error |
-| --- | --- | --- | --- | --- | --- |
-| 0.1 | 0.1578 | 1.5775 | 6.3293 | 6.3292 | 0.00% |
-| 0.4 | 0.6326 | 1.5814 | 6.4829 | 6.4803 | $`-0.04\%`$ |
-| 0.8 | 1.2763 | 1.5954 | 7.0385 | 7.0124 | $`-0.37\%`$ |
-| 1.0 | 1.6080 | 1.6080 | 7.5393 | 7.4701 | $`-0.92\%`$ |
-| 1.2 | 1.9526 | 1.6272 | 8.2984 | 8.1184 | $`-2.2\%`$ |
-| 1.4 | 2.3219 | 1.6585 | 9.5600 | 9.0586 | $`-5.2\%`$ |
-| 1.6 | 2.7565 | 1.7228 | 12.4388 | 10.5203 | $`-15\%`$ |
-| 1.68 | 3.0045 | 1.7884 | | | |
-| 1.72 | over the top | | | | |
-
-- **The amplitude rule survives.** The prototype's $`R = 1.5773\,\theta_0`$
-  is within 2% of the pendulum up to $`R \approx 1.6`$ rad ($`92^\circ`$)
-  and within 5% up to $`2.3`$ rad ($`133^\circ`$). The energy balance
-  that sets the amplitude cares about *where* the orbit crosses the band,
-  and the softening stiffness moves that only slowly.
-- **The tuned period holds to 1% up to $`92^\circ`$**, then fails
-  quickly, because the prototype's slight under-prediction of the
-  amplitude is fed into a period that is very steep in amplitude near
-  the top. Tuned at the pendulum's *measured* amplitude instead, the
-  prototype's period is within about 1% all the way to $`158^\circ`$ — the two
-  slowings, the pendulum's and the damping switch's, compound almost
-  independently — but that is no longer a prediction.
-- **The cycle survives to within eight degrees of the top**,
-  $`R = 172^\circ`$ at $`\theta_0 = 1.68`$.
-- **Then it goes over.** Between $`\theta_0 = 1.68`$ and $`1.72`$ the
-  amplitude the energy balance demands exceeds $`\pi`$, and the pendulum
-  rotates instead. No tuning of the prototype represents this: a linear
-  spring can always be stretched further.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="figures/example-driven-pendulum-dark.png">
-  <img alt="Phase portrait of the coil-driven pendulum against the prototype's cycle, and amplitude and period against the coil half-width" src="figures/example-driven-pendulum-light.png">
-</picture>
-
-*Left: coil half-width one radian. The pendulum's cycle is fatter in displacement and flatter in velocity than the prototype's, as a softening spring should be. Middle and right: amplitude over coil half-width, and period, against the half-width. The prototype's amplitude rule is flat and close; its period is flat at the small-angle $`\omega_n`$ and follows the pendulum once retuned at its own predicted amplitude, up to about a radian.*
-
-### An eddy current plate on one side: the asymmetric model
-
-Give the pendulum negative damping everywhere — a drive with velocity
-feedback, or a coil spanning the swing — and put the copper plate on one
-side only, beyond $`\theta_0`$. That is the README's asymmetric
-displacement model, which at $`\zeta_{+} = 0.3`$, $`\zeta_{-} = -0.1`$
-predicts amplitude $`2.5090\,\theta_0`$ on the plate side and period
-$`6.3671/\omega_n`$. Against the physical pendulum, with the prototype
-again tuned at its own predicted amplitude:
-
-| $`\theta_0`$ (rad) | $`R_{+}`$ (plate side) | $`R_{-}`$ (free side) | $`R_{+}/\theta_0`$ | pendulum $`T\omega_n`$ | prototype, tuned | error |
-| --- | --- | --- | --- | --- | --- | --- |
-| 0.1 | 0.2511 | $`-0.2546`$ | 2.5108 | 6.3929 | 6.3922 | $`-0.01\%`$ |
-| 0.4 | 1.0156 | $`-1.0333`$ | 2.5391 | 6.8178 | 6.7927 | $`-0.37\%`$ |
-| 0.8 | 2.1537 | $`-2.2523`$ | 2.6921 | 9.1525 | 8.4815 | $`-7.3\%`$ |
-| 0.9 | 2.5452 | $`-2.8105`$ | 2.8280 | 11.9217 | 9.3158 | $`-22\%`$ |
-| 0.92 | over the top | | | | | |
-
-The same picture, with two differences. The cycle is no longer
-symmetric: the free side swings further than the plate side, and it is
-the free side that reaches the top first — at $`\theta_0 = 0.9`$ the
-plate side is at $`146^\circ`$ while the free side is at $`161^\circ`$.
-And the one-sided arrangement needs a larger amplitude per unit of
-$`\theta_0`$ to balance its energy (the plate only works half the time),
-so it goes over the top at about half the half-width the coil does, and
-the tuned prototype loses accuracy correspondingly sooner.
 
 ## A transistor LC oscillator: saturation as the switch
 
@@ -537,12 +347,48 @@ costs:
 
 *Left: $`Q = 10`$, loop gain 3. Start-up from a small disturbance spirals out through the transistor's linear band and settles on the cycle; the clipped and tanh characteristics give almost the same orbit. Right: amplitude against loop gain, with the README's energy balance following the clip exactly and the tanh model converging on it as the gain rises.*
 
+### Clipping on one side only: the asymmetric model
+
+A stage with plenty of headroom on one side of the swing and cutoff on
+the other — a class A stage biased near cutoff, say — loses its gain at
+one boundary only. Taking $`v`$ positive towards cutoff, the gain is
+$`g_m`$ for $`v \lt v_0`$ and zero beyond, which is the README's
+asymmetric displacement model with the same two damping ratios as
+before. Its existence condition brings the mean back:
+
+```math
+\zeta_{-} \lt 0 \lt \bar{\zeta}
+\qquad \Longleftrightarrow \qquad
+1 \lt A \lt 2
+```
+
+A one-sided clip bounds the amplitude only while the loop gain is below
+two, because the loss on the cutoff side has to pay for the gain on the
+other over a whole cycle. The amplitude follows the README's asymmetric
+energy balance, $`2\phi - \sin 2\phi = 2\pi\rho`$, and diverges as
+$`A \to 2`$:
+
+| $`A`$ | $`\zeta_{-}`$ | $`\bar{\zeta}`$ | $`R/v_0`$, integrated | energy balance | $`T\omega_0`$ |
+| --- | --- | --- | --- | --- | --- |
+| 1.2 | $`-0.010`$ | $`+0.020`$ | 1.8076 | 1.8074 | 6.28437 |
+| 1.5 | $`-0.025`$ | $`+0.0125`$ | 3.7772 | 3.7746 | 6.28690 |
+| 1.8 | $`-0.040`$ | $`+0.005`$ | 11.460 | 11.445 | 6.28944 |
+| 1.95 | $`-0.048`$ | $`+0.0013`$ | 49.71 | 49.65 | 6.29066 |
+| 2.5 | $`-0.075`$ | $`-0.0125`$ | grows unbounded | | |
+
+all at $`Q = 10`$. Above $`A = 2`$ the swing grows until it runs out of
+headroom on the conducting side too, at which point the stage is
+clipping on both sides and the symmetric model above takes over. So a
+real oscillator started with a large loop gain ends up in the symmetric
+regime whatever its bias, and the one-sided model describes the low
+gain, high headroom corner.
+
 The same prototype covers the Wien bridge, where the RC network makes
 the circuit second order and the amplifier gain $`A_v`$ plays the role
 of $`f'`$: $`\zeta = (3 - A_v)/2`$, negative while the amplifier is
 linear with $`A_v \gt 3`$ and positive once it saturates.
 
-## What fits and what does not
+## What fits
 
 - **Velocity-switched damping is what a governor is.** Maxwell's brake
   term $`F(\dot{x} - V)`$ is the relative-velocity damping the README
@@ -551,19 +397,14 @@ linear with $`A_v \gt 3`$ and positive once it saturates.
   versus moderator — is whether the boundary passes through the
   equilibrium. The one-sided brake needs $`F \gt 2c`$, a deadband only
   $`F \gt c`$.
-- **Displacement-switched damping is what a saturating amplifier is**,
-  and what a position-limited electromagnetic drive or brake is. The
-  transistor oscillator's amplitude follows the README's energy balance
-  and tends to the describing-function limit.
-- **The pendulum at high deviation is not a prototype and cannot be
-  made one.** Its nonlinearity is a smooth softening stiffness with no
-  boundary and no energy source. With their structure kept fixed, the
-  prototypes reach it only through $`\omega_n`$, retuned to the operating
-  amplitude: exact for the period at that amplitude, blind to everything
-  that varies with amplitude. Put a damping switch on the pendulum and
-  the displacement-switched prototypes apply directly — the amplitude
-  rule holds to 2% up to $`92^\circ`$ and the retuned period to 1% —
-  until the pendulum goes over the top, which no tuning represents.
+- **Displacement-switched damping is what a saturating amplifier is.**
+  The transistor oscillator's amplitude follows the README's energy balance
+  and tends to the describing-function limit; clipping on one side only
+  is the asymmetric model, bounded only for loop gain below two.
+- **What is left out.** The pendulum. At small angles it is only the
+  linear prototype, and at large angles its nonlinearity is in the
+  restoring torque, which none of these prototypes switches. It will get
+  a prototype of its own.
 
 ## Reproducing the numbers
 
@@ -572,7 +413,7 @@ python3 examples.py
 ```
 
 prints every table above, checking each integrated number against the
-closed form or exact reduction that predicts it, and writes the four
+closed form or exact reduction that predicts it, and writes the two
 figures in both themes to `figures/example-*.png`. It imports the
 README's analysis modules (`frequency.py`, `symmetric.py`,
 `displacement.py`, `stability.py`) and the plotting chrome from
