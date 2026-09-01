@@ -98,6 +98,36 @@ $`\zeta_{-}`$ is enough to predict what the system will do.
 Still untested: behaviour under noise, and whether the same saturation
 appears in the asymmetric models.
 
+## First check the class, before fitting anything
+
+**Established, and the cheapest test available.** All four prototypes have
+**amplitude-independent frequency**. The period is fixed by $`\omega_n`$ and
+the two damping ratios; the boundary parameter sets amplitude and nothing
+else. Integrating at boundary values of $`0.25, 1, 4, 16`$ returns the same
+period to nine decimal places.
+
+A stiffness nonlinearity does the opposite. Duffing and its relatives put
+the nonlinearity in the restoring force, so their frequency moves with
+amplitude — that is where their jump and hysteresis behaviour comes from.
+
+So excite the system at two different amplitudes and watch the frequency:
+
+| observation | conclusion |
+| --- | --- |
+| frequency unchanged | damping nonlinearity — one of these four, fitting applies |
+| frequency shifts with amplitude | stiffness nonlinearity — none of these four will fit, at any parameters |
+
+This is a better class test than the harmonic signature, because it is one
+robust frequency measurement rather than a ratio at the $`10^{-3}`$ level.
+Use it first; use the harmonics below only to choose *which* of the four.
+
+**Speculative.** The counterpart family, when it is wanted, is the obvious
+one: switch the **stiffness** at a displacement boundary instead of the
+damping — the bilinear or clearance oscillator. The same solvable-arcs
+machinery would apply, and it would give amplitude-dependent frequency by
+construction. That is a separate build, and none of the results here carry
+over to it.
+
 ## Model selection from an FFT
 
 **Verified here, not yet in the README.** Harmonic content separates the
