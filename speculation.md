@@ -57,9 +57,46 @@ amplitude                  ->  boundary
 ```
 
 Two dimensionless measurements for two dimensionless unknowns, then two
-scale factors read off directly. **This has not been tested**: whether the
-map from $`(\zeta_{+}, \zeta_{-})`$ to those observables is injective, and
-how it behaves under noise, is unknown.
+scale factors read off directly.
+
+### Tested, and it half works
+
+**$`\zeta_{+}`$ is recoverable. $`\zeta_{-}`$ saturates.** Both invariants
+stop responding to $`\zeta_{-}`$ once it passes roughly $`-0.3`$, for the
+symmetric velocity model:
+
+| $`\zeta_{-}`$ | $`-0.05`$ | $`-0.1`$ | $`-0.2`$ | $`-0.3`$ | $`-0.45`$ | $`-0.8`$ |
+| --- | --- | --- | --- | --- | --- | --- |
+| $`h_3/h_1`$ at $`\zeta_{+}=0.05`$ | 0.00328 | 0.00378 | 0.00403 | 0.00410 | 0.00414 | 0.00416 |
+| multiplier at $`\zeta_{+}=0.05`$ | 0.7439 | 0.7358 | 0.7321 | 0.7311 | 0.7306 | 0.7303 |
+| $`h_3/h_1`$ at $`\zeta_{+}=0.8`$ | 0.00995 | 0.01738 | 0.02811 | 0.03558 | 0.04335 | 0.05389 |
+| multiplier at $`\zeta_{+}=0.8`$ | 0.0482 | 0.0261 | 0.0133 | 0.0087 | 0.0056 | 0.0030 |
+
+The reason is simple, and it is a property of the system rather than of the
+method. As $`\zeta_{-}`$ becomes more negative the cycle grows, so it
+spends proportionally less of each revolution inside the destabilising
+region. Past a point the orbit stops noticing how negative $`\zeta_{-}`$
+is, and no measurement of the orbit can recover it.
+
+What that means in practice:
+
+- **At larger $`\zeta_{+}`$ the multiplier stays useful.** At
+  $`\zeta_{+} = 0.8`$ it moves by a factor of sixteen across the same
+  $`\zeta_{-}`$ range where it barely moves at $`\zeta_{+} = 0.05`$. So a
+  strongly damped outer region makes the inner one identifiable.
+- **At small $`\zeta_{+}`$, report $`\zeta_{-}`$ as a bound, not a value.**
+  Anything past about $`-0.3`$ fits the data equally well.
+- **The higher harmonics do not rescue it.** $`h_5/h_1`$ is an order of
+  magnitude smaller than $`h_3/h_1`$ and not monotonic in $`\zeta_{-}`$;
+  $`h_7/h_1`$ sits at $`10^{-4}`$, below any realistic noise floor.
+
+This is good news for the engineering goal rather than bad. A parameter
+that the data cannot determine is also a parameter the behaviour does not
+depend on, over that range — so a fit that pins $`\zeta_{+}`$ and bounds
+$`\zeta_{-}`$ is enough to predict what the system will do.
+
+Still untested: behaviour under noise, and whether the same saturation
+appears in the asymmetric models.
 
 ## Model selection from an FFT
 
