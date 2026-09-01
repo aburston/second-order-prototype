@@ -80,9 +80,27 @@ WN = 1.0
 #: README. ``zm < 0 < zp`` is the existence condition for the unforced cycle.
 ZP, ZM, V0 = 0.3, -0.1, 0.25
 
-#: A strobe point counts as new when it is further than this from every
-#: cluster already found, measured in the state units of the reference orbit.
-CLUSTER_TOL = 1e-4
+#: A response counts as locked at order ``q`` when the strobe point repeats
+#: after ``q`` drive periods to within this distance.
+#:
+#: Getting this test right took three goes. Clustering the strobe points at a
+#: fixed radius of 1e-4 was wrong twice over. A weakly contracting case
+#: settles onto an invariant curve only a few thousandths across, which the
+#: fixed radius chopped into around twenty phantom clusters and reported as a
+#: lock of order twenty; the give-away was that the count drifted with the
+#: length of the discarded transient, 23 points after 200 drive periods and
+#: 21 after 2000, which a real lock never does. Making the radius relative to
+#: the section's own spread fixed that but left two subtler failures: a
+#: *chain of small invariant curves*, one per island, clusters exactly like a
+#: lock of the same order, and an orbit still spiralling in splits each of
+#: its points into several tight clusters.
+#:
+#: Testing recurrence directly kills all three. A genuine period ``q``
+#: response repeats to integration accuracy, around 1e-9. An island chain
+#: sits at 1e-4 to 1e-5 and stays there however long the transient is run. A
+#: drifting orbit fails outright. The margin between 1e-9 and 1e-5 is four
+#: orders, so the threshold is not delicate.
+LOCK_SCATTER = 1e-7
 
 #: Largest lock order the strobe count will report. Beyond this a response is
 #: indistinguishable from a torus over any affordable run.
@@ -135,7 +153,7 @@ def _run(zp, zm, v0, amp, om, t_eval, y0):
     return sol.y.T
 
 
-def strobe(amp, om, zp=ZP, zm=ZM, v0=V0, n_skip=200, n_keep=150, y0=None):
+def strobe(amp, om, zp=ZP, zm=ZM, v0=V0, n_skip=500, n_keep=150, y0=None):
     """Stroboscopic section: the state sampled once per drive period.
 
     ``n_skip`` drive periods are discarded as transient and the next
@@ -150,20 +168,21 @@ def strobe(amp, om, zp=ZP, zm=ZM, v0=V0, n_skip=200, n_keep=150, y0=None):
     return _run(zp, zm, v0, amp, om, np.concatenate(([0.0], t_eval)), y0)[1:]
 
 
-def lock_order(pts, tol=CLUSTER_TOL, qmax=QMAX):
-    """Number of distinct strobe points, or ``None`` if there are too many.
+def lock_order(pts, qmax=QMAX):
+    """Order of the lock, or ``None`` if the response is not periodic.
 
-    Greedy clustering with a fixed radius. A ``q`` returned here means the
-    response closes after ``q`` drive periods; ``None`` means the section is
-    a curve or a cloud rather than a finite set.
+    Returns the smallest ``q`` for which the strobe point repeats after
+    ``q`` drive periods to within ``LOCK_SCATTER``, which is the definition
+    of a period ``q`` orbit of the stroboscopic map. ``None`` means the
+    section is a curve, an island chain or a cloud rather than a finite set
+    — or that a genuine lock has not settled yet, which is answered by a
+    longer ``n_skip`` rather than a looser threshold.
     """
-    clusters = []
-    for p in pts:
-        if not any(np.hypot(*(p - c)) < tol for c in clusters):
-            clusters.append(p)
-            if len(clusters) > qmax:
-                return None
-    return len(clusters)
+    for k in range(1, qmax + 1):
+        d = np.linalg.norm(pts[k:] - pts[:-k], axis=1)
+        if d.size and np.max(d) < LOCK_SCATTER:
+            return k
+    return None
 
 
 def rotation_number(amp, om, zp=ZP, zm=ZM, v0=V0, n_skip=150, n_keep=300,
@@ -412,7 +431,7 @@ def _lock_point(args):
 W_TOL = 1e-6
 
 
-def tongue_edges(a, p=1, q=1, zp=ZP, zm=ZM, v0=V0, span=1.4, steps=18):
+def tongue_edges(a, p=1, q=1, zp=ZP, zm=ZM, v0=V0, span=1.4, steps=14):
     """Locate the edges of the ``p:q`` Arnold tongue at one drive strength.
 
     The tongue is the set of drive frequencies for which the rotation number
@@ -425,8 +444,8 @@ def tongue_edges(a, p=1, q=1, zp=ZP, zm=ZM, v0=V0, span=1.4, steps=18):
         zp, zm, v0: the prototype's parameters.
         span: how far either side of ``q/p`` to look for an unlocked point,
             as a multiplier on ``q/p``.
-        steps: bisection steps per edge; ``18`` puts the edges inside
-            ``1e-5`` of ``Om / w_lc``.
+        steps: bisection steps per edge; ``14`` puts the edges inside
+            ``5e-5`` of ``Om / w_lc``.
 
     Returns:
         ``(r_left, r_right)`` in units of ``Om / w_lc``, or ``(nan, nan)``
@@ -461,20 +480,21 @@ def tongue_edges(a, p=1, q=1, zp=ZP, zm=ZM, v0=V0, span=1.4, steps=18):
     return min(out), max(out)
 
 
+def _edge_point(args):
+    """Worker for :func:`tongue_width` (module level so it can be pickled)."""
+    return tongue_edges(*args)
+
+
 def tongue_width(amps, p=1, q=1, zp=ZP, zm=ZM, v0=V0, workers=None):
     """Trace one tongue's edges over a list of drive strengths.
 
-    Returns ``(left, right)`` arrays the same length as ``amps``. Serial in
-    ``amps`` but each edge search is itself parallel-free, so this is the
-    slow way round; it is kept simple because the tongue is only ever traced
-    at a dozen drive strengths for the figure.
+    Returns ``(left, right)`` arrays the same length as ``amps``. Each edge
+    search is a serial bisection, so the parallelism is across ``amps``.
+    Rows where the tongue has not opened yet come back as ``nan``.
     """
-    left, right = [], []
-    for a in amps:
-        lo, hi = tongue_edges(a, p, q, zp, zm, v0)
-        left.append(lo)
-        right.append(hi)
-    return np.array(left), np.array(right)
+    out = _pool_map(_edge_point,
+                    [(a, p, q, zp, zm, v0) for a in amps], workers)
+    return np.array([o[0] for o in out]), np.array([o[1] for o in out])
 
 
 def scaling_check(amp=0.3, om=None, factor=3.0):
