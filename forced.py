@@ -234,6 +234,85 @@ def lyapunov(amp, om, zp=ZP, zm=ZM, v0=V0, n_skip=100, n=300, d0=1e-8,
     return total/(n*td)
 
 
+def multipliers(amp, om, zp=ZP, zm=ZM, v0=V0, h=1e-6, n_skip=400):
+    """Floquet multipliers of an entrained periodic response.
+
+    Settles onto the attractor, takes the strobe point as a fixed point of
+    the ``q``-fold stroboscopic map, and differences that map to get its
+    ``2 x 2`` Jacobian. The eigenvalues are the multipliers.
+
+    Their product is fixed by the trace formula: the flow's divergence is
+    ``-2 zeta wn``, so ``mu1 mu2 = exp(2 Lambda)`` with ``Lambda`` the dwell
+    weighted mean of the pole real parts times the period. That is the same
+    ``exp(2 Lambda)`` the unforced cycle has, which is why the unforced
+    Floquet result survives forcing unchanged.
+
+    What the pair does individually is the part that is not forced by the
+    algebra, and it is what decides whether chaos is available: a
+    complex conjugate pair contracts every direction by the same factor and
+    cannot fold, while a real pair splits the plane into a stretching and a
+    contracting direction and can.
+
+    Returns ``(mu, q)``: the multiplier pair as a complex array, and the
+    lock order used. ``(None, None)`` if the response is not a lock.
+    """
+    pts = strobe(amp, om, zp, zm, v0, n_skip=n_skip, n_keep=QMAX + 4)
+    q = lock_order(pts)
+    if q is None:
+        return None, None
+    td = 2.0*np.pi/om
+    f = field(zp, zm, v0, amp, om)
+    t0 = n_skip*td                     # phase the strobe point was taken at
+    p = pts[0]
+
+    def qmap(state):
+        sol = solve_ivp(f, (t0, t0 + q*td), state, method=METHOD,
+                        rtol=RTOL, atol=ATOL)
+        return sol.y[:, -1]
+
+    j = np.empty((2, 2))
+    for k in range(2):
+        e = np.zeros(2)
+        e[k] = h
+        j[:, k] = (qmap(p + e) - qmap(p - e))/(2.0*h)
+    return np.linalg.eigvals(j), q
+
+
+def dwell_exponent(amp, om, zp=ZP, zm=ZM, v0=V0, n_skip=100, n=300,
+                   y0=None):
+    """Dwell weighted mean of the pole real parts, measured on the attractor.
+
+    The unforced analysis reduced stability to ``Lambda = s+ t+ + s- t-``,
+    the dwell weighted sum of the two half planes' pole real parts, with
+    ``s = -zeta wn``. This measures the same quantity on a forced orbit by
+    carrying a third state that accumulates the time spent outside the
+    deadzone, so no sampling is involved and the fractions are as accurate
+    as the integration.
+
+    Returns ``(exponent, f_out)``: the mean of ``s`` per unit time and the
+    fraction of the time spent outside the band.
+    """
+    td = 2.0*np.pi/om
+    if y0 is None:
+        y0 = [0.0, 2.0*v0]
+    d = zp - zm
+
+    def f(t, y):
+        return [y[1],
+                -WN**2*y[0] - 2.0*WN*(zm*y[1] + d*deadzone(y[1], v0))
+                + amp*np.cos(om*t),
+                1.0 if abs(y[1]) > v0 else 0.0]
+
+    warm = solve_ivp(f, (0.0, n_skip*td), list(y0) + [0.0], method=METHOD,
+                     rtol=RTOL, atol=ATOL)
+    y1 = warm.y[:, -1].copy()
+    y1[2] = 0.0
+    run = solve_ivp(f, (n_skip*td, (n_skip + n)*td), y1, method=METHOD,
+                    rtol=RTOL, atol=ATOL)
+    f_out = run.y[2, -1]/(n*td)
+    return -WN*(zp*f_out + zm*(1.0 - f_out)), f_out
+
+
 def classify(amp, om, zp=ZP, zm=ZM, v0=V0, quick=False):
     """Label the forced response and return the evidence with it.
 
@@ -319,6 +398,83 @@ def regime_map(ratios, amps, zp=ZP, zm=ZM, v0=V0, workers=None):
     w = np.array([o[2] for o in out]).reshape(sh)
     lam = np.array([o[3] for o in out]).reshape(sh)
     return lab, q, w, lam
+
+
+def _lock_point(args):
+    """Worker for :func:`tongue_edges`: is this point locked at ``p/q``?"""
+    amp, om, zp, zm, v0, target = args
+    return abs(rotation_number(amp, om, zp, zm, v0) - target) < W_TOL
+
+
+#: A rotation number this close to ``p/q`` counts as locked. On a genuine
+#: lock the measured number is exact to twelve digits or better, so the
+#: threshold is far above the noise and far below any torus.
+W_TOL = 1e-6
+
+
+def tongue_edges(a, p=1, q=1, zp=ZP, zm=ZM, v0=V0, span=1.4, steps=18):
+    """Locate the edges of the ``p:q`` Arnold tongue at one drive strength.
+
+    The tongue is the set of drive frequencies for which the rotation number
+    is pinned at ``p / q``. It is a single interval containing
+    ``Om / w_lc = q / p``, so each edge can be bisected for independently.
+
+    Args:
+        a: dimensionless drive ``A / (wn v0)``.
+        p, q: the lock to trace. ``1, 1`` is the main tongue.
+        zp, zm, v0: the prototype's parameters.
+        span: how far either side of ``q/p`` to look for an unlocked point,
+            as a multiplier on ``q/p``.
+        steps: bisection steps per edge; ``18`` puts the edges inside
+            ``1e-5`` of ``Om / w_lc``.
+
+    Returns:
+        ``(r_left, r_right)`` in units of ``Om / w_lc``, or ``(nan, nan)``
+        if the centre itself is not locked — which is what a tongue that has
+        not yet opened at this drive strength looks like.
+    """
+    amp = a*WN*v0
+    wl = w_lc(zp, zm)
+    target = p/q
+    centre = q/p
+
+    def locked(r):
+        return _lock_point((amp, r*wl, zp, zm, v0, target))
+
+    if not locked(centre):
+        return float("nan"), float("nan")
+    out = []
+    for direction in (-1.0, 1.0):
+        far = centre*(1.0 + direction*(span - 1.0)) if direction > 0 \
+            else centre/span
+        if locked(far):
+            out.append(far)
+            continue
+        lo, hi = centre, far
+        for _ in range(steps):
+            mid = 0.5*(lo + hi)
+            if locked(mid):
+                lo = mid
+            else:
+                hi = mid
+        out.append(lo)
+    return min(out), max(out)
+
+
+def tongue_width(amps, p=1, q=1, zp=ZP, zm=ZM, v0=V0, workers=None):
+    """Trace one tongue's edges over a list of drive strengths.
+
+    Returns ``(left, right)`` arrays the same length as ``amps``. Serial in
+    ``amps`` but each edge search is itself parallel-free, so this is the
+    slow way round; it is kept simple because the tongue is only ever traced
+    at a dozen drive strengths for the figure.
+    """
+    left, right = [], []
+    for a in amps:
+        lo, hi = tongue_edges(a, p, q, zp, zm, v0)
+        left.append(lo)
+        right.append(hi)
+    return np.array(left), np.array(right)
 
 
 def scaling_check(amp=0.3, om=None, factor=3.0):
