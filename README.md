@@ -976,11 +976,62 @@ asymmetric pair, $`1.5773`$ against $`1.5895`$ for the symmetric pair. So
 moving the boundary from velocity to displacement rotates *which part* of
 the cycle is damped without changing *how long* the orbit spends damped.
 
-Why the timing is preserved exactly is only partly explained. In the near
-circular picture the phase splits are forced to agree, because
-$`\alpha = \pi/2 - \phi`$ turns one angle allocation into the other. That
-accounts for the leading order agreement, not for exactness to fourteen
-digits. Treat the exactness as an observed result.
+### Why the equality is exact
+
+Because the displacement-switched model *is* the velocity-switched model
+differentiated.
+
+Differentiating a solution of a linear constant coefficient equation gives
+another solution of the same equation. Within any one region the velocity
+models obey
+
+```math
+\ddot{x} + 2\zeta_{\pm}\omega_n\dot{x} + \omega_n^2 x = c_{\pm}
+```
+
+where $`c_{\pm}`$ is a constant on that region — $`2\zeta_{\pm}\omega_n v_0`$
+for the single boundary model, $`\pm 2\Delta\zeta\,\omega_n v_0`$ for the
+deadzone, zero inside the band. Differentiating, $`X = \dot{x}`$ satisfies
+
+```math
+\ddot{X} + 2\zeta_{\pm}\omega_n\dot{X} + \omega_n^2 X = 0
+```
+
+The constant differentiates away. That is precisely why the virtual centres
+disappear and every region of the displacement models is centred on the
+origin — they were never anything but an artefact of the constant.
+
+The switching condition was on $`\dot{x}`$, so in the new variable it reads
+$`X \gtrless v_0`$ or $`\lvert X \rvert \lessgtr v_0`$: a condition on the
+new system's **displacement**. So $`X(t) = \dot{x}(t)`$ solves the
+displacement-switched model with $`x_0 = v_0`$, on the same time axis and
+with no reparametrisation.
+
+Every temporal quantity is then identical by construction, not by
+coincidence: the period, both dwell times separately, $`\Lambda`$, and the
+Floquet multiplier. The correspondence is a bijection on periodic orbits,
+so the existence conditions must agree too — which is why the asymmetric
+pair share $`\bar{\zeta} \gt 0`$ and the symmetric pair share
+$`\zeta_{+} \gt 0`$.
+
+It is not an isometry, which is why the amplitudes differ. The displacement
+model's radius is the velocity model's **peak velocity**: at the section
+$`\dot{X} = 0`$, meaning $`\ddot{x} = 0`$, the value of $`X`$ is
+$`\max\dot{x}`$ over the original cycle. Measured, $`2.509033`$ against
+$`2.509032`$ for the asymmetric pair and $`1.577281`$ against $`1.577281`$
+for the symmetric pair.
+
+It also explains the $`\alpha = \pi/2 - \phi`$ relation between the two
+amplitude equations: differentiating a near circular orbit advances its
+phase by a quarter turn, which is exactly what measuring the chord from the
+other axis amounts to. And it explains the loss of continuity — the
+deadzone force is continuous but has corners, and differentiating a corner
+gives a jump.
+
+So the four models are two, up to differentiation. They are genuinely
+different systems in the phase plane, with different orbits, different
+amplitudes and different smoothness, but they share every property that is
+measured in time.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="figures/four-models-dark.png">

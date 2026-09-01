@@ -245,3 +245,40 @@ if __name__ == "__main__":
     for x0 in [0.25, 1.0, 4.0, 16.0]:
         r, T = cycle_integrated(0.3, -0.1, x0, symmetric=True)
         print(f"  x0={x0:>6}:  r*/x0 = {r/x0:.9f}   T = {T:.9f}")
+
+
+def derivative_check(zp, zm, b=1.0, symmetric=True, T=140.0):
+    """Check that this model is the velocity-switched model differentiated.
+
+    Within any region the velocity models obey
+    ``xddot + 2 zeta wn xdot + wn^2 x = c``, with ``c`` constant on that
+    region. Differentiating kills the constant, so ``X = xdot`` obeys the
+    same equation with no constant — every region centred on the origin —
+    and the switching condition, which was on ``xdot``, becomes a condition
+    on ``X`` itself. So ``X(t) = xdot(t)`` solves this module's model on the
+    same time axis, which forces the periods and dwell times to agree
+    exactly.
+
+    The correspondence is not an isometry, so amplitudes differ: this
+    model's radius equals the velocity model's peak velocity, which is what
+    this function measures.
+
+    Returns:
+        Tuple ``(peak velocity of the velocity model, radius of this one)``.
+    """
+    d = zp - zm
+    def f(t, y):
+        v = y[1]
+        if symmetric:
+            dz = v - b if v > b else (v + b if v < -b else 0.0)
+            acc = -WN**2*y[0] - 2*WN*(zm*v + d*dz)
+        else:
+            w = v - b
+            acc = -WN**2*y[0] - 2*(zp if w > 0 else zm)*WN*w
+        return [v, acc]
+    start = [1.6*b, 0.0] if symmetric else [2*zm*b + 2.2*b, 0.0]
+    s = solve_ivp(f, (0, T), start, rtol=1e-12, atol=1e-14, max_step=0.002,
+                  dense_output=True)
+    peak = s.sol(np.linspace(T - 7.0, T, 60000))[1].max()
+    r, _ = cycle_integrated(zp, zm, b, symmetric)
+    return peak, r
