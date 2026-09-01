@@ -49,6 +49,7 @@ from scipy.integrate import solve_ivp
 
 import frequency
 import symmetric
+import displacement
 
 WN = 1.0
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "figures")
@@ -865,6 +866,80 @@ def fig_symmetric(th, name):
     save(fig, name, "symmetric")
 
 
+def fig_four_models(th, name):
+    """Draw the complete set of four switched-damping models.
+
+    Rows are the asymmetric and symmetric forms; columns are switching on
+    velocity and on displacement. All four use the same damping ratios and
+    the same boundary value, so the panels are directly comparable.
+
+    The point of the layout is that the period is identical along each row
+    while the orbit is not: moving the boundary from velocity to
+    displacement rotates which part of the cycle is damped, without
+    changing how long the orbit spends damped.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
+    zp, zm, b = 0.3, -0.1, 1.0
+
+    def settle(f, start, period, T=120.0):
+        """Integrate onto the attractor, then return exactly one period.
+
+        ``max_step`` is bounded so the boundary crossings are resolved
+        cleanly. The corners visible in the displacement-switched orbits are
+        not an artefact of that: those fields are discontinuous, so the
+        curvature genuinely jumps where the orbit crosses, and the corner is
+        the thing worth seeing.
+        """
+        s = solve_ivp(f, (0, T), start, rtol=1e-12, atol=1e-14,
+                      max_step=0.004, dense_output=True)
+        return s.sol(np.linspace(T - period, T, 3000))
+
+    panels = [
+        ("Asymmetric, switch on $\\dot{x}$", f_switched(zp, zm, b),
+         [2*zm*b + 2.2, 0.0], "h", (b,), 2*zm*b),
+        ("Asymmetric, switch on $x$",
+         displacement.field(zp, zm, b, False), [2.6, 0.0], "v", (b,), 0.0),
+        ("Symmetric, switch on $\\dot{x}$", symmetric.field(zp, zm, b),
+         [1.6, 0.0], "h", (b, -b), 0.0),
+        ("Symmetric, switch on $x$",
+         displacement.field(zp, zm, b, True), [1.6, 0.0], "v", (b, -b), 0.0),
+    ]
+    periods = [frequency.period_exact(zp, zm)[0],
+               displacement.period_exact(zp, zm, b, False)[0],
+               symmetric.period_exact(zp, zm)[0],
+               displacement.period_exact(zp, zm, b, True)[0]]
+
+    fig, axes = newfig(th, 2, 2, figsize=(9.6, 9.0))
+    for ax, (title, f, start, orient, lines, xeq), T in zip(axes.ravel(),
+                                                            panels, periods):
+        y = settle(f, start, T)
+        if len(lines) == 2:
+            if orient == "h":
+                ax.axhspan(-b, b, color=th["grid"], zorder=0)
+            else:
+                ax.axvspan(-b, b, color=th["grid"], zorder=0)
+        for L in lines:
+            drawer = ax.axhline if orient == "h" else ax.axvline
+            drawer(L, color=th["ink2"], linewidth=1.2, linestyle=(0, (5, 3)),
+                   zorder=4)
+        ax.plot(y[0], y[1], color=th["series"][0], linewidth=2.4, zorder=3)
+        ax.plot([xeq], [0], "o", color=th["ink"], markersize=5, zorder=5)
+        style(ax, th, "$x$", "$\\dot{x}$", title)
+        ax.set_aspect("equal")
+        ax.text(0.03, 0.03, "$T = %.4f$" % T, transform=ax.transAxes,
+                fontsize=8.5, color=th["ink2"], zorder=6,
+                bbox=dict(boxstyle="round,pad=0.25", fc=th["surface"],
+                          ec=th["grid"], lw=0.8))
+    fig.suptitle("The four models at $\\zeta_{+}=0.3$, $\\zeta_{-}=-0.1$: "
+                 "the period matches along each row, the orbit does not",
+                 color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "four-models")
+
+
 if __name__ == "__main__":
     for name, th in THEMES.items():
         print(f"{name}:")
@@ -877,3 +952,4 @@ if __name__ == "__main__":
         fig_poles(th, name)
         fig_stability_map(th, name)
         fig_symmetric(th, name)
+        fig_four_models(th, name)
