@@ -608,11 +608,33 @@ $`10^{-9}`$, $`10^{-11}`$ and $`10^{-12}`$ alike. It is an error floor, not a
 tolerance that can be bought down. The orbit was therefore reported as
 unlocked, and then, its exponent being negative, as a torus.
 
-The exact map resolves the same orbit at $`2.4\times10^{-9}`$ — three orders
-inside the threshold — because a product of matrices accumulates no
-integration error. This is the clearest case yet for building the maps: not
-an argument from principle but an orbit the integrator could not classify
-and the map could.
+It is a floor and not an unconverged transient, which is the obvious
+competing explanation and had to be ruled out separately: discarding thirty
+times as long a transient does not move it.
+
+| discarded periods | staircase, 17 levels | Van der Pol, a locked case |
+| --- | --- | --- |
+| 400 | $`8.0\times10^{-7}`$ | $`5.2\times10^{-9}`$ |
+| 1500 | $`1.2\times10^{-6}`$ | $`6.0\times10^{-9}`$ |
+| 6000 | $`1.0\times10^{-6}`$ | $`4.5\times10^{-9}`$ |
+| 12000 | $`1.1\times10^{-6}`$ | $`4.8\times10^{-9}`$ |
+
+**And the floor belongs to the piecewise model, not to integration in
+general.** Run on smooth Van der Pol at one of its locked drive
+frequencies, the same measurement floors at $`5\times10^{-9}`$ — two hundred
+times lower, and far enough inside the threshold that its locks certify
+without difficulty. The difference is the discontinuities: the integrator
+must detect and cross thirty-two changes of damping ratio per drive period,
+and each crossing injects an error that tightening the tolerance does not
+remove.
+
+That is a real cost of piecewise modelling, and it is worth stating next to
+the benefits. A staircase buys an exactly solvable arc structure and pays
+for it with a numerically rougher field. Which is precisely the argument for
+not integrating it at all: the exact map resolves the same orbit at
+$`2.4\times10^{-9}`$, three orders inside the threshold, because a product of
+matrices crosses no boundaries numerically. Not an argument from principle
+but an orbit the integrator could not classify and the map could.
 
 **So a "torus" verdict from `section.py` means no lock was detected, not
 that no lock exists.** `section.lock_margin` now reports how close the call
@@ -629,6 +651,28 @@ is within thirty times the threshold. Measured at the drive used here:
 
 The genuinely non-periodic cases miss by a factor of a million, so those
 verdicts are safe; only the marginal one needed flagging.
+
+### Sensitive dependence, measured on both
+
+The piecewise model reproduces the smooth one here too. At the chaotic
+drive, two initial conditions $`10^{-10}`$ apart:
+
+| system | pointwise divergence | overlap as a set |
+| --- | --- | --- |
+| Van der Pol | 12.24 | 74.0% |
+| staircase, 65 levels | 12.00 | 75.5% |
+
+Both diverge to full scale — the orbits have nothing in common after a few
+hundred periods — while still tracing the same attractor to within a few per
+cent. That is the whole character of chaos in two numbers, and it is why the
+Lyapunov exponent is well defined when no individual trajectory is: the
+exponent averages over the attractor, which is stable, rather than following
+the orbit, which is not.
+
+It also explains what the attractor figure can and cannot be. The cloud is
+one trajectory integrated for 30000 drive periods; at $`\lambda \approx 0.07`$
+any error is amplified beyond all recognition long before the end. The
+picture is faithful as a *set* and meaningless as a *trajectory*.
 
 **What this does not touch.** Every chaos or no-chaos conclusion in this
 repository rests on the sign of the Lyapunov exponent, and mistaking a lock
