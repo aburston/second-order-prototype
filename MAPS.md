@@ -324,3 +324,246 @@ here:
   stroboscopic rather than geometric.
 
 Neither needs new theory — only the same three pieces, applied again.
+
+
+---
+
+# As difference equations, one step per cycle
+
+**Scope.** Everything below assumes the cycle *closes* — the prototype is
+underdamped, or carries a limit cycle. That is the case these equations are
+for. A trajectory that leaves without returning has no once-per-cycle map
+and is not covered.
+
+The maps above were built arc by arc. Multiplying every arc of one full
+return together collapses them into a single matrix per cycle, so each
+output is the next cycle's starting point.
+
+## The form
+
+A zone's flow is affine, $`y \mapsto y_c + \Phi(y - y_c)`$. Carrying a
+constant alongside the state turns each arc into a $`3\times 3`$ matrix, and
+the product of a cycle's arcs is one matrix $`C`$:
+
+```math
+\begin{bmatrix} y \\ 1 \end{bmatrix}_{k+1}
+= C(r_k)\, \begin{bmatrix} y \\ 1 \end{bmatrix}_{k},
+\qquad
+C = A_n \cdots A_1,
+\qquad
+A_i = \begin{bmatrix} \Phi(\zeta_i, t_i) & (I - \Phi(\zeta_i, t_i))\, y_{c,i} \\ 0 & 1 \end{bmatrix}
+```
+
+On the section $`\dot{x} = 0`$ the state is $`(r, 0)`$, so only the first row
+matters and the whole prototype reduces to a **scalar affine recurrence in
+the amplitude**:
+
+```math
+r_{k+1} = a(r_k)\, r_k + b(r_k),
+\qquad
+a = C_{11},
+\qquad
+b = C_{13}
+```
+
+Each step is linear. All the nonlinearity is in how $`a`$ and $`b`$ depend on
+the amplitude, and that dependence enters through exactly one thing: the
+dwell times, each solving $`\alpha c(t) + \beta s(t) = \ell`$ for its arc.
+
+Two chains run over the same events and must not be confused. The **state**
+chain is the arcs alone, as above. The **perturbation** chain interleaves the
+saltation factors and is what gives the multiplier; saltation shears
+neighbouring trajectories, which arrive at a boundary at slightly different
+times, and does not move the trajectory itself.
+
+## What the coefficients do, prototype by prototype
+
+Measured at three amplitudes spanning a factor of several:
+
+| prototype | $`r`$ | $`a(r)`$ | $`b(r)`$ |
+| --- | --- | --- | --- |
+| linear, $`\zeta = 0.1`$ | 0.5 | 0.531802082944 | 0 |
+| | 1.0 | 0.531802082944 | 0 |
+| | 4.0 | 0.531802082944 | 0 |
+| through equilibrium | 0.5 | 0.510561978719 | 0 |
+| | 1.0 | 0.510561978719 | 0 |
+| | 4.0 | 0.510561978719 | 0 |
+| offset boundary | 1.50 | 0.557504209459 | 0.867848526249 |
+| | 2.15 | 0.533974721260 | 0.909523789597 |
+| | 4.00 | 0.516879088318 | 0.957471911398 |
+| symmetric deadzone | 1.00 | 0.328931581112 | 1.116359956182 |
+| | 1.59 | 0.203599857938 | 1.265847656454 |
+| | 3.00 | 0.161692352304 | 1.353319293136 |
+| displacement, symmetric | 1.200 | 1.242835918972 | 0 |
+| | 1.577 | 1.000141817566 | 0 |
+| | 3.000 | 0.608284421113 | 0 |
+
+Three distinct forms fall out, and they line up with structure the README
+arrived at by other means.
+
+**Constant $`a`$, zero $`b`$ — a true linear difference equation.**
+
+```math
+r_{k+1} = \lambda\, r_k
+```
+
+The linear prototype ($`\lambda = e^{-2\delta}`$) and the
+through-equilibrium one ($`\lambda = e^{-(\delta_{+}+\delta_{-})}`$). The
+coefficients do not move to twelve decimals across an eightfold change in
+amplitude, because every zone shares the origin as its centre and is
+therefore left at a fixed phase of its own oscillation whatever the
+amplitude.
+
+**Amplitude-dependent gain, zero $`b`$.** The displacement-switched models.
+All zones still share the origin — the damping term carries a factor
+$`\dot{x}`$, which vanishes on $`\dot{x} = 0`$ whatever $`x`$ is — so there is
+no affine term. But the thresholds are crossed at amplitude-dependent
+phases, so the gain varies:
+
+```math
+r_{k+1} = a(r_k)\, r_k, \qquad a(r^{*}) = 1 \;\text{at the cycle}
+```
+
+At $`r = 1.577`$, $`a = 1.000142`$ — the cycle is where the gain reaches one.
+
+**Both coefficients varying.** The velocity-switched models, offset and
+deadzone. Damping the *relative* velocity moves each zone onto a virtual
+centre $`x_c = 2\zeta v_0/\omega_n`$, and that centre is exactly what the
+affine term $`b`$ carries. The cycle solves
+
+```math
+a(r^{*})\, r^{*} + b(r^{*}) = r^{*}
+```
+
+## Why the first two can have no isolated cycle
+
+A constant-coefficient affine recurrence $`z_{k+1} = A z_k + b`$ has one
+fixed point $`z^{*} = (I-A)^{-1}b`$ when $`I - A`$ is invertible, and every
+orbit obeys $`z_k - z^{*} = A^{k}(z_0 - z^{*})`$. Its behaviour is therefore
+global — everything converges if $`\rho(A) \lt 1`$, everything diverges if
+$`\rho(A) \gt 1`$ — and an *isolated* limit cycle is impossible. Closed
+orbits require an eigenvalue exactly on the unit circle, which gives a
+**continuum** of them, not one.
+
+That is the README's result for the through-equilibrium prototype, reached
+here from the algebra of difference equations instead of from positive
+homogeneity: no isolated cycle, and a continuum in the marginal case
+$`\bar{\zeta} = 0`$. The prototypes that do carry an isolated cycle cannot be
+written with constant coefficients, so the amplitude dependence of $`a`$ and
+$`b`$ is not bookkeeping — it is what the cycle is made of.
+
+## Reading the multiplier off correctly
+
+The multiplier is $`\mathrm{d}r_{k+1}/\mathrm{d}r_k`$ at the fixed point,
+which for a varying $`a`$ is **not** $`a(r^{*})`$:
+
+```math
+\frac{\mathrm{d}r_{k+1}}{\mathrm{d}r_k}
+= a(r^{*}) + a'(r^{*})\,r^{*} + b'(r^{*})
+```
+
+For the displacement prototype $`a(r^{*}) = 1`$ exactly, so the entire
+multiplier of 0.203639654 comes from the derivative terms. Taking $`a`$ for
+the multiplier would report every such cycle as neutrally stable. The
+perturbation chain gives the correct value directly, without needing
+$`a'`$ or $`b'`$.
+
+## Verification
+
+The single cycle matrix reproduces the arc-by-arc map exactly:
+$`a(r)\,r + b(r)`$ against the mapped amplitude agrees to $`0`$ or
+$`4.4\times10^{-16}`$ at every amplitude in the table above. The state chain
+and the perturbation chain were each checked against the map they came from
+across all five prototypes, at $`\le 4.4\times10^{-16}`$ and exactly
+respectively.
+
+## What this buys
+
+A cycle is now one matrix whose entries are explicit functions of the
+damping ratios and the dwells, and whose product is differentiable with
+respect to them. Multipliers come from that product rather than from
+differencing an integrated orbit — the estimator that produced a value of
+$`10^{12}`$ in `staircase.py`, returned exactly zero at the Van der Pol fit
+where one pass through a $`\zeta = 20`$ zone annihilates the perturbation,
+and supplied a published contraction figure that was its own noise floor.
+
+---
+
+# Reading it in the z domain
+
+Once a cycle is a linear map, its Jacobian's eigenvalues are **discrete
+poles**, and the whole apparatus of sampled-data stability applies. The
+README classifies the prototypes by their s-plane poles, zone by zone; this
+is the discrete counterpart, and it classifies the *cycle* rather than the
+zones.
+
+The rule is the usual one. A cycle is stable when every pole lies inside the
+unit circle, unstable when any lies outside, and marginal on it. The
+bistable staircase has one of each:
+
+| cycle | $`r^{*}`$ | pole | |
+| --- | --- | --- | --- |
+| inner | 1.167843885 | 4.188310 | outside the unit circle — repels |
+| outer | 2.253398366 | 0.163194 | inside — attracts |
+
+(Both agree with `staircase.py`, built independently, to
+$`3\times10^{-7}`$; the values here are the analytic ones.)
+
+Finding the inner one needs care worth recording: iterating the map only
+ever finds attractors. Started near the repelling cycle, iteration slides
+off it and converges to the origin. Bracketing $`P(r) - r`$ finds both.
+
+## What each way out of the unit circle predicts
+
+The value of the z-domain reading is that *where* a pole crosses says which
+bifurcation is happening, and each of the three has already been seen
+elsewhere in this repository under another name:
+
+**Through $`+1`$ — a fold of cycles.** Two cycles collide and annihilate.
+That is the bistable staircase's fate: its inner and outer cycles approach
+as the middle damping level is weakened, and at the fold they merge and both
+vanish, taking the hard-excitation behaviour with them. The multipliers
+4.188 and 0.163 are on either side of $`+1`$ and must meet there.
+
+**Through $`-1`$ — period doubling.** The cascade that ends in chaos. This
+is the crossing the forcing work was implicitly looking for when it asked
+whether contraction was strong enough to prevent one.
+
+**A complex pair through the circle — Neimark–Sacker.** The cycle loses
+stability to a torus, and the response becomes quasi-periodic. This is
+exactly the locked/quasi-periodic boundary the forcing maps are covered in:
+every "torus" cell there is a cycle whose poles have left the unit circle as
+a complex pair, and every "locked" cell one whose poles are still inside.
+
+The regime maps in `README.md` were produced by classifying stroboscopic
+sections numerically. The same three regions are what a pole plot of these
+maps would predict, from algebra rather than by sampling.
+
+## Chaos, and what the forced form offers
+
+Chaos needs the forced models. The autonomous prototypes are planar, so
+Poincare-Bendixson caps them at equilibria and cycles however many zones
+they have — the once-per-cycle map of an autonomous prototype is a scalar
+map that cannot be chaotic.
+
+With a drive the picture changes, and the arc stays linear. A sinusoid is
+itself a linear system, its state $`(\cos\Omega t, \sin\Omega t)`$ rotating,
+so carrying it alongside gives a $`5\times 5`$ arc matrix on
+$`[x, \dot{x}, \cos, \sin, 1]`$ — the block form is in
+`maps.forced_arc_matrix`, and it reproduces integrated forced arcs to
+$`10^{-12}`$, including strongly overdamped zones and the drive parameters
+at which Van der Pol is chaotic. The natural section becomes stroboscopic:
+sample once per drive period, and the recurrence steps sample to sample.
+
+That form makes an exact Lyapunov exponent available in principle. The
+stroboscopic map's Jacobian is a product of these matrices, known
+analytically, so the exponent is the growth rate of that product — no twin
+trajectory, no separation to choose, and no noise floor. This matters
+because the twin-trajectory estimator used elsewhere in the repository has a
+noise floor around $`0.008`$, which was large enough to flip four verdicts
+out of seven and to make a published contraction figure meaningless.
+
+**Not yet done.** The forced arc matrix is built and verified; assembling it
+into a stroboscopic map with zone switching, and validating the exponent
+against the twin-trajectory values, is the next step and is not claimed
+here.

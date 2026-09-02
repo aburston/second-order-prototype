@@ -179,6 +179,110 @@ def project(f, g):
     return np.eye(2) - np.outer(f, g)/denom
 
 
+def arc_matrix(zeta, centre, t):
+    """One arc as a ``3x3`` matrix on the augmented state ``[x, xdot, 1]``.
+
+    A zone's flow is affine, ``y -> y_c + Phi (y - y_c)``, and an affine map
+    becomes a linear one by carrying a constant alongside the state::
+
+        [ y ]        [ Phi   (I - Phi) y_c ] [ y ]
+        [   ]     =  [                     ] [   ]
+        [ 1 ]_{k+1}  [  0            1     ] [ 1 ]_k
+
+    So each arc is a genuine linear difference equation whose output is the
+    next one's input, and a whole cycle is a matrix *product* rather than a
+    composition of functions. The virtual centres that the velocity switched
+    models introduce live entirely in the third column.
+
+    The two scalars that are not linear stay outside: which zone the state
+    is in, and the dwell ``t``. Everything else is exact matrix arithmetic.
+    """
+    p = phi(zeta, t)
+    yc = np.array([centre, 0.0])
+    a = np.eye(3)
+    a[:2, :2] = p
+    a[:2, 2] = yc - p @ yc
+    return a
+
+
+def saltation_matrix(f_minus, f_plus, g):
+    """The saltation correction as a ``3x3`` factor, to sit in the product.
+
+    A boundary crossing is linear in the state too, so it multiplies into
+    the same chain as the arcs rather than needing separate treatment. The
+    identity for a continuous field.
+    """
+    a = np.eye(3)
+    a[:2, :2] = saltation(f_minus, f_plus, g)
+    return a
+
+
+def section_matrix(f, g):
+    """Projection onto the section as a ``3x3`` factor."""
+    a = np.eye(3)
+    a[:2, :2] = project(f, g)
+    return a
+
+
+def drive_response(zeta, om, amp=1.0):
+    """Steady state response matrix ``P`` to a unit drive of frequency ``om``.
+
+    The particular solution of ``xddot + 2 zeta wn xdot + wn^2 x =
+    amp cos(om t)`` is a fixed linear image of the drive's own state
+    ``(cos(om t), sin(om t))``::
+
+        y_p(phase) = P [cos, sin]^T
+
+    which is what lets a forced arc stay linear.
+    """
+    a2 = WN**2 - om**2
+    c2 = 2.0*zeta*WN*om
+    den = a2**2 + c2**2
+    return amp/den*np.array([[a2, c2],
+                             [c2*om, -a2*om]])
+
+
+def forced_arc_matrix(zeta, centre, t, amp, om):
+    """One forced arc as a ``5x5`` matrix on ``[x, xdot, cos, sin, 1]``.
+
+    A sinusoidal drive is itself a linear system — its state
+    ``(cos(om t), sin(om t))`` rotates — so carrying it alongside keeps the
+    arc linear rather than affine-plus-forcing::
+
+        [ y   ]     [ Phi   P R - Phi P   (I - Phi) y_c ] [ y   ]
+        [ d   ]  =  [  0         R              0       ] [ d   ]
+        [ 1   ]_k+1 [  0         0              1       ] [ 1   ]_k
+
+    with ``d = (cos, sin)`` the drive phase, ``R`` its rotation over the
+    arc, and ``P`` from :func:`drive_response`. So the forced prototypes are
+    linear difference equations too, on a state of five components instead
+    of three, and every nonlinearity is still only the choice of zone and
+    the dwell.
+
+    This is the form that covers **chaos**. The autonomous planar
+    prototypes cannot be chaotic — Poincare-Bendixson caps them at cycles —
+    so a chaotic case needs the drive, and with the drive the natural
+    section is stroboscopic: sample once per drive period and the recurrence
+    steps from one sample to the next.
+    """
+    p = phi(zeta, t)
+    yc = np.array([centre, 0.0])
+    pr = drive_response(zeta, om, amp)
+    r = np.array([[np.cos(om*t), -np.sin(om*t)],
+                  [np.sin(om*t), np.cos(om*t)]])
+    m = np.eye(5)
+    m[:2, :2] = p
+    m[:2, 2:4] = pr @ r - p @ pr
+    m[:2, 4] = yc - p @ yc
+    m[2:4, 2:4] = r
+    return m
+
+
+def forced_state(y, phase):
+    """Pack a state and drive phase into the augmented vector."""
+    return np.array([y[0], y[1], np.cos(phase), np.sin(phase), 1.0])
+
+
 class Model:
     """A piecewise linear prototype, as zones separated by straight lines.
 
@@ -196,11 +300,18 @@ class Model:
         self.walls = [(np.asarray(g, float), float(v)) for g, v in walls]
         self.zone_of = zone_of
 
-    def run(self, y0, g_sec, level_sec, direction, max_events=64):
+    def run(self, y0, g_sec, level_sec, direction, max_events=64,
+            record=None):
         """Flow until the section is met, accumulating the monodromy.
 
         Returns ``(y, T, M)``: the state on arrival, the elapsed time, and
         the product of transition and saltation matrices over the path.
+
+        Pass a list as ``record`` to collect the factor chain as it is
+        built: ``("arc", zone, zeta, centre, t, A)`` and
+        ``("salt", g, level, S)`` entries, each ``3x3`` on the augmented
+        state, in the order they multiply. That is the difference equation
+        the flow actually is, written out.
         """
         y = np.asarray(y0, float).copy()
         M = np.eye(2)
@@ -223,6 +334,9 @@ class Model:
             # equation and so return bit-identical times
             t, g, lv, is_sec = min(events, key=lambda e: (e[0], not e[3]))
             y_new = advance(zeta, y, centre, t)
+            if record is not None:
+                record.append(("arc", k, zeta, centre, t,
+                               arc_matrix(zeta, centre, t)))
             M = phi(zeta, t) @ M
             t_tot += t
             if is_sec:
@@ -231,6 +345,8 @@ class Model:
             k2 = self.zone_of(y_new + 1e-11*f_m)
             z2, c2 = self.zones[k2]
             f_p = field(z2, y_new, c2)
+            if record is not None:
+                record.append(("salt", g, lv, saltation_matrix(f_m, f_p, g)))
             M = saltation(f_m, f_p, g) @ M
             y = y_new
         return None, np.nan, None
@@ -316,6 +432,66 @@ def displacement(zp, zm, x0=1.0, symmetric=True):
                  lambda y: 1 if y[0] > x0 else 0)
 
 
+def cycle_matrix(model, r, g_sec=G_V, level_sec=0.0, direction=-1):
+    """One complete cycle as a single ``3x3`` matrix, from a point on the section.
+
+    Multiplies out every arc of one full return, so the recurrence steps
+    cycle to cycle rather than arc to arc::
+
+        [y, 1]_{k+1} = C(r_k) [y, 1]_k
+
+    On the section ``xdot = 0`` the state is ``(r, 0)``, so this collapses
+    further to a scalar affine recurrence in the amplitude alone::
+
+        r_{k+1} = a(r_k) r_k + b(r_k),   a = C[0,0],  b = C[0,2]
+
+    Scope: this assumes the cycle closes, which is what an underdamped
+    prototype or one carrying a limit cycle does. It is not defined for a
+    trajectory that leaves without returning.
+
+    Returns ``(r_next, C, a, b)``.
+    """
+    y0 = np.array([float(r), 0.0])
+    rec = []
+    y, T, M = model.run(y0, g_sec, level_sec, direction, record=rec)
+    if y is None:
+        return np.nan, None, np.nan, np.nan
+    c = np.eye(3)
+    for item in rec:
+        if item[0] == "arc":                   # state chain: arcs only
+            c = item[5] @ c
+    return float(y[0]), c, float(c[0, 0]), float(c[0, 2])
+
+
+def cycle_coefficients(model, rs, **kw):
+    """``(a, b)`` of the once-per-cycle recurrence, at several amplitudes.
+
+    Constant coefficients mean the prototype is a genuine linear difference
+    equation and, by the argument in ``MAPS.md``, cannot hold an isolated
+    limit cycle. Coefficients that move with ``r`` are what an isolated
+    cycle is made of.
+    """
+    return [(r,) + cycle_matrix(model, r, **kw)[2:] for r in rs]
+
+
+def staircase_model(levels, edges):
+    """The multi-threshold displacement prototype, as zones and walls.
+
+    Same recipe as :func:`displacement` with more of each — which is the
+    point of building the models this way. Zones are ordered innermost
+    first, matching ``staircase.py``.
+    """
+    zones = [(float(z), 0.0) for z in levels]
+    walls = [(G_X, float(e)) for e in edges] + [(G_X, -float(e))
+                                                for e in edges]
+    ed = np.asarray(edges, float)
+
+    def zone_of(y):
+        return int(np.searchsorted(ed, abs(y[0]), "right"))
+
+    return Model(zones, walls, zone_of)
+
+
 def find_cycle(model, y0, g_sec=G_V, level_sec=0.0, direction=-1,
                n=500, tol=1e-13):
     """Iterate the map to its fixed point.
@@ -331,6 +507,36 @@ def find_cycle(model, y0, g_sec=G_V, level_sec=0.0, direction=-1,
             return y2, T, DP
         y = y2
     return y, T, DP
+
+
+def cycles_bracketed(model, rmin, rmax, n=240, g_sec=G_V, level_sec=0.0,
+                     direction=-1):
+    """Every cycle in a range, by bracketing ``P(r) - r``, stable or not.
+
+    Iterating the map finds only attractors: an unstable cycle repels, so
+    forward iteration slides off it — started near the inner cycle of the
+    bistable staircase, iteration converges to the origin instead. Root
+    finding on the residual sees both.
+
+    Returns a list of ``(r, multiplier, stable)``.
+    """
+    def residual(r):
+        y, _, _ = model.poincare(np.array([r, 0.0]), g_sec, level_sec,
+                                 direction)
+        return np.nan if y is None else y[0] - r
+
+    grid = np.linspace(rmin, rmax, n)
+    vals = np.array([residual(r) for r in grid])
+    out = []
+    for k in range(len(grid) - 1):
+        a, b = vals[k], vals[k + 1]
+        if np.isfinite(a) and np.isfinite(b) and a*b < 0:
+            r = brentq(residual, grid[k], grid[k + 1], xtol=1e-13)
+            _, _, dp = model.poincare(np.array([r, 0.0]), g_sec, level_sec,
+                                      direction)
+            mu = multiplier_of(dp)
+            out.append((r, mu, abs(mu) < 1.0))
+    return out
 
 
 def multiplier_of(DP):
