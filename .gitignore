@@ -1,3 +1,6 @@
 # Python bytecode, regenerated whenever the analysis modules are imported
 __pycache__/
 *.py[cod]
+
+# regenerable point clouds for the attractor figure
+figures/.attractor-*.npy
