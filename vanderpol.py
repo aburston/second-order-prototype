@@ -122,26 +122,59 @@ def contraction(mu):
     ``exp(2 Lambda)``. Measured here by differencing the period map, since
     there is no closed form to appeal to.
 
-    Returns the multiplier furthest from 1.
+    Returns the multiplier furthest from 1, or ``nan`` when the value is not
+    resolvable — see :func:`contraction_resolved`, which this calls. A
+    relaxation oscillator contracts so hard that its transverse multiplier
+    falls below anything a finite difference in double precision can see,
+    and returning a number there would be reporting noise.
+    """
+    val, _ = contraction_resolved(mu)
+    return val
+
+
+def contraction_resolved(mu, steps=(1e-7, 1e-6, 1e-5, 1e-4, 1e-3),
+                         spread=0.25):
+    """Measure the cycle's multiplier and say whether it is resolved at all.
+
+    A single finite difference cannot tell a genuinely tiny multiplier from
+    its own rounding error, and for a relaxation oscillator the difference
+    matters: at ``mu = 5`` sweeping the step over five orders gives -0.746,
+    -6.99e-4, +6.12e-4, +2.38e-4, -4.96e-5, -2.32e-3 and -0.249 — the sign
+    flips and the magnitude moves four orders, so no digit of it is real.
+    At ``mu = 0.1`` the same sweep holds 0.53307 across six orders, and at
+    ``mu = 1`` it holds 8.6e-4 to about a tenth. So the test is agreement
+    across steps, not the value from any one of them.
+
+    Returns ``(value, resolved)``: the median estimate, and whether the
+    estimates agree to within ``spread`` in relative terms and share a sign.
+    An unresolved case gets ``(nan, False)`` — its true multiplier is
+    smaller than double precision can express through this map, which is
+    itself the finding.
     """
     T, y = cycle(mu)
     if not np.isfinite(T):
-        return float("nan")
+        return float("nan"), False
     f = field(mu)
-    h = 1e-6
 
     def pmap(state):
         sol = solve_ivp(f, (0.0, T), state, method=section.METHOD,
                         rtol=section.RTOL, atol=section.ATOL)
         return sol.y[:, -1]
 
-    j = np.empty((2, 2))
-    for k in range(2):
-        e = np.zeros(2)
-        e[k] = h
-        j[:, k] = (pmap(y + e) - pmap(y - e))/(2.0*h)
-    ev = np.linalg.eigvals(j)
-    return float(np.real(ev[np.argmax(np.abs(ev - 1.0))]))
+    vals = []
+    for h in steps:
+        j = np.empty((2, 2))
+        for k in range(2):
+            e = np.zeros(2)
+            e[k] = h
+            j[:, k] = (pmap(y + e) - pmap(y - e))/(2.0*h)
+        ev = np.linalg.eigvals(j)
+        vals.append(float(np.real(ev[np.argmax(np.abs(ev - 1.0))])))
+    v = np.array(vals)
+    med = float(np.median(v))
+    ok = bool(np.all(np.sign(v) == np.sign(med)) and med != 0.0
+              and np.max(np.abs(v - med))/abs(med) < spread)
+    return (med if ok else float("nan")), ok
 
 
 def _settle(mu, r, floor=200):

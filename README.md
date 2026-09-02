@@ -1078,6 +1078,111 @@ event detection will step across a boundary and smear the corner. Bound the
 step size or detect the crossing. The exact reduction has no such problem:
 it solves each arc analytically and matches at the crossing.
 
+## Adding a second threshold
+
+Every prototype above switches the damping ratio **once**. This one switches
+it twice. Take the symmetric displacement-switched member — the piecewise
+constant Van der Pol of the previous section — and add a second threshold,
+giving five zones and three levels:
+
+```math
+\zeta(x) =
+\begin{cases}
+\zeta_{2} & |x| \gt b \\
+\zeta_{1} & a \lt |x| \lt b \\
+\zeta_{0} & |x| \lt a
+\end{cases}
+\qquad 0 \lt a \lt b
+```
+
+Nothing else changes: the field is still discontinuous and still never
+slides, every zone is still an oscillation about the origin, and the arcs
+are still the same kernels. `staircase.py` carries it, for any number of
+levels.
+
+### The reduction extends rather than restarts
+
+The quantity $`2\phi - \sin 2\phi`$ already used above is the share of a
+near-circular cycle's $`\dot{x}^2`$ weight lying beyond a threshold — the
+damping does work at a rate proportional to $`\zeta(x)\dot{x}^2`$, and with
+$`x = R\cos\theta`$ the zone $`|x| \gt e`$ is the arc where
+$`|\cos\theta| \gt e/R`$. So levels simply stack:
+
+```math
+\langle\zeta\rangle(R) = \zeta_{0} + \sum_{k}(\zeta_{k} - \zeta_{k-1})\,w\!\left(\frac{e_k}{R}\right),
+\qquad
+w(c) = \frac{2\phi - \sin 2\phi}{\pi},\quad \phi = \arccos c
+```
+
+A limit cycle sits wherever this crosses zero. For two levels it collapses
+to $`2\phi - \sin 2\phi = \pi\rho`$, the equation already derived — same
+cycle radius as `displacement.py` to $`2.2\times10^{-16}`$, so none of the
+earlier results are disturbed.
+
+### What the second threshold buys: a second cycle
+
+With one threshold $`\langle\zeta\rangle`$ runs monotonically from
+$`\zeta_{0}`$ to $`\zeta_{1}`$ and can cross zero only once, so there is at
+most one limit cycle. Three levels let it turn, and it can cross twice.
+
+Taking $`\zeta_{0} = 0.15`$, $`\zeta_{1} = -0.25`$, $`\zeta_{2} = 0.40`$,
+$`a = 0.6`$, $`b = 1.6`$ — quiet at the origin, self-exciting in a band,
+heavily damped beyond it:
+
+| cycle | averaged | exact | multiplier | |
+| --- | --- | --- | --- | --- |
+| inner | 1.16599 | 1.167844 | 4.188310 | unstable |
+| outer | 2.25042 | 2.253398 | 0.163194 | stable |
+
+The origin attracts, the outer cycle attracts, and **the inner cycle is the
+boundary between their basins**. Direct integration confirms it: starting 3%
+inside the inner cycle decays to zero, starting 3% outside converges to
+2.253398 — the stable radius to six decimals.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/staircase-dark.png">
+  <img alt="Averaged damping crossing zero twice, the resulting nested cycles with the basin boundary, and convergence to Van der Pol" src="figures/staircase-light.png">
+</picture>
+
+*Left: the averaged damping turns, so it crosses zero twice. Middle: the unstable cycle separates the origin's basin from the outer cycle's. Right: adding levels closes the gap to Van der Pol.*
+
+That is **hard excitation** — a system that sits quietly until something
+knocks it past a threshold, then runs away to a large oscillation and stays
+there. It is a common failure mode, and none of the four earlier prototypes
+can represent it, because one threshold cannot turn the effective damping
+round.
+
+### A dial towards a smooth nonlinearity
+
+The previous section found that the prototypes never go chaotic under
+forcing while Van der Pol does, and traced the difference to the damping
+saturating rather than growing without bound. The staircase puts a dial on
+that. Fitting levels to $`\zeta_{\mathrm{vdp}}(x) = -\mu(1-x^2)/2`$ at
+$`\mu = 1`$, where the true cycle radius is exactly 2:
+
+| levels | 2 | 3 | 5 | 9 | 17 |
+| --- | --- | --- | --- | --- | --- |
+| cycle radius | 1.72605 | 1.82330 | 1.94997 | 1.99303 | 2.00318 |
+
+The approximation closes on Van der Pol as levels are added. But the
+outermost zone is unbounded and its level is constant, so a staircase
+saturates however fine it is: more levels push the saturation outwards
+without removing it. Whether that is enough to admit chaos under forcing is
+the open question the previous section left, now with a parameter to turn.
+
+### Numerical note
+
+The exact half-cycle map has to time **both** events in each zone — reaching
+the next threshold, and turning round — and take the earlier one. Solving
+only for the threshold is wrong in a way that is easy to miss: the arc
+formula is the linear solution for its zone, which oscillates forever, so
+its first arrival at a distant threshold can be several oscillations after
+the real trajectory has turned round and left. That produced half cycles of
+9.06 against a half period of $`\pi`$, an amplitude jumping from 0.59 to 2.33
+across a step of 0.01 in the starting peak, and a Floquet multiplier of
+$`10^{12}`$. With both events timed, the map agrees with direct integration
+to $`10^{-11}`$ across the tested amplitudes.
+
 ## Forcing: what a drive does to the cycle
 
 All four prototypes are planar and autonomous, so Poincaré–Bendixson caps
@@ -1318,7 +1423,24 @@ convergence check described below:
 | deadzone prototype | 0.2036 | 0 | $`+0.0034`$ |
 | Van der Pol, $`\mu = 0.1`$ | 0.5330 | 0 | $`+0.0002`$ |
 | Van der Pol, $`\mu = 1.0`$ | $`8.6\times10^{-4}`$ | 1 | $`+0.0380`$ |
-| Van der Pol, $`\mu = 5.0`$ | $`6.1\times10^{-4}`$ | 2 | $`+0.1180`$ |
+| Van der Pol, $`\mu = 5.0`$ | unresolvable | 2 | $`+0.1180`$ |
+
+*Correction.* That last contraction was first published here as
+$`6.1\times10^{-4}`$. It is not a measurement. Sweeping the differencing
+step over five orders gives $`-0.746`$, $`-6.99\times10^{-4}`$,
+$`+6.12\times10^{-4}`$, $`+2.38\times10^{-4}`$, $`-4.96\times10^{-5}`$,
+$`-2.32\times10^{-3}`$ and $`-0.249`$ — the sign flips and the magnitude
+moves four orders, so no digit of it was real. A relaxation oscillator
+contracts transverse to its cycle by more than double precision can express
+through a finite difference. The other two rows survive the same test:
+0.53307 holds across six orders of step, and $`8.6\times10^{-4}`$ to about a
+tenth. `vanderpol.contraction_resolved` now applies that test and returns
+``nan`` rather than a number it cannot stand behind.
+
+The conclusion is unaffected, and if anything sharpened: contraction runs
+0.5330, $`8.6\times10^{-4}`$, immeasurably small across the three, while
+chaos runs absent, present, present. Whatever separates them is still not
+how fast they forget a transient.
 
 **At $`\mu = 0.1`$ Van der Pol *is* the prototype**, behaviourally: a 1:1
 tongue opening from $`\Omega = \omega_{lc}`$, narrow higher order locks at
@@ -1380,3 +1502,119 @@ and $`+0.036`$, barely moved. The floor is therefore about 0.008, and the
 threshold used above is 0.02, with a factor of two of clearance either side.
 `section.confirm_chaos` runs that test, so a marginal cell can be checked
 rather than trusted.
+
+## Driving the staircase at Van der Pol's chaotic point
+
+The control section left the prototypes' immunity to chaos attributed to
+the *shape* of their nonlinearity: damping that saturates rather than
+grows. The staircase puts a dial on that, so the attribution can be tested
+rather than argued. `staircase.window_scan` does it.
+
+Both systems are driven identically — same amplitude $`A = 5`$, same
+frequency, same initial state, same transient, and classified by the same
+engine in `section.py`. The only difference between the runs is the damping
+law, and the only thing varied across them is how many levels the staircase
+has.
+
+### Saturation is not what is being tested
+
+The driven Van der Pol orbit at this point reaches $`\lvert x \rvert \approx 2.15`$,
+barely beyond its free radius of 2.02 — the velocity is what grows, to
+about 10. Since the staircase switches on *displacement*, fitting it out to
+$`x = 3`$ puts the whole chaotic orbit inside the fitted range and its outer
+plateau is never visited.
+
+That matters, because it separates two explanations that the control
+section could not. Whatever the level count does here, it is not about
+saturation.
+
+### About nine levels is where chaos begins
+
+At $`\mu = 5`$, $`A = 5`$, $`\Omega = 2.466`$ — the classic chaotic case:
+
+| levels | behaviour | $`\lambda`$ | confirmed |
+| --- | --- | --- | --- |
+| 2 | lock 3 | $`-0.302`$ | |
+| 3 | lock 3 | $`-0.615`$ | |
+| 5 | lock 3 | $`-0.442`$ | |
+| 9 | **chaos** | $`+0.093`$ | yes |
+| 17 | torus | $`-0.012`$ | |
+| 33 | **chaos** | $`+0.055`$ | yes |
+| 65 | **chaos** | $`+0.088`$ | yes |
+| Van der Pol | chaos | $`+0.101`$ | yes |
+
+Every chaotic verdict here passed `section.confirm_chaos` — five times the
+run length and a hundred times the twin separation.
+
+**So piecewise constant damping is not an obstruction to chaos.** The
+earlier prototypes are not chaotic because two or three levels are too
+coarse to carry the mechanism, not because the damping is switched. That
+retires the last of the structural explanations offered for their
+immunity: it was never the switch, and here it is not the saturation
+either — it is resolution.
+
+### The chaos lives between the locks
+
+The single frequency above is a poor summary, and the row at 17 levels
+shows why. Sweeping the drive frequency instead:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/staircase-vdp-dark.png">
+  <img alt="Damping laws, regime strips against drive frequency, and convergence of the chaotic windows" src="figures/staircase-vdp-light.png">
+</picture>
+
+*Left: the only difference between the systems. Middle: how each responds as the drive frequency is swept. Right: agreement with Van der Pol against level count.*
+
+Every one of the six systems runs the same sequence as $`\Omega`$ rises —
+lock 3, a chaotic band, lock 4, a second chaotic band, lock 5 — with the
+chaos confined to the transitions between one lock and the next. This is
+period adding, and it is the structure the staircase has to reproduce, not
+a single point in it.
+
+The level count moves those bands. Counting the sampled frequencies where
+both are chaotic against those where either is:
+
+| levels | chaotic frequencies | shared with Van der Pol | agreement |
+| --- | --- | --- | --- |
+| 5 | 3 | 0 of 9 | 0.000 |
+| 9 | 9 | 2 of 9 | 0.125 |
+| 17 | 9 | 5 of 9 | 0.385 |
+| 33 | 7 | 6 of 9 | 0.600 |
+| 65 | 8 | **8 of 9** | **0.889** |
+
+At five levels the bands are in the wrong place entirely. By sixty-five
+they sit on Van der Pol's, with exponents agreeing to within the noise —
+$`+0.106`$ against $`+0.110`$ at $`\Omega = 2.435`$, $`+0.118`$ against
+$`+0.098`$ at 2.470. The seventeen level row is not an anomaly but the same
+effect: its bands are shifted, so a single frequency samples one system
+inside a band and another outside it.
+
+### Matching the free cycle is a much weaker test than matching the driven one
+
+This is the part that bears on fitting field data. At nine levels the
+staircase's unforced cycle already matches Van der Pol's to half a per
+cent — radius 2.0118 against 2.0215, period 11.480 against 11.612 — while
+its chaotic bands are still almost entirely in the wrong place, 2 of 9.
+Agreement on the free response is not evidence of agreement under
+excitation.
+
+A model fitted to a ringdown can therefore reproduce it faithfully and
+still predict the wrong behaviour when the machine is driven. The
+two-amplitude class test in `speculation.md` is a partial guard; matching a
+*driven* response at two frequencies would be a stronger one.
+
+### Numerical note
+
+Sample the transition, not the range. A first sweep of this comparison
+stepped $`\Omega`$ by 0.05 and reported **zero** chaotic points for Van der
+Pol — a system the same code, same initial state and same transient had
+confirmed chaotic at $`\Omega = 2.466`$ minutes earlier. Nothing was
+inconsistent: the chaotic bands are narrower than that spacing and the grid
+stepped over them, 2.450 landing on lock 4 and 2.500 on lock 5. Reported as
+it stood, the table would have said the staircase was chaotic where Van der
+Pol was not, which is the reverse of the truth and entirely an artefact of
+grid spacing.
+
+The scan resolution used above is 0.005, ten times finer than the bands.
+Where a quantity varies on a scale set by the dynamics rather than by the
+range being explored, the grid has to be chosen from the former.

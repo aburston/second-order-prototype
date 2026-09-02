@@ -34,6 +34,10 @@ Five figures, in the order the README develops the argument:
 ``forced-sections``
     The three things the stroboscopic section is ever observed to be —
     a point, a closed curve, a chain of islands — and no fourth.
+``staircase``
+    The two threshold prototype: averaged damping crossing zero twice, the
+    two cycles that follow with the basin between them, and the staircase
+    closing on Van der Pol as levels are added.
 ``vanderpol-compare``
     The same forcing analysis run on Van der Pol, whose damping is
     unbounded rather than saturating: at weak nonlinearity it matches the
@@ -60,6 +64,7 @@ from scipy.integrate import solve_ivp
 
 import forced
 import section
+import staircase
 import vanderpol
 import frequency
 import symmetric
@@ -1221,6 +1226,230 @@ def fig_vanderpol_compare(th, name):
     save(fig, name, "vanderpol-compare")
 
 
+def fig_staircase(th, name):
+    """Draw what the second threshold adds: a second cycle, and a basin.
+
+    Left: the cycle averaged damping against amplitude. With one threshold
+    it runs monotonically between two levels and can cross zero once. Three
+    levels let it turn, so it crosses twice — rising through zero at the
+    unstable cycle and falling through at the stable one.
+
+    Middle: the phase portrait. Trajectories started inside the inner cycle
+    decay to the origin, those started outside it wind on to the outer
+    cycle, and the inner cycle is the boundary between the two basins. The
+    origin and the outer cycle both attract, which none of the earlier
+    prototypes can do.
+
+    Right: the staircase closing on Van der Pol as levels are added. The
+    cycle radius approaches Van der Pol's exact 2, but the outermost zone is
+    unbounded, so the approximation is only ever good over a bounded range
+    of amplitude.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
+    lv, ed = staircase.BISTABLE_LEVELS, staircase.BISTABLE_EDGES
+    cyc = staircase.cycles_exact(lv, ed)
+    r_un = [r for r, m, st in cyc if not st][0]
+    r_st = [r for r, m, st in cyc if st][0]
+
+    fig, axes = newfig(th, 1, 3, figsize=(13.2, 4.4))
+
+    # ---- left: averaged damping
+    rr = np.linspace(0.25, 4.0, 900)
+    zz = np.array([staircase.mean_damping(r, lv, ed) for r in rr])
+    axes[0].axhline(0.0, color=th["ink2"], linewidth=1.0,
+                    linestyle=(0, (5, 3)), zorder=3)
+    axes[0].plot(rr, zz, color=th["series"][0], linewidth=1.9, zorder=4,
+                 label="$\\langle\\zeta\\rangle(R)$")
+    for r, txt, k in ((r_un, "unstable", 1), (r_st, "stable", 2)):
+        axes[0].plot([r], [0.0], "o", color=th["ink"], markersize=6,
+                     zorder=6)
+        axes[0].annotate(txt + "\n$R=%.3f$" % r, (r, 0.0), fontsize=8,
+                         color=th["ink"], ha="center", zorder=7,
+                         xytext=(0, 16 if k == 1 else -30),
+                         textcoords="offset points",
+                         bbox=dict(boxstyle="round,pad=0.25",
+                                   fc=th["surface"], ec=th["grid"], lw=0.8))
+    for e in ed:
+        axes[0].axvline(e, color=th["axis"], linewidth=0.9, zorder=2)
+    axes[0].text(ed[0], zz.max()*0.96, " $a$", fontsize=8, color=th["ink2"],
+                 ha="left", va="top", zorder=6)
+    axes[0].text(ed[1], zz.max()*0.96, " $b$", fontsize=8, color=th["ink2"],
+                 ha="left", va="top", zorder=6)
+    style(axes[0], th, "amplitude $R$", "cycle averaged $\\zeta$",
+          "Two zero crossings, so two cycles")
+    legend(axes[0], th, loc="lower right")
+
+    # ---- middle: phase portrait with the basin boundary
+    f = staircase.field(lv, ed)
+    for k, (a0, lbl) in enumerate(((r_un*0.93, "inside: decays"),
+                                   (r_un*1.07, "outside: grows"),
+                                   (3.6, "from beyond: settles"))):
+        sol = solve_ivp(f, (0.0, 150.0), [a0, 0.0], method="LSODA",
+                        rtol=1e-10, atol=1e-12,
+                        t_eval=np.linspace(0.0, 150.0, 12000))
+        axes[1].plot(sol.y[0], sol.y[1], color=th["series"][k],
+                     linewidth=1.0, zorder=4, label=lbl)
+    for r, ls in ((r_un, (0, (4, 3))), (r_st, "-")):
+        sol = solve_ivp(f, (0.0, staircase.period(r, lv, ed)), [r, 0.0],
+                        method="LSODA", rtol=1e-12, atol=1e-14,
+                        t_eval=np.linspace(0.0, staircase.period(r, lv, ed),
+                                           2000))
+        axes[1].plot(sol.y[0], sol.y[1], color=th["ink"], linewidth=1.7,
+                     linestyle=ls, zorder=6)
+    for e in ed:
+        for sgn in (1, -1):
+            axes[1].axvline(sgn*e, color=th["ink2"], linewidth=1.0,
+                            linestyle=(0, (5, 3)), zorder=3)
+    axes[1].text(0.5, 0.965,
+                 "dashed: unstable cycle (basin boundary)\nsolid: stable cycle",
+                 transform=axes[1].transAxes, fontsize=8, color=th["ink"],
+                 ha="center", va="top", zorder=8,
+                 bbox=dict(boxstyle="round,pad=0.3", fc=th["surface"],
+                           ec=th["grid"], lw=0.8, alpha=0.94))
+    style(axes[1], th, "$x_1 = x$", "$x_2 = \\dot{x}$",
+          "The origin and the outer cycle both attract")
+    legend(axes[1], th, loc="lower right")
+
+    # ---- right: convergence to Van der Pol
+    ns = (2, 3, 5, 9, 17)
+    got = []
+    for n in ns:
+        lvn, edn = staircase.vdp_staircase(1.0, n)
+        ex = staircase.cycles_exact(lvn, edn)
+        got.append(ex[-1][0] if ex else np.nan)
+    axes[2].axhline(2.0, color=th["ink2"], linewidth=1.2,
+                    linestyle=(0, (5, 3)), zorder=3)
+    axes[2].text(ns[-1], 2.0, "Van der Pol, $R=2$  ", fontsize=8,
+                 color=th["ink2"], ha="right", va="bottom", zorder=6)
+    axes[2].plot(ns, got, "o-", color=th["series"][0], linewidth=1.8,
+                 markersize=5, zorder=4, label="staircase cycle radius")
+    for n, g in zip(ns, got):
+        axes[2].annotate("%.3f" % g, (n, g), fontsize=7.5,
+                         color=th["ink2"], ha="center",
+                         xytext=(0, -13), textcoords="offset points")
+    axes[2].set_xscale("log")
+    axes[2].set_xticks(ns)
+    axes[2].set_xticklabels([str(n) for n in ns])
+    # a log axis draws its own minor decade labels, which land on top of
+    # these level counts
+    axes[2].xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
+    axes[2].xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+    style(axes[2], th, "levels in the staircase",
+          "cycle radius", "Closing on Van der Pol, $\\mu = 1$")
+    legend(axes[2], th, loc="lower right")
+
+    fig.suptitle("Two thresholds: a second cycle, a basin, and a dial "
+                 "towards a smooth nonlinearity",
+                 color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "staircase")
+
+
+#: Drive frequencies for the side by side. Fine enough to resolve the
+#: chaotic bands, which sit in the transitions between one lock and the
+#: next: a 0.05 grid stepped straight over Van der Pol's and reported it as
+#: having none.
+SVDP_OMS = np.round(np.linspace(2.40, 2.56, 33), 4)
+SVDP_LEVELS = (5, 9, 17, 33, 65)
+
+
+def fig_staircase_vdp(th, name):
+    """Drive the staircase beside Van der Pol and compare what comes out.
+
+    Left: the damping laws themselves. Van der Pol's ``-mu(1-x^2)/2`` is
+    smooth; the staircase samples it in steps. This is the only difference
+    between the two systems, and the level count is the only thing varied.
+
+    Middle: how each responds as the drive frequency is swept, one strip per
+    system. All of them run lock 3, then a chaotic band, then lock 4,
+    another chaotic band, then lock 5 — the chaos lives in the transitions.
+    The strips make the convergence visible: at five levels the bands are in
+    the wrong place, and by sixty-five they sit on Van der Pol's.
+
+    Right: that convergence as a number. The Jaccard index counts
+    frequencies where both are chaotic against frequencies where either is,
+    so a staircase going chaotic where Van der Pol does not counts against
+    it exactly as a miss does.
+
+    The orbit stays within ``|x| ~ 2.15`` throughout, well inside the fitted
+    range, so none of this is about the staircase's outer plateau.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
+    scan = staircase.window_scan(SVDP_OMS, SVDP_LEVELS)
+    agree = staircase.window_agreement(scan)
+
+    fig, axes = newfig(th, 1, 3, figsize=(14.6, 4.4))
+
+    xs = np.linspace(0.0, staircase.CMP_XMAX, 800)
+    axes[0].plot(xs, staircase.vdp_zeta(xs, staircase.CMP_MU),
+                 color=th["ink2"], linewidth=1.8, zorder=5,
+                 label="Van der Pol")
+    for k, n in enumerate((5, 17)):
+        lv, ed = staircase.vdp_staircase(staircase.CMP_MU, n,
+                                         staircase.CMP_XMAX)
+        ys = [staircase.zeta_at(x, lv, ed) for x in xs]
+        axes[0].step(xs, ys, color=th["series"][k], linewidth=1.4, zorder=4,
+                     where="mid", label="staircase, %d levels" % n)
+    axes[0].axhline(0.0, color=th["axis"], linewidth=0.9, zorder=2)
+    style(axes[0], th, "$x$", "damping ratio  $\\zeta$",
+          "The only difference: how finely\nthe same law is resolved")
+    legend(axes[0], th, loc="upper left")
+
+    tags = [str(n) for n in SVDP_LEVELS] + ["vdp"]
+    labels = ["%d levels" % n for n in SVDP_LEVELS] + ["Van der Pol"]
+    code = {"chaos": 2, "torus": 1}
+    grid = np.array([[code.get(lab, 0) for _, lab, _ in scan[t]]
+                     for t in tags])
+    cmap = matplotlib.colors.ListedColormap(list(th["series"]))
+    axes[1].pcolormesh(SVDP_OMS, np.arange(len(tags)), grid, cmap=cmap,
+                       vmin=-0.5, vmax=2.5, shading="nearest", zorder=1)
+    axes[1].set_yticks(np.arange(len(tags)))
+    axes[1].set_yticklabels(labels)
+    style(axes[1], th, "drive frequency  $\\Omega$", "",
+          "Chaos lives in the transitions\nbetween one lock and the next")
+    handles = [matplotlib.patches.Patch(facecolor=th["series"][i], label=t)
+               for i, t in enumerate(("locked", "quasi-periodic", "chaotic"))]
+    # below the axes, not on them: at lower left the box covered genuine
+    # chaotic cells in the nine level row
+    axes[1].legend(handles=handles, fontsize=8, labelcolor=th["ink2"],
+                   frameon=False, ncol=3, loc="upper center",
+                   bbox_to_anchor=(0.5, -0.17)).set_zorder(9)
+
+    js = [agree[str(n)][2] for n in SVDP_LEVELS]
+    axes[2].plot(SVDP_LEVELS, js, "o-", color=th["series"][0], linewidth=1.8,
+                 markersize=5, zorder=4, label="agreement with Van der Pol")
+    for n, j in zip(SVDP_LEVELS, js):
+        axes[2].annotate("%.2f" % j, (n, j), fontsize=8, color=th["ink2"],
+                         xytext=(0, -14), textcoords="offset points",
+                         ha="center")
+    axes[2].axhline(1.0, color=th["ink2"], linewidth=1.1,
+                    linestyle=(0, (5, 3)), zorder=3)
+    axes[2].text(SVDP_LEVELS[-1], 1.0, "Van der Pol ", fontsize=8,
+                 color=th["ink2"], va="bottom", ha="right", zorder=6)
+    axes[2].set_xscale("log")
+    axes[2].set_xticks(list(SVDP_LEVELS))
+    axes[2].set_xticklabels([str(n) for n in SVDP_LEVELS])
+    # a log axis keeps its own minor ticks, whose labels collide with these
+    axes[2].xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
+    axes[2].xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+    axes[2].set_ylim(-0.05, 1.12)
+    style(axes[2], th, "levels in the staircase",
+          "shared chaotic frequencies / combined",
+          "A piecewise model converges on\nthe chaos, not just the cycle")
+    legend(axes[2], th, loc="upper left")
+
+    fig.suptitle("Driving the staircase at forced Van der Pol's chaotic "
+                 "point", color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "staircase-vdp")
+
+
 if __name__ == "__main__":
     for name, th in THEMES.items():
         print(f"{name}:")
@@ -1236,4 +1465,6 @@ if __name__ == "__main__":
         fig_four_models(th, name)
         fig_forced_tongues(th, name)
         fig_forced_sections(th, name)
+        fig_staircase(th, name)
+        fig_staircase_vdp(th, name)
         fig_vanderpol_compare(th, name)
