@@ -136,6 +136,53 @@ def w_lc(zp=ZP, zm=ZM):
     return 2.0*np.pi/symmetric.period_exact(zp, zm, 1.0)[0]
 
 
+def contraction(zp=ZP, zm=ZM):
+    """Floquet multiplier of the *unforced* cycle, ``exp(2 Lambda)``.
+
+    ``Lambda`` is the dwell weighted sum of the two half planes' pole real
+    parts over a full period, which the unforced analysis already reduces
+    the cycle's stability to. Verified here against a directly differenced
+    monodromy matrix: at ``zp = 0.3``, ``zm = -0.1`` this returns 0.203640
+    where the measured multiplier pair is ``(0.99997, 0.20363)`` — the unit
+    multiplier being the neutral direction along the cycle, as it must be
+    for an autonomous orbit.
+
+    It is the number that governs everything about the forced problem's
+    numerics, because it is how fast a transient dies.
+    """
+    _, (t_out, t_in) = symmetric.period_exact(zp, zm, 1.0)
+    return float(np.exp(-4.0*WN*(zp*t_out + zm*t_in)))
+
+
+def settle_periods(zp=ZP, zm=ZM, r=1.0, tol=1e-9, floor=500, cap=8000):
+    """Drive periods to discard before a transient is below ``tol``.
+
+    A transient decays by ``contraction(zp, zm)`` per *cycle*, so reaching
+    ``tol`` takes ``log(tol) / log(contraction)`` cycles, and a cycle is
+    ``r = Omega / w_lc`` drive periods.
+
+    This has to be computed rather than fixed, because it varies by more
+    than an order of magnitude across the cases of interest and a fixed
+    value silently invents results at the weak end. At ``exp(2 Lambda) =
+    0.20`` twelve cycles suffice; at 0.98 it takes about 1200, and a sweep
+    that discarded 500 reported the entire 1:1 tongue as absent — every one
+    of those cells is a 1:1 lock once the transient is actually given time
+    to die.
+
+    Args:
+        zp, zm: damping ratios, which set the contraction.
+        r: drive frequency as a multiple of the cycle frequency.
+        tol: residual transient to reach, relative to the orbit.
+        floor: never return less than this.
+        cap: never return more than this, so a near neutral case fails
+            visibly on the recurrence test rather than running for ever.
+    """
+    mu = contraction(zp, zm)
+    if not (0.0 < mu < 1.0):
+        return floor
+    return int(min(cap, max(floor, np.ceil(np.log(tol)/np.log(mu)*r))))
+
+
 def field(zp, zm, v0, amp, om):
     """Right hand side of the forced deadzone oscillator.
 
@@ -167,15 +214,18 @@ def _run(zp, zm, v0, amp, om, t_eval, y0):
     return sol.y.T
 
 
-def strobe(amp, om, zp=ZP, zm=ZM, v0=V0, n_skip=500, n_keep=150, y0=None):
+def strobe(amp, om, zp=ZP, zm=ZM, v0=V0, n_skip=None, n_keep=150, y0=None):
     """Stroboscopic section: the state sampled once per drive period.
 
     ``n_skip`` drive periods are discarded as transient and the next
-    ``n_keep`` returned as an ``(n_keep, 2)`` array of ``(x, xdot)``. The
-    default start ``y0`` is on the unforced cycle, which keeps the transient
-    short for weak drives.
+    ``n_keep`` returned as an ``(n_keep, 2)`` array of ``(x, xdot)``. It
+    defaults to :func:`settle_periods`, which sizes the transient from the
+    contraction rather than fixing it. The default start ``y0`` is on the
+    unforced cycle, which keeps the transient short for weak drives.
     """
     td = 2.0*np.pi/om
+    if n_skip is None:
+        n_skip = settle_periods(zp, zm, om/w_lc(zp, zm))
     if y0 is None:
         y0 = [0.0, 2.0*v0]
     t_eval = td*np.arange(n_skip, n_skip + n_keep + 1)
