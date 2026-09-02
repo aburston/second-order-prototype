@@ -563,7 +563,70 @@ because the twin-trajectory estimator used elsewhere in the repository has a
 noise floor around $`0.008`$, which was large enough to flip four verdicts
 out of seven and to make a published contraction figure meaningless.
 
-**Not yet done.** The forced arc matrix is built and verified; assembling it
-into a stroboscopic map with zone switching, and validating the exponent
-against the twin-trajectory values, is the next step and is not claimed
-here.
+## The exponent, measured
+
+The stroboscopic map is now assembled — `maps.strobe_step` advances exactly
+one drive period through the zone switching, and `maps.forced_lyapunov`
+takes the exponent from the Jacobian product. Against the twin-trajectory
+estimator, on staircases fitted to Van der Pol at $`\mu = 5`$ and driven at
+$`A = 5`$, $`\Omega = 2.466`$:
+
+| levels | regime | exact | twin trajectory | difference |
+| --- | --- | --- | --- | --- |
+| 5 | lock 3 | $`-0.442424`$ | $`-0.441577`$ | 0.0008 |
+| 9 | not locked | $`+0.105275`$ | $`+0.093137`$ | 0.0121 |
+| 17 | not locked | $`-0.012498`$ | $`-0.011869`$ | 0.0006 |
+| 33 | not locked | $`+0.069203`$ | $`+0.055238`$ | 0.0140 |
+| 65 | not locked | $`+0.072203`$ | $`+0.088378`$ | 0.0162 |
+
+**The two agree in sign at every point tested**, and agree closely — to
+within 0.0008 — wherever the exponent is clearly negative. Where it is
+positive they differ by up to 0.016, and the difference has **no consistent
+direction**: the exact value is higher at 9 and 33 levels and lower at 65.
+An earlier draft of this section claimed the exact value runs consistently
+higher and explained why; that was generalising from two points and is
+withdrawn.
+
+What the exact method gives is not a better digit but the absence of a
+floor. The twin-trajectory estimator has a noise floor near 0.008 — enough
+to have flipped four verdicts out of seven elsewhere in this repository —
+because it must choose a separation and renormalise. The Jacobian product
+chooses nothing.
+
+### What building it cost, which is the part worth recording
+
+Two silent failures, both of which produced plausible wrong answers rather
+than errors.
+
+**A crossing root at zero.** A state sitting exactly on a wall makes the
+crossing residual zero at $`t = 0`$, so the search returned $`t = 0`$ for
+ever: the step advanced nothing and eventually gave up. This is not an edge
+case to be waved at — fitting 33 levels over $`x \in [0, 3]`$ puts an edge at
+exactly 2.0, which is the natural starting amplitude.
+
+**An event cap that truncated instead of raising.** The step allowed 48
+boundary crossings per drive period and, on exceeding that, returned the
+state reached so far as though the period were complete. At 65 levels an
+orbit crosses about 66 zones per period, so every step was wrong while still
+looking like a trajectory.
+
+Both were found only by checking a 30-step chain against continuous
+integration at *every* level count. The original check covered one level
+count, which is why the failures survived into a merged version and one
+published exponent had to be withdrawn. The chain now agrees with
+integration at $`4.4\times10^{-12}`$ to $`1.3\times10^{-7}`$ across all five,
+and exceeding the cap raises rather than returning.
+
+## The attractor
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/strange-attractor-dark.png">
+  <img alt="Stroboscopic attractors of the forced staircase and Van der Pol, with a magnified filament" src="figures/strange-attractor-light.png">
+</picture>
+
+*Sampled once per drive period, a chaotic response is a set of filaments rather than a curve. Left, the piecewise staircase at 65 levels; middle, the smooth Van der Pol it was fitted to under the same drive; right, a magnified patch in which layers that looked solid separate into more layers. Brightness encodes how often each region is visited.*
+
+A quasi-periodic response sections to a closed curve; chaos sections to a
+Cantor-like stack. That the piecewise and smooth systems produce the same
+kind of object under identical forcing is the geometric counterpart of the
+agreement in exponent and in lock structure that `README.md` reports.
