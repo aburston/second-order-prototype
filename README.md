@@ -1423,7 +1423,24 @@ convergence check described below:
 | deadzone prototype | 0.2036 | 0 | $`+0.0034`$ |
 | Van der Pol, $`\mu = 0.1`$ | 0.5330 | 0 | $`+0.0002`$ |
 | Van der Pol, $`\mu = 1.0`$ | $`8.6\times10^{-4}`$ | 1 | $`+0.0380`$ |
-| Van der Pol, $`\mu = 5.0`$ | $`6.1\times10^{-4}`$ | 2 | $`+0.1180`$ |
+| Van der Pol, $`\mu = 5.0`$ | unresolvable | 2 | $`+0.1180`$ |
+
+*Correction.* That last contraction was first published here as
+$`6.1\times10^{-4}`$. It is not a measurement. Sweeping the differencing
+step over five orders gives $`-0.746`$, $`-6.99\times10^{-4}`$,
+$`+6.12\times10^{-4}`$, $`+2.38\times10^{-4}`$, $`-4.96\times10^{-5}`$,
+$`-2.32\times10^{-3}`$ and $`-0.249`$ — the sign flips and the magnitude
+moves four orders, so no digit of it was real. A relaxation oscillator
+contracts transverse to its cycle by more than double precision can express
+through a finite difference. The other two rows survive the same test:
+0.53307 holds across six orders of step, and $`8.6\times10^{-4}`$ to about a
+tenth. `vanderpol.contraction_resolved` now applies that test and returns
+``nan`` rather than a number it cannot stand behind.
+
+The conclusion is unaffected, and if anything sharpened: contraction runs
+0.5330, $`8.6\times10^{-4}`$, immeasurably small across the three, while
+chaos runs absent, present, present. Whatever separates them is still not
+how fast they forget a transient.
 
 **At $`\mu = 0.1`$ Van der Pol *is* the prototype**, behaviourally: a 1:1
 tongue opening from $`\Omega = \omega_{lc}`$, narrow higher order locks at

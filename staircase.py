@@ -232,6 +232,16 @@ def cycles_exact(levels, edges, rmax=40.0, n=600):
     A symmetric cycle is a fixed point of the half cycle map, because the
     field is odd. Returns a list of ``(radius, multiplier, stable)``, the
     multiplier being that of the **full** cycle, ``(dH/dA)^2``.
+
+    The multiplier comes back as ``nan`` where it is not resolvable. That is
+    not a failure but a measurement: fitted to Van der Pol at ``mu = 5`` the
+    outer levels reach ``zeta = 20``, and one pass through them destroys all
+    memory of the starting amplitude — ``H(r+h)`` and ``H(r-h)`` come back
+    bit identical even for ``h`` three per cent of ``r``. The true
+    multiplier is then smaller than double precision can express through
+    this map, and any number printed for it would be rounding noise. Van
+    der Pol itself does the same thing at that ``mu``; see
+    ``vanderpol.contraction_resolved``.
     """
     grid = np.linspace(min(edges)*0.2, rmax, n)
     res = np.array([half_map(a, levels, edges)[0] - a for a in grid])
@@ -241,10 +251,15 @@ def cycles_exact(levels, edges, rmax=40.0, n=600):
                 and res[k]*res[k + 1] < 0:
             r = brentq(lambda a: half_map(a, levels, edges)[0] - a,
                        grid[k], grid[k + 1], xtol=1e-13)
-            h = 1e-6*r
-            d = (half_map(r + h, levels, edges)[0]
-                 - half_map(r - h, levels, edges)[0])/(2.0*h)
-            out.append((r, d*d, abs(d) < 1.0))
+            ds = []
+            for hrel in (1e-5, 1e-4, 1e-3):
+                h = hrel*r
+                ds.append((half_map(r + h, levels, edges)[0]
+                           - half_map(r - h, levels, edges)[0])/(2.0*h))
+            d = float(np.median(ds))
+            resolved = d != 0.0 and all(np.sign(x) == np.sign(d) for x in ds)
+            out.append((r, d*d if resolved else float("nan"),
+                        abs(d) < 1.0))
     return out
 
 
