@@ -28,6 +28,12 @@ Five figures, in the order the README develops the argument:
     proportionality of cycle amplitude to offset. The offset and
     through-equilibrium maps are drawn together because the contrast
     between them is the whole mechanism.
+``forced-tongues``
+    What a sinusoidal drive does: the rotation number staircase beside the
+    1:1 Arnold tongue traced by bisection.
+``forced-sections``
+    The three things the stroboscopic section is ever observed to be —
+    a point, a closed curve, a chain of islands — and no fourth.
 
 Each figure is rendered once per entry in ``THEMES`` and saved as
 ``<name>-light.png`` and ``<name>-dark.png``. The README embeds the pair in
@@ -47,6 +53,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 
+import forced
 import frequency
 import symmetric
 import displacement
@@ -940,6 +947,196 @@ def fig_four_models(th, name):
     save(fig, name, "four-models")
 
 
+# ------------------------------------------------------- the forced figures
+#: Drive strengths for the staircase panel, and the sweep resolution. Kept
+#: modest because each point is an integration over several hundred drive
+#: periods; the tongue edges are found by bisection instead, which is where
+#: the resolution actually matters.
+STAIR_A = (0.3, 0.6, 1.2)
+R_LO, R_HI, N_STAIR = 0.5, 2.0, 49
+TONGUE_A = (0.05, 0.1, 0.2, 0.3, 0.45, 0.6, 0.8, 1.0, 1.2, 1.5, 1.8, 2.2, 2.6)
+
+
+def fig_forced_tongues(th, name):
+    """Draw what a sinusoidal drive does to the limit cycle.
+
+    Left: the rotation number, orbit windings per drive period, swept
+    against drive frequency at three drive strengths. With no drive the
+    curve is the smooth hyperbola ``w_lc / Omega``, drawn as chrome — an
+    autonomous cycle keeps its own frequency because it has nothing to lock
+    to. Adding drive flattens it into plateaus, one per lock, and they widen
+    with drive strength. That is a devil's staircase.
+
+    Right: the 1:1 tongue, each edge located by bisecting on the rotation
+    number. It closes to a point at zero drive on ``Omega = w_lc``, which is
+    the definition of an Arnold tongue, and by the top of the axis it has
+    swallowed the whole frequency range shown.
+
+    Both panels are read the same way: inside the tongue the oscillator has
+    given up its own frequency and runs at the drive's.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
+    fig, axes = newfig(th, 1, 2, figsize=(11.0, 4.6))
+
+    rr = np.linspace(R_LO, R_HI, 400)
+    axes[0].plot(rr, 1.0/rr, color=th["ink2"], linewidth=1.2,
+                 linestyle=(0, (5, 3)), zorder=3, label="no drive")
+    for k, a in enumerate(STAIR_A):
+        r, w = forced.staircase(a, R_LO, R_HI, N_STAIR)
+        axes[0].plot(r, w, color=th["series"][k], linewidth=1.7, zorder=4 + k,
+                     label="$A/\\omega_n v_0 = %g$" % a)
+        # label each curve on its own 1:1 plateau, staggered along it so the
+        # three labels cannot collide -- they all sit at w = 1
+        flat = np.flatnonzero(np.abs(w - 1.0) < 1e-6)
+        if flat.size:
+            j = flat[min(flat.size - 1, int((0.30 + 0.30*k)*(flat.size - 1)))]
+            axes[0].annotate("$%g$" % a, (r[j], 1.0), fontsize=8.5,
+                             color=th["series"][k], zorder=8, ha="center",
+                             xytext=(0, 7), textcoords="offset points")
+    style(axes[0], th, "$\\Omega / \\omega_{lc}$", "rotation number  $w$",
+          "The staircase: drive flattens the frequency ratio")
+    legend(axes[0], th, loc="upper right")
+
+    amps = np.array(TONGUE_A)
+    lo, hi = forced.tongue_width(amps)
+    open_ = ~np.isnan(lo)
+    # an edge outside the search window is drawn at the axis, and the curve
+    # is not drawn there, so a clipped tongue never reads as a closed one
+    lo_p = np.where(np.isneginf(lo), R_LO, lo)
+    hi_p = np.where(np.isposinf(hi), R_HI, hi)
+    axes[1].fill_betweenx(amps[open_], lo_p[open_], hi_p[open_],
+                          color=th["series"][0], alpha=0.28, zorder=2,
+                          linewidth=0)
+    inside = open_ & np.isfinite(lo)
+    axes[1].plot(lo[inside], amps[inside], color=th["series"][0],
+                 linewidth=1.8, zorder=4)
+    inside_hi = open_ & np.isfinite(hi)
+    axes[1].plot(hi[inside_hi], amps[inside_hi], color=th["series"][0],
+                 linewidth=1.8, zorder=4, label="edge of the 1:1 lock")
+    axes[1].axvline(1.0, color=th["ink2"], linewidth=1.1,
+                    linestyle=(0, (5, 3)), zorder=3)
+    axes[1].text(1.0, amps[-1]*0.98, "  $\\Omega = \\omega_{lc}$", fontsize=8,
+                 color=th["ink2"], va="top", ha="left", zorder=6)
+    axes[1].text(1.0, amps[-1]*0.45, "entrained\n1:1", fontsize=9,
+                 color=th["ink"], ha="center", va="center", zorder=6,
+                 bbox=dict(boxstyle="round,pad=0.3", fc=th["surface"],
+                           ec=th["grid"], lw=0.8, alpha=0.94))
+    for x in (R_LO + 0.06, R_HI - 0.06):
+        axes[1].text(x, amps[-1]*0.16, "free\nrunning", fontsize=9,
+                     color=th["ink"], ha="center", va="center", zorder=6,
+                     bbox=dict(boxstyle="round,pad=0.3", fc=th["surface"],
+                               ec=th["grid"], lw=0.8, alpha=0.94))
+    axes[1].set_xlim(R_LO, R_HI)
+    style(axes[1], th, "$\\Omega / \\omega_{lc}$", "$A / \\omega_n v_0$",
+          "The 1:1 Arnold tongue")
+    fig.suptitle("Forcing the deadzone prototype: entrainment, not chaos",
+                 color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "forced-tongues")
+
+
+def _forced_orbit(a, r, zp, zm, n_skip=500, n_show=40, per=400):
+    """Settled trajectory of the forced model, for drawing under a section.
+
+    Discards ``n_skip`` drive periods, then returns ``n_show`` more sampled
+    ``per`` times each, as an ``(N, 2)`` array of ``(x, xdot)``.
+    """
+    wl = forced.w_lc(zp, zm)
+    om = r*wl
+    td = 2.0*np.pi/om
+    t = td*(n_skip + np.arange(n_show*per + 1)/per)
+    return forced._run(zp, zm, forced.V0, a*forced.V0, om,
+                       np.concatenate(([0.0], t)), [0.0, 2.0*forced.V0])[1:]
+
+
+def fig_forced_sections(th, name):
+    """Draw the three things the stroboscopic section is ever observed to be.
+
+    Sampling the state once per drive period collapses the response to a set
+    of points. Across every parameter combination tested that set is one of
+    exactly three things, and each panel draws one of them over the settled
+    trajectory it came from:
+
+    *A single point*, inside the tongue: the response repeats every drive
+    period, so it is a periodic orbit locked to the drive. The orbit is a
+    closed curve; the section of it is one point.
+
+    *A closed curve*, outside the tongue: the response carries two
+    incommensurate frequencies, its own and the drive's, and fills a torus
+    whose section is that curve.
+
+    *A chain of islands*, once the contraction per drive period is weak
+    enough: the curve breaks into a ring of small closed curves permuted
+    cyclically by the map. The inset zooms one island by a couple of
+    hundred times to show it is a curve, strongly flattened, and not a point.
+
+    A fourth possibility, a fractal cloud, is what chaos would look like. It
+    does not appear anywhere in the range tested.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
+    cases = (
+        (0.45, 1.00, forced.ZP, forced.ZM, "locked 1:1",
+         "one point:\nperiodic", False, 3),
+        (0.30, 0.60, forced.ZP, forced.ZM, "quasi-periodic",
+         "closed curve:\ntwo frequencies", False, 40),
+        (0.10, 1.40, 0.01, -0.003, "island chain",
+         "seven islands:\nstill not chaos", True, 14),
+    )
+    fig, axes = newfig(th, 1, 3, figsize=(12.6, 4.4))
+    for k, (a, r, zp, zm, title, tag, zoom, nshow) in enumerate(cases):
+        ax = axes[k]
+        orb = _forced_orbit(a, r, zp, zm, n_show=nshow)
+        ax.plot(orb[:, 0], orb[:, 1], color=th["axis"], linewidth=0.7,
+                zorder=2, label="trajectory")
+        wl = forced.w_lc(zp, zm)
+        pts = forced.strobe(a*forced.V0, r*wl, zp, zm, forced.V0,
+                            n_keep=1500)
+        ax.scatter(pts[:, 0], pts[:, 1], s=9.0, color=th["series"][k],
+                   zorder=5, linewidths=0, label="once per drive period")
+        boundary(ax, th, forced.V0, "$\\dot{x} = v_0$")
+        ax.axhline(-forced.V0, color=th["ink2"], linewidth=1.2,
+                   linestyle=(0, (5, 3)), zorder=4)
+        m = 1.12*np.max(np.abs(orb), axis=0)
+        ax.set_xlim(-m[0], m[0])
+        ax.set_ylim(-m[1], m[1])
+        style(ax, th, "$x_1 = x$", "$x_2 = \\dot{x}$",
+              "%s\n$A/\\omega_n v_0=%g$,  $\\Omega/\\omega_{lc}=%g$"
+              % (title, a, r))
+        ax.text(0.03, 0.97, tag, transform=ax.transAxes, fontsize=8.5,
+                color=th["ink"], ha="left", va="top", zorder=8,
+                bbox=dict(boxstyle="round,pad=0.3", fc=th["surface"],
+                          ec=th["grid"], lw=0.8, alpha=0.94))
+        if zoom:
+            c = pts[0]
+            d = 2.2*np.max(np.abs(pts[::7][:120] - c))
+            ins = ax.inset_axes([0.34, 0.35, 0.32, 0.32])
+            ins.scatter(pts[:, 0], pts[:, 1], s=4.0, color=th["series"][k],
+                        zorder=5, linewidths=0)
+            ins.set_xlim(c[0] - d, c[0] + d)
+            ins.set_ylim(c[1] - d, c[1] + d)
+            ins.set_facecolor(th["surface"])
+            ins.set_xticks([])
+            ins.set_yticks([])
+            for sp in ins.spines.values():
+                sp.set_color(th["axis"])
+                sp.set_linewidth(0.8)
+            ins.set_title("one island, $\\times%d$" % round(m[0]/d),
+                          fontsize=7.5, color=th["ink2"], pad=3)
+    axes[0].legend(fontsize=8, labelcolor=th["ink2"], frameon=True,
+                   facecolor=th["surface"], edgecolor="none", framealpha=0.92,
+                   loc="lower right").set_zorder(9)
+    fig.suptitle("The stroboscopic section is only ever one of three things",
+                 color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "forced-sections")
+
+
 if __name__ == "__main__":
     for name, th in THEMES.items():
         print(f"{name}:")
@@ -953,3 +1150,5 @@ if __name__ == "__main__":
         fig_stability_map(th, name)
         fig_symmetric(th, name)
         fig_four_models(th, name)
+        fig_forced_tongues(th, name)
+        fig_forced_sections(th, name)

@@ -462,26 +462,33 @@ def _lock_point(args):
 W_TOL = 1e-6
 
 
-def tongue_edges(a, p=1, q=1, zp=ZP, zm=ZM, v0=V0, span=1.4, steps=14):
+def tongue_edges(a, p=1, q=1, zp=ZP, zm=ZM, v0=V0, r_lo=0.3, r_hi=3.0,
+                 steps=14):
     """Locate the edges of the ``p:q`` Arnold tongue at one drive strength.
 
     The tongue is the set of drive frequencies for which the rotation number
     is pinned at ``p / q``. It is a single interval containing
     ``Om / w_lc = q / p``, so each edge can be bisected for independently.
 
+    The search is bounded by ``r_lo`` and ``r_hi``. If the response is still
+    locked at a bound, that edge lies outside the window and is returned as
+    ``inf`` with the bound's sign rather than as the bound itself — reporting
+    the bound would draw a tongue edge where there is only the end of the
+    search, which is exactly the artefact this signature replaced.
+
     Args:
         a: dimensionless drive ``A / (wn v0)``.
         p, q: the lock to trace. ``1, 1`` is the main tongue.
         zp, zm, v0: the prototype's parameters.
-        span: how far either side of ``q/p`` to look for an unlocked point,
-            as a multiplier on ``q/p``.
-        steps: bisection steps per edge; ``14`` puts the edges inside
-            ``5e-5`` of ``Om / w_lc``.
+        r_lo, r_hi: bounds of the frequency search, in ``Om / w_lc``.
+        steps: bisection steps per edge; ``14`` over this window puts the
+            edges inside ``2e-4`` of ``Om / w_lc``.
 
     Returns:
-        ``(r_left, r_right)`` in units of ``Om / w_lc``, or ``(nan, nan)``
-        if the centre itself is not locked — which is what a tongue that has
-        not yet opened at this drive strength looks like.
+        ``(r_left, r_right)`` in units of ``Om / w_lc``. ``(nan, nan)`` if
+        the centre itself is not locked, which is what a tongue that has not
+        opened yet at this drive strength looks like; ``-inf`` or ``+inf``
+        for an edge beyond the search window.
     """
     amp = a*WN*v0
     wl = w_lc(zp, zm)
@@ -494,11 +501,9 @@ def tongue_edges(a, p=1, q=1, zp=ZP, zm=ZM, v0=V0, span=1.4, steps=14):
     if not locked(centre):
         return float("nan"), float("nan")
     out = []
-    for direction in (-1.0, 1.0):
-        far = centre*(1.0 + direction*(span - 1.0)) if direction > 0 \
-            else centre/span
+    for far, sign in ((r_lo, -1.0), (r_hi, 1.0)):
         if locked(far):
-            out.append(far)
+            out.append(sign*float("inf"))
             continue
         lo, hi = centre, far
         for _ in range(steps):
@@ -508,7 +513,7 @@ def tongue_edges(a, p=1, q=1, zp=ZP, zm=ZM, v0=V0, span=1.4, steps=14):
             else:
                 hi = mid
         out.append(lo)
-    return min(out), max(out)
+    return out[0], out[1]
 
 
 def _edge_point(args):
@@ -521,7 +526,8 @@ def tongue_width(amps, p=1, q=1, zp=ZP, zm=ZM, v0=V0, workers=None):
 
     Returns ``(left, right)`` arrays the same length as ``amps``. Each edge
     search is a serial bisection, so the parallelism is across ``amps``.
-    Rows where the tongue has not opened yet come back as ``nan``.
+    Rows where the tongue has not opened yet come back as ``nan``, and an
+    edge beyond the search window as an infinity.
     """
     out = _pool_map(_edge_point,
                     [(a, p, q, zp, zm, v0) for a in amps], workers)
