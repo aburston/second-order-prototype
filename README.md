@@ -1141,7 +1141,28 @@ Drive flattens it into plateaus.
 *Left: the staircase, at three drive strengths. Right: the 1:1 Arnold tongue, each edge located by bisection. It closes to a point at zero drive on $`\Omega = \omega_{lc}`$ and widens from there; where an edge leaves the frequency window the fill runs to the axis and no edge is drawn.*
 
 The 1:1 tongue is the whole story at the reference pair
-$`\zeta_{+} = 0.3`$, $`\zeta_{-} = -0.1`$. Higher order locks exist but are narrow: a 2:1 near $`r = 2`$, a 4:1 at
+$`\zeta_{+} = 0.3`$, $`\zeta_{-} = -0.1`$. Bisecting for its edges:
+
+| $`a = A/\omega_n v_0`$ | left edge | right edge | width | $`(r_{+}-1)/(1-r_{-})`$ |
+| --- | --- | --- | --- | --- |
+| 0.05 | 0.9853 | 1.0149 | 0.0295 | 1.01 |
+| 0.10 | 0.9689 | 1.0323 | 0.0634 | 1.04 |
+| 0.20 | 0.9370 | 1.0691 | 0.1321 | 1.10 |
+| 0.45 | 0.8354 | 1.2083 | 0.3728 | 1.27 |
+| 0.80 | 0.7115 | 1.4170 | 0.7055 | 1.45 |
+| 1.20 | 0.5857 | 1.6886 | 1.1029 | 1.66 |
+| 1.80 | 0.4801 | 2.0941 | 1.6140 | 2.10 |
+| 2.20 | 0.4190 | 2.3789 | 1.9599 | 2.37 |
+
+Two things to read off it. The width opens as $`a^{1.079}`$ over
+$`0.05 \le a \le 0.20`$ — close to the linear opening an Arnold tongue
+should have, and the small departure from 1 is the measured value, not a
+correction to it. And the tongue is symmetric only while it is narrow: the
+last column is the ratio of how far it reaches above $`\omega_{lc}`$ to how
+far below, and it grows from 1.01 to 2.37. A strong drive can pull this
+oscillator well above its free frequency but not nearly so far below it.
+
+Higher order locks exist but are narrow: a 2:1 near $`r = 2`$, a 4:1 at
 $`r = 1.35`$, a 5:1 at $`r = 0.70`$, an 11:1 at $`r = 2.20`$. Everything
 else in a 41 × 14 grid over $`r \in [0.4, 2.4]`$, $`a \in [0.05, 3.0]`$ is
 quasi-periodic.

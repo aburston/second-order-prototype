@@ -252,7 +252,7 @@ def lock_order(pts, qmax=QMAX):
     return None
 
 
-def rotation_number(amp, om, zp=ZP, zm=ZM, v0=V0, n_skip=150, n_keep=300,
+def rotation_number(amp, om, zp=ZP, zm=ZM, v0=V0, n_skip=None, n_keep=300,
                     y0=None):
     """Orbit windings around the origin per drive period.
 
@@ -264,8 +264,16 @@ def rotation_number(amp, om, zp=ZP, zm=ZM, v0=V0, n_skip=150, n_keep=300,
     Only meaningful while the orbit still encircles the origin. Under a
     strong drive it need not, and the number then loses its reading as a
     frequency ratio; ``classify`` reports it but does not rely on it.
+
+    ``n_skip`` defaults to :func:`settle_periods` with a floor of 150. The
+    rotation number tolerates a residual transient far better than the
+    recurrence test does — a winding is a winding — so the floor can be low,
+    but a weakly contracting case still needs the full settling time and
+    gets it.
     """
     td = 2.0*np.pi/om
+    if n_skip is None:
+        n_skip = settle_periods(zp, zm, om/w_lc(zp, zm), floor=150)
     if y0 is None:
         y0 = [0.0, 2.0*v0]
     # sample finely inside each period so the unwrap cannot skip a turn
