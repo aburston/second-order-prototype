@@ -1527,22 +1527,30 @@ def fig_strange_attractor(th, name):
     """Draw the chaotic stroboscopic section, beside Van der Pol's, and zoomed.
 
     Sampling the forced response once per drive period turns a chaotic
-    trajectory into a point set, and that set is the attractor. It is not a
-    curve: a quasi-periodic response gives a closed curve, and what
-    distinguishes chaos geometrically is that the curve has been stretched
-    and folded so often that it becomes a Cantor-like stack of filaments —
-    the same structure at every magnification, which is what the third panel
-    shows.
+    trajectory into a point set, and that set is the attractor.
 
-    Left and middle are the piecewise staircase at 65 levels and the smooth
-    Van der Pol it was fitted to, driven identically at the point where Van
-    der Pol is chaotic. #20 established numerically that the piecewise model
-    reproduces the chaos; drawn side by side, the claim is that it
-    reproduces the attractor's *geometry* and not merely its exponent.
+    A textbook chaotic attractor is a Cantor-like stack of filaments, and
+    this one is not — at least not visibly. Both systems here are strongly
+    dissipative: at ``mu = 5`` the contraction per cycle is below what
+    double precision can even express, so the attractor is squeezed to
+    within a few per cent of a one dimensional curve. Its fractal structure
+    is real, and the positive Lyapunov exponent measures the stretching that
+    creates it, but it lives at scales far below anything 30000 points and
+    an eighteen fold magnification can reach. The third panel is drawn to
+    make that honest rather than to hide it.
 
-    Right zooms one filament of the staircase attractor. Layers that look
-    solid at full extent separate into more layers, which is the visible
-    signature of the stretching a positive Lyapunov exponent measures.
+    Searching for a fatter case did not help: of five drive settings tried,
+    the only two that are genuinely chaotic have transverse thickness 0.030
+    and 0.036, and the three with visible girth are periodic orbits whose
+    exponents are negative. Thin attractors are what this family gives.
+
+    What the figure does show is the comparison. Left and middle are the
+    piecewise staircase at 65 levels and the smooth Van der Pol it was
+    fitted to, driven identically at the point where Van der Pol is chaotic,
+    and they trace the same shape. That is the geometric counterpart of the
+    agreement in exponent and lock structure reported elsewhere: the
+    piecewise model reproduces not just that there is chaos but where the
+    orbit goes.
 
     Args:
         th: theme dict from ``THEMES``.
@@ -1579,7 +1587,7 @@ def fig_strange_attractor(th, name):
     axes[2].set_xlim(cx - wx, cx + wx)
     axes[2].set_ylim(cy - wy, cy + wy)
     style(axes[2], th, "$x_1 = x$", "$x_2 = \\dot{x}$",
-          "the staircase attractor,\nmagnified about 18 times")
+          "magnified 18 times: still\none strand, no layering")
     for ax in axes[:1]:
         ax.add_patch(matplotlib.patches.Rectangle(
             (cx - wx, cy - wy), 2*wx, 2*wy, fill=False, lw=1.0,
@@ -1588,9 +1596,8 @@ def fig_strange_attractor(th, name):
     axes[0].text(0.03, 0.03, "brighter = more often visited",
                  transform=axes[0].transAxes, fontsize=8, color=th["ink2"],
                  ha="left", va="bottom", zorder=8)
-    fig.suptitle("Sampled once per drive period, the chaotic response is a "
-                 "set of filaments, not a curve", color=th["ink"],
-                 fontsize=11)
+    fig.suptitle("A chaotic attractor, squeezed almost flat by strong "
+                 "dissipation", color=th["ink"], fontsize=11)
     fig.tight_layout()
     save(fig, name, "strange-attractor")
 

@@ -624,9 +624,28 @@ and exceeding the cap raises rather than returning.
   <img alt="Stroboscopic attractors of the forced staircase and Van der Pol, with a magnified filament" src="figures/strange-attractor-light.png">
 </picture>
 
-*Sampled once per drive period, a chaotic response is a set of filaments rather than a curve. Left, the piecewise staircase at 65 levels; middle, the smooth Van der Pol it was fitted to under the same drive; right, a magnified patch in which layers that looked solid separate into more layers. Brightness encodes how often each region is visited.*
+*Left, the piecewise staircase at 65 levels; middle, the smooth Van der Pol it was fitted to under the same drive; right, the boxed patch magnified. Brightness encodes how often each region is visited.*
 
-A quasi-periodic response sections to a closed curve; chaos sections to a
-Cantor-like stack. That the piecewise and smooth systems produce the same
-kind of object under identical forcing is the geometric counterpart of the
-agreement in exponent and in lock structure that `README.md` reports.
+**This is not the picture a strange attractor is supposed to make.** A
+textbook one is a Cantor-like stack of filaments; this is a strand, and it
+stays a strand at eighteen times magnification.
+
+That is the dissipation, not an error. At $`\mu = 5`$ the contraction per
+cycle is below what double precision can express — the same fact that made a
+finite-difference multiplier return bit-zero earlier in this document — so
+the attractor is squeezed to within a few per cent of a one-dimensional
+curve. The fractal structure is real, and the positive exponent measures the
+stretching that builds it, but it lives far below the scale that 30000
+points and an eighteen-fold zoom can reach.
+
+Nor is a fatter example available by looking harder. Of five drive settings
+tried, the only two that are genuinely chaotic have transverse thickness
+0.030 and 0.036; the three with visible girth have *negative* exponents —
+they are periodic orbits, and their girth is the width of a closed curve.
+Thin attractors are what strongly damped oscillators give.
+
+What the figure does establish is the comparison. The piecewise staircase
+and the smooth oscillator trace the same shape under identical forcing,
+which is the geometric counterpart of the agreement in exponent and in lock
+structure that `README.md` reports: the piecewise model reproduces not just
+that there is chaos, but where the orbit goes.
