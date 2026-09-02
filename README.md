@@ -1077,3 +1077,183 @@ The displacement-switched fields being discontinuous, an integrator without
 event detection will step across a boundary and smear the corner. Bound the
 step size or detect the crossing. The exact reduction has no such problem:
 it solves each arc analytically and matches at the crossing.
+
+## Forcing: what a drive does to the cycle
+
+All four prototypes are planar and autonomous, so Poincaré–Bendixson caps
+them at equilibria and limit cycles. Chaos needs a third state, and the
+ordinary way a real system acquires one is a drive. Adding a sinusoid to
+the symmetric deadzone model changes only the right hand side:
+
+```math
+\ddot{x} + 2\omega_n\left[\zeta_{-}\dot{x} + (\zeta_{+}-\zeta_{-})\,\mathrm{dz}(\dot{x})\right] + \omega_n^2 x = A\cos\Omega t
+```
+
+Everything switched is untouched, so $`A = 0`$ recovers the unforced
+prototype exactly and the whole preceding analysis is the $`A = 0`$ edge of
+what follows. `forced.py` carries this section.
+
+### The drive adds no parameters
+
+The unforced problem has one scale, the deadzone half width $`v_0`$, and the
+period depends only on $`\omega_n`$ and the two damping ratios. The drive
+brings a frequency and an acceleration, and both are measured against what
+is already there:
+
+```math
+r = \frac{\Omega}{\omega_{lc}}, \qquad a = \frac{A}{\omega_n v_0}
+```
+
+where $`\omega_{lc} = 2\pi/T`$ is the *cycle* frequency from the previous
+sections, not $`\omega_n`$. The pair $`(r, a)`$ is the complete parameter
+plane. Scaling $`v_0`$ and $`A`$ together by three scales the orbit by
+3.000000 and leaves the rotation number at 1.000000 — verified, not assumed.
+
+The differentiation correspondence also survives. If $`x`$ solves the
+deadzone model under $`A\cos\Omega t`$ then $`X = \dot{x}`$ solves the
+displacement-switched model under $`-A\Omega\sin\Omega t`$, so the peak
+velocity of one equals the peak displacement of the other. Checked at three
+$`(r, a)`$ pairs, agreeing to $`2.7\times 10^{-10}`$. The four models remain
+two pairs related by differentiation.
+
+### The response entrains, and that is all it does
+
+Sample the state once per drive period. Across every combination tested the
+section is one of exactly three things.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/forced-sections-dark.png">
+  <img alt="Three stroboscopic sections: a single point, a closed curve, and a chain of seven islands" src="figures/forced-sections-light.png">
+</picture>
+
+*A single point is a response locked to the drive. A closed curve carries two incommensurate frequencies. A chain of islands appears once the contraction per cycle is weak; the inset shows one island is a flattened curve, not a point. A fractal cloud — what chaos would look like — does not appear.*
+
+The rotation number $`w`$, orbit windings per drive period, makes this
+quantitative. With no drive it is the smooth hyperbola $`w = 1/r`$: an
+autonomous cycle keeps its own frequency because it has nothing to lock to.
+Drive flattens it into plateaus.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/forced-tongues-dark.png">
+  <img alt="Rotation number staircase beside the 1:1 Arnold tongue" src="figures/forced-tongues-light.png">
+</picture>
+
+*Left: the staircase, at three drive strengths. Right: the 1:1 Arnold tongue, each edge located by bisection. It closes to a point at zero drive on $`\Omega = \omega_{lc}`$ and widens from there; where an edge leaves the frequency window the fill runs to the axis and no edge is drawn.*
+
+The 1:1 tongue is the whole story at the reference pair
+$`\zeta_{+} = 0.3`$, $`\zeta_{-} = -0.1`$. Bisecting for its edges:
+
+| $`a = A/\omega_n v_0`$ | left edge | right edge | width | $`(r_{+}-1)/(1-r_{-})`$ |
+| --- | --- | --- | --- | --- |
+| 0.05 | 0.9853 | 1.0149 | 0.0295 | 1.01 |
+| 0.10 | 0.9689 | 1.0323 | 0.0634 | 1.04 |
+| 0.20 | 0.9370 | 1.0691 | 0.1321 | 1.10 |
+| 0.45 | 0.8354 | 1.2083 | 0.3728 | 1.27 |
+| 0.80 | 0.7115 | 1.4170 | 0.7055 | 1.45 |
+| 1.20 | 0.5857 | 1.6886 | 1.1029 | 1.66 |
+| 1.80 | 0.4801 | 2.0941 | 1.6140 | 2.10 |
+| 2.20 | 0.4190 | 2.3789 | 1.9599 | 2.37 |
+
+Two things to read off it. The width opens as $`a^{1.079}`$ over
+$`0.05 \le a \le 0.20`$ — close to the linear opening an Arnold tongue
+should have, and the small departure from 1 is the measured value, not a
+correction to it. And the tongue is symmetric only while it is narrow: the
+last column is the ratio of how far it reaches above $`\omega_{lc}`$ to how
+far below, and it grows from 1.01 to 2.37. A strong drive can pull this
+oscillator well above its free frequency but not nearly so far below it.
+
+Higher order locks exist but are narrow: a 2:1 near $`r = 2`$, a 4:1 at
+$`r = 1.35`$, a 5:1 at $`r = 0.70`$, an 11:1 at $`r = 2.20`$. Everything
+else in a 41 × 14 grid over $`r \in [0.4, 2.4]`$, $`a \in [0.05, 3.0]`$ is
+quasi-periodic.
+
+**No chaos was found anywhere.** The largest Lyapunov exponent over every
+non-locked cell of that grid is $`+0.0012`$, consistent with a torus. The
+same held at $`(\zeta_{+}, \zeta_{-})`$ of $`(1.0, -0.5)`$, $`(2.0, -0.8)`$,
+$`(4.0, -0.9)`$ and $`(8.0, -0.95)`$ — overdamped outside, nearly escaping
+inside — with every exponent still negative.
+
+### Why not, and where to look
+
+The unforced Floquet result survives forcing unchanged, and it explains the
+absence. Differencing the $`q`$-fold stroboscopic map at its fixed point
+gives two multipliers whose product is the same $`\exp(2\Lambda)`$ built
+from the dwell weighted sum of the pole real parts:
+
+| $`a`$ | $`r`$ | $`q`$ | $`\mu_1, \mu_2`$ | $`\mu_1\mu_2`$ | $`e^{2\Lambda T}`$ |
+| --- | --- | --- | --- | --- | --- |
+| 0.45 | 1.00 | 1 | 0.5502, 0.1611 | 8.864e-02 | 8.856e-02 |
+| 1.50 | 0.60 | 1 | $`-0.245 \pm 0.244i`$ | 1.197e-01 | 1.195e-01 |
+| 0.60 | 1.35 | 4 | 0.8547, 0.2843 | 2.430e-01 | 2.391e-01 |
+| 1.00 | 2.00 | 2 | 0.4479, 0.7846 | 3.515e-01 | 3.520e-01 |
+
+The pair itself is sometimes real and sometimes complex, so only the product
+is pinned — but the product is what matters. The stroboscopic map contracts
+area by $`\exp(2\Lambda)`$ every cycle, and at ordinary damping ratios that
+is 0.20: far too strong for a multiplier to reach $`-1`$ and start a period
+doubling cascade. **Chaos in this family needs the contraction near unity**,
+which is to say weak damping on both sides of the deadzone — and that is the
+free cycle's logarithmic decrement, something you can read off a ringdown.
+
+Following that down does produce the expected precursors. As
+$`\exp(2\Lambda)`$ rises the staircase fills in — high order locks appear
+where there had been only the 1:1 tongue and smooth tori — and some
+sections stop being simple curves and break into chains of islands. Both
+are the near-resonant structure of a nearly area-preserving map:
+
+| $`\zeta_{+}`$ | $`\zeta_{-}`$ | $`\exp(2\Lambda)`$ | lock orders seen | max Lyapunov |
+| --- | --- | --- | --- | --- |
+| 0.300 | $`-0.1000`$ | 0.2036 | 1, 2, 4, 5, 11 | $`+0.0012`$ |
+| 0.050 | $`-0.0150`$ | 0.7731 | 1, 3 | $`+0.0004`$ |
+| 0.010 | $`-0.0030`$ | 0.9498 | 1, 2, 3, 9, 13, 19 | $`+0.0002`$ |
+| 0.003 | $`-0.0009`$ | 0.9847 | 1, 2, 3, 6, 7, 8, 9, 13, 17, 19 | $`+0.00002`$ |
+
+Alongside those, island chains: at $`\zeta_{+} = 0.01`$, $`\zeta_{-} = -0.003`$
+the section at $`a = 0.1`$, $`r = 1.4`$ settles onto seven small closed
+curves permuted cyclically, and stays at a scatter of $`1.6\times10^{-4}`$
+however long the transient is run — so it is a chain, not a lock that has
+not finished settling. That is the middle case the third panel above draws.
+
+Every one of those rows still has no chaotic cell in it.
+
+$`\exp(2\Lambda)`$ here is verified against a directly differenced monodromy
+matrix, not taken from the algebra: at the reference pair the formula gives
+0.203640 where the measured multipliers are $`(0.99997, 0.20363)`$, the unit
+one being the neutral direction along the cycle.
+
+**A limit, stated plainly.** This is a negative result over a tested range,
+not a proof. Chaos is not excluded — the filling staircase and the island
+chains say the mechanism is assembling — only unobserved at every parameter
+combination reached here. And the reach is bounded by settling time, not by
+patience: a transient decays by $`\exp(2\Lambda)`$ per cycle, so the closer
+the contraction is to unity the longer a sweep must run before a lock can be
+distinguished from a torus at all. At $`\exp(2\Lambda) = 0.985`$ that is
+already about 1200 cycles per grid point, and the cost of going further rises
+as $`1/\lvert\Lambda\rvert`$.
+
+### Numerical note
+
+Every threshold in this section is relative to the orbit, and each was
+absolute first, and wrong. Clustering the stroboscopic points at a fixed
+radius invented locks three ways: it chopped a small invariant curve into
+twenty phantom clusters, it could not tell an island chain from a lock of
+the same order, and it split a still-settling orbit into several tight
+clusters. Testing recurrence directly fixes all three. But an *absolute*
+recurrence threshold then manufactured chaos: at the centre of the 1:1
+tongue the resonant orbit is ten times larger than off resonance, so the
+integrator's own error grows with it, the residual crossed a fixed
+$`10^{-7}`$ while the relative residual was $`10^{-8}`$ — identical to the
+locked cells either side — and the Lyapunov estimate, whose separation had
+fallen below the integration error at that scale, read the noise as
+exponents up to $`+0.30`$. Four cells were reported as chaotic. All four are
+1:1 locks with rotation number 1.000000.
+
+The discarded transient has to be computed too. At $`\exp(2\Lambda) = 0.985`$
+a transient needs about 1200 cycles to fall below the recurrence threshold;
+a sweep discarding 500 reported the entire 1:1 tongue as absent, and every
+one of those cells is a 1:1 lock once the transient is given time to die.
+
+The lesson generalises past this section: in a piecewise linear system the
+orbit's scale and its settling time both vary by orders of magnitude across
+the parameter plane, so any fixed tolerance is a claim about a region rather
+than a method.
