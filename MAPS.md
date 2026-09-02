@@ -575,7 +575,7 @@ $`A = 5`$, $`\Omega = 2.466`$:
 | --- | --- | --- | --- | --- |
 | 5 | lock 3 | $`-0.442424`$ | $`-0.441577`$ | 0.0008 |
 | 9 | not locked | $`+0.105275`$ | $`+0.093137`$ | 0.0121 |
-| 17 | not locked | $`-0.012498`$ | $`-0.011869`$ | 0.0006 |
+| 17 | **lock 4** (see below) | $`-0.012498`$ | $`-0.011869`$ | 0.0006 |
 | 33 | not locked | $`+0.069203`$ | $`+0.055238`$ | 0.0140 |
 | 65 | not locked | $`+0.072203`$ | $`+0.088378`$ | 0.0162 |
 
@@ -592,6 +592,48 @@ floor. The twin-trajectory estimator has a noise floor near 0.008 — enough
 to have flipped four verdicts out of seven elsewhere in this repository —
 because it must choose a separation and renormalise. The Jacobian product
 chooses nothing.
+
+### The regime labels are less reliable than the exponents
+
+The 17 level row is marked as a lock above, and was originally published
+here as a torus. It is a **period 4 orbit**, and the correction matters less
+for that one row than for what it exposes.
+
+The lock test asks whether the stroboscopic point returns to within
+$`10^{-6}`$ of itself, relative to the orbit. Integrating a strongly damped
+piecewise system accumulates error faster than that. At 17 levels the
+period 4 residual measures $`1.5\times10^{-6}`$ — above the threshold, so no
+lock is certified — and it stays there at integrator tolerances of
+$`10^{-9}`$, $`10^{-11}`$ and $`10^{-12}`$ alike. It is an error floor, not a
+tolerance that can be bought down. The orbit was therefore reported as
+unlocked, and then, its exponent being negative, as a torus.
+
+The exact map resolves the same orbit at $`2.4\times10^{-9}`$ — three orders
+inside the threshold — because a product of matrices accumulates no
+integration error. This is the clearest case yet for building the maps: not
+an argument from principle but an orbit the integrator could not classify
+and the map could.
+
+**So a "torus" verdict from `section.py` means no lock was detected, not
+that no lock exists.** `section.lock_margin` now reports how close the call
+was, and `classify` returns `undecided` rather than `torus` when the margin
+is within thirty times the threshold. Measured at the drive used here:
+
+| levels | verdict | margin |
+| --- | --- | --- |
+| 5 | lock 1:3 | $`1.0\times10^{-7}`$ |
+| 9 | torus | $`1.1`$ |
+| 17 | undecided | $`1.3\times10^{-6}`$ |
+| 33 | torus | $`1.2`$ |
+
+The genuinely non-periodic cases miss by a factor of a million, so those
+verdicts are safe; only the marginal one needed flagging.
+
+**What this does not touch.** Every chaos or no-chaos conclusion in this
+repository rests on the sign of the Lyapunov exponent, and mistaking a lock
+for a torus does not change "not chaotic". The Arnold tongue widths and the
+agreement figures compare *chaotic* frequencies. What is unreliable is the
+split between lock and torus within the non-chaotic cells.
 
 ### What building it cost, which is the part worth recording
 

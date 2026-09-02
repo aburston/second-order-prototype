@@ -138,6 +138,39 @@ def lock_order(pts, qmax=QMAX):
     return None
 
 
+def lock_margin(pts, qmax=QMAX):
+    """Smallest recurrence residual over ``q``, relative to the orbit's size.
+
+    ``lock_order`` answers yes or no against ``LOCK_SCATTER_REL``; this
+    reports how close the call was, which matters because the threshold is
+    not always above the noise it is competing with.
+
+    Integrating a strongly damped piecewise system accumulates error faster
+    than the threshold allows for. On a 17 level staircase driven at the
+    chaotic point, a genuine **period 4 orbit** gives a residual of
+    1.5e-6 against a threshold of 1e-6, at every integrator tolerance from
+    1e-9 down to 1e-12 — the error floor, not the dynamics. The orbit was
+    therefore reported as unlocked and then, its exponent being negative, as
+    a torus. The exact map in ``maps.py`` resolves the same orbit at 2.4e-9,
+    three orders inside the threshold.
+
+    So a "torus" verdict from this module means *no lock was detected*, not
+    *no lock exists*. Where the margin is within an order or so of the
+    threshold, believe the exact map instead.
+
+    Returns ``(q_best, residual)``.
+    """
+    scale = max(LOCK_SCATTER_FLOOR, float(np.max(np.abs(pts))))
+    best_q, best = None, np.inf
+    for k in range(1, qmax + 1):
+        d = np.linalg.norm(pts[k:] - pts[:-k], axis=1)
+        if d.size:
+            r = float(np.max(d))/scale
+            if r < best:
+                best_q, best = k, r
+    return best_q, best
+
+
 def rotation_number(flow, td, y0, n_skip, n_keep=300, centre=(0.0, 0.0),
                     per=8):
     """Windings of the orbit about ``centre`` per drive period.
@@ -275,10 +308,17 @@ def classify(flow, td, y0, n_skip, centre=(0.0, 0.0), quick=False):
     observation of the section; the exponent is consulted only when the
     section is not a finite set.
     """
-    q = lock_order(strobe(flow, td, y0, n_skip))
+    pts = strobe(flow, td, y0, n_skip)
+    q = lock_order(pts)
     w = rotation_number(flow, td, y0, max(150, n_skip//3), centre=centre)
     if q is not None:
         return ("lock %d:%d" % (int(round(w*q)), q), q, w, None)
+    # A near miss is not a torus. The threshold competes with the
+    # integrator's own error, so a residual within an order of it means the
+    # test could not decide; say so rather than defaulting to "torus".
+    qm, margin = lock_margin(pts)
+    if margin < 30.0*LOCK_SCATTER_REL:
+        return ("undecided(q~%d)" % qm, None, w, None)
     if quick:
         return ("torus", None, w, None)
     lam = lyapunov(flow, td, y0, max(100, n_skip//5))
