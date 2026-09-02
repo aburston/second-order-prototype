@@ -474,6 +474,124 @@ def cycle_coefficients(model, rs, **kw):
     return [(r,) + cycle_matrix(model, r, **kw)[2:] for r in rs]
 
 
+def forced_state_at(zeta, y0, centre, phase, amp, om, t):
+    """State after time ``t`` in one forced zone, vectorised over ``t``.
+
+    ``y(t) = y_c + Phi(t) u + P (cos(phase + om t), sin(phase + om t))``
+    with ``u = y_0 - y_c - P (cos phase, sin phase)`` constant. Writing it
+    this way keeps the crossing search vectorisable — the alternative,
+    building a matrix per sample, is far slower.
+    """
+    c, s = kernels(zeta, t)
+    p = drive_response(zeta, om, amp)
+    d0 = np.array([np.cos(phase), np.sin(phase)])
+    yc = np.array([centre, 0.0])
+    u = np.asarray(y0, float) - yc - p @ d0
+    ph = phase + om*np.asarray(t)
+    w0 = p[0, 0]*np.cos(ph) + p[0, 1]*np.sin(ph)
+    w1 = p[1, 0]*np.cos(ph) + p[1, 1]*np.sin(ph)
+    x = centre + (c + zeta*WN*s)*u[0] + s*u[1] + w0
+    v = -WN**2*s*u[0] + (c - zeta*WN*s)*u[1] + w1
+    return x, v
+
+
+def forced_crossing(zeta, y0, centre, phase, amp, om, g, level, tmax,
+                    ngrid=400, tmin=1e-10):
+    """First crossing of ``g^T y = level`` within ``tmax``, under forcing.
+
+    Same idea as the unforced version, but the residual now carries the
+    particular solution as well, so it is no longer two terms. It is still
+    one scalar equation in ``t``, which is all the search needs.
+    """
+    def resid(t):
+        x, v = forced_state_at(zeta, y0, centre, phase, amp, om, t)
+        return (x if g[0] else v) - level
+
+    grid = np.linspace(tmin, tmax, ngrid)
+    val = resid(grid)
+    ok = np.isfinite(val)
+    cross = ok[:-1] & ok[1:] & (np.sign(val[:-1]) != np.sign(val[1:]))
+    idx = np.nonzero(cross)[0]
+    if not idx.size:
+        return np.nan
+    k = idx[0]
+    return brentq(resid, grid[k], grid[k + 1], xtol=1e-14, rtol=8.9e-16)
+
+
+def strobe_step(model, y, phase, amp, om, max_events=48):
+    """Advance exactly one drive period, and return the tangent Jacobian.
+
+    The stroboscopic map samples once per drive period, so unlike the
+    autonomous case the step ends at a *fixed time* rather than on a
+    section. There is therefore no projection at the end and no saltation
+    for the final partial arc — only for the boundaries actually crossed on
+    the way.
+
+    The drive phase is exogenous: it is not perturbed, so the tangent space
+    stays two dimensional and ``J`` is ``2x2``.
+
+    Returns ``(y_next, phase_next, J)``.
+    """
+    td = 2.0*np.pi/om
+    left = td
+    y = np.asarray(y, float).copy()
+    ph = float(phase)
+    j = np.eye(2)
+    for _ in range(max_events):
+        k = model.zone_of(y + 1e-11*np.array([y[1], 0.0]))
+        zeta, centre = model.zones[k]
+        best_t, best_g, best_l = np.nan, None, None
+        for g, lv in model.walls:
+            t = forced_crossing(zeta, y, centre, ph, amp, om, g, lv, left)
+            if np.isfinite(t) and (not np.isfinite(best_t) or t < best_t):
+                best_t, best_g, best_l = t, g, lv
+        if not np.isfinite(best_t):
+            x, v = forced_state_at(zeta, y, centre, ph, amp, om, left)
+            j = phi(zeta, left) @ j
+            return np.array([float(x), float(v)]), ph + om*left, j
+        x, v = forced_state_at(zeta, y, centre, ph, amp, om, best_t)
+        y_new = np.array([float(x), float(v)])
+        j = phi(zeta, best_t) @ j
+        f_m = field(zeta, y_new, centre) + np.array([0.0, amp*np.cos(
+            ph + om*best_t)])
+        k2 = model.zone_of(y_new + 1e-11*f_m)
+        z2, c2 = model.zones[k2]
+        f_p = field(z2, y_new, c2) + np.array([0.0, amp*np.cos(
+            ph + om*best_t)])
+        j = saltation(f_m, f_p, best_g) @ j
+        y, ph, left = y_new, ph + om*best_t, left - best_t
+    return y, ph, j
+
+
+def forced_lyapunov(model, y0, amp, om, n_skip=200, n=800, phase0=0.0):
+    """Largest Lyapunov exponent from the exact Jacobian product.
+
+    The stroboscopic map's Jacobian is a product of known matrices, so the
+    exponent is that product's growth rate — accumulated by renormalising a
+    tangent vector each step. No twin trajectory, no separation to choose,
+    and no noise floor: the estimator this replaces has a floor near 0.008,
+    which was large enough to flip four chaotic verdicts out of seven.
+
+    Returns the exponent per unit time.
+    """
+    td = 2.0*np.pi/om
+    y = np.asarray(y0, float).copy()
+    ph = float(phase0)
+    for _ in range(n_skip):
+        y, ph, _ = strobe_step(model, y, ph, amp, om)
+    v = np.array([1.0, 0.0])
+    total = 0.0
+    for _ in range(n):
+        y, ph, j = strobe_step(model, y, ph, amp, om)
+        v = j @ v
+        nrm = float(np.linalg.norm(v))
+        if nrm == 0.0 or not np.isfinite(nrm):
+            return np.nan
+        total += np.log(nrm)
+        v /= nrm
+    return total/(n*td)
+
+
 def staircase_model(levels, edges):
     """The multi-threshold displacement prototype, as zones and walls.
 
