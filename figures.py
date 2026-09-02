@@ -1415,9 +1415,11 @@ def fig_staircase_vdp(th, name):
           "Chaos lives in the transitions\nbetween one lock and the next")
     handles = [matplotlib.patches.Patch(facecolor=th["series"][i], label=t)
                for i, t in enumerate(("locked", "quasi-periodic", "chaotic"))]
+    # below the axes, not on them: at lower left the box covered genuine
+    # chaotic cells in the nine level row
     axes[1].legend(handles=handles, fontsize=8, labelcolor=th["ink2"],
-                   frameon=True, facecolor=th["surface"], edgecolor="none",
-                   framealpha=0.92, loc="lower left").set_zorder(9)
+                   frameon=False, ncol=3, loc="upper center",
+                   bbox_to_anchor=(0.5, -0.17)).set_zorder(9)
 
     js = [agree[str(n)][2] for n in SVDP_LEVELS]
     axes[2].plot(SVDP_LEVELS, js, "o-", color=th["series"][0], linewidth=1.8,
@@ -1433,6 +1435,9 @@ def fig_staircase_vdp(th, name):
     axes[2].set_xscale("log")
     axes[2].set_xticks(list(SVDP_LEVELS))
     axes[2].set_xticklabels([str(n) for n in SVDP_LEVELS])
+    # a log axis keeps its own minor ticks, whose labels collide with these
+    axes[2].xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
+    axes[2].xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
     axes[2].set_ylim(-0.05, 1.12)
     style(axes[2], th, "levels in the staircase",
           "shared chaotic frequencies / combined",
