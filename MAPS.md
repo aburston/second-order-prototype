@@ -625,6 +625,7 @@ is within thirty times the threshold. Measured at the drive used here:
 | 9 | torus | $`1.1`$ |
 | 17 | undecided | $`1.3\times10^{-6}`$ |
 | 33 | torus | $`1.2`$ |
+| 65 | torus | $`1.1`$ |
 
 The genuinely non-periodic cases miss by a factor of a million, so those
 verdicts are safe; only the marginal one needed flagging.
