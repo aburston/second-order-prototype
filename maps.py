@@ -532,18 +532,31 @@ def forced_crossing(zeta, y0, centre, phase, amp, om, g, level, tmax,
         x, v = forced_state_at(zeta, y0, centre, phase, amp, om, t)
         return (x if g[0] else v) - level
 
-    # The grid has to resolve the fastest crossing, not the drive period. A
-    # fine staircase makes zones narrow while the orbit stays fast: at 65
-    # levels the zones are 0.046 wide and are crossed in about 0.005 time
-    # units, against a fixed grid spacing of 0.0064 over one drive period.
-    # The search stepped straight over crossings and the chain diverged from
-    # integration while still looking like a trajectory.
+    # Search in widening windows rather than one grid over the whole
+    # remaining period. A fine staircase makes zones narrow while the orbit
+    # stays fast -- at 65 levels a zone is crossed in about 0.005 time units
+    # against a drive period of 2.55 -- so a uniform grid must either be
+    # enormous or step over crossings. Sizing one from the distance to the
+    # wall instead blew up to 200000 points whenever the state sat near it,
+    # which is most of the time. Windows keep the resolution where the fast
+    # crossings are and stay cheap further out.
     if ngrid is None:
-        speed = max(abs(float(y0[1])), 1e-3)
-        gap = abs(float(y0[0]) - level) if g[0] else max(abs(level), 1e-3)
-        transit = max(min(gap/speed, tmax), 1e-6)
-        ngrid = int(min(200000, max(400, 20.0*tmax/transit)))
+        ngrid = 600
 
+    speed = max(abs(float(y0[1])), 1e-3)
+    gap = abs(float(y0[0]) - level) if g[0] else 1.0
+    w = min(tmax, max(4.0*gap/speed, tmax/64.0))
+    while True:
+        t = _scan_window(resid, tmin, w, ngrid)
+        if np.isfinite(t):
+            return t
+        if w >= tmax:
+            return np.nan
+        w = min(tmax, 2.0*w)
+
+
+def _scan_window(resid, tmin, tmax, ngrid):
+    """First genuine sign change of ``resid`` in ``[tmin, tmax]``."""
     grid = np.linspace(tmin, tmax, ngrid)
     val = resid(grid)
     ok = np.isfinite(val)
