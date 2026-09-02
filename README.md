@@ -1502,3 +1502,119 @@ and $`+0.036`$, barely moved. The floor is therefore about 0.008, and the
 threshold used above is 0.02, with a factor of two of clearance either side.
 `section.confirm_chaos` runs that test, so a marginal cell can be checked
 rather than trusted.
+
+## Driving the staircase at Van der Pol's chaotic point
+
+The control section left the prototypes' immunity to chaos attributed to
+the *shape* of their nonlinearity: damping that saturates rather than
+grows. The staircase puts a dial on that, so the attribution can be tested
+rather than argued. `staircase.window_scan` does it.
+
+Both systems are driven identically — same amplitude $`A = 5`$, same
+frequency, same initial state, same transient, and classified by the same
+engine in `section.py`. The only difference between the runs is the damping
+law, and the only thing varied across them is how many levels the staircase
+has.
+
+### Saturation is not what is being tested
+
+The driven Van der Pol orbit at this point reaches $`\lvert x \rvert \approx 2.15`$,
+barely beyond its free radius of 2.02 — the velocity is what grows, to
+about 10. Since the staircase switches on *displacement*, fitting it out to
+$`x = 3`$ puts the whole chaotic orbit inside the fitted range and its outer
+plateau is never visited.
+
+That matters, because it separates two explanations that the control
+section could not. Whatever the level count does here, it is not about
+saturation.
+
+### About nine levels is where chaos begins
+
+At $`\mu = 5`$, $`A = 5`$, $`\Omega = 2.466`$ — the classic chaotic case:
+
+| levels | behaviour | $`\lambda`$ | confirmed |
+| --- | --- | --- | --- |
+| 2 | lock 3 | $`-0.302`$ | |
+| 3 | lock 3 | $`-0.615`$ | |
+| 5 | lock 3 | $`-0.442`$ | |
+| 9 | **chaos** | $`+0.093`$ | yes |
+| 17 | torus | $`-0.012`$ | |
+| 33 | **chaos** | $`+0.055`$ | yes |
+| 65 | **chaos** | $`+0.088`$ | yes |
+| Van der Pol | chaos | $`+0.101`$ | yes |
+
+Every chaotic verdict here passed `section.confirm_chaos` — five times the
+run length and a hundred times the twin separation.
+
+**So piecewise constant damping is not an obstruction to chaos.** The
+earlier prototypes are not chaotic because two or three levels are too
+coarse to carry the mechanism, not because the damping is switched. That
+retires the last of the structural explanations offered for their
+immunity: it was never the switch, and here it is not the saturation
+either — it is resolution.
+
+### The chaos lives between the locks
+
+The single frequency above is a poor summary, and the row at 17 levels
+shows why. Sweeping the drive frequency instead:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/staircase-vdp-dark.png">
+  <img alt="Damping laws, regime strips against drive frequency, and convergence of the chaotic windows" src="figures/staircase-vdp-light.png">
+</picture>
+
+*Left: the only difference between the systems. Middle: how each responds as the drive frequency is swept. Right: agreement with Van der Pol against level count.*
+
+Every one of the six systems runs the same sequence as $`\Omega`$ rises —
+lock 3, a chaotic band, lock 4, a second chaotic band, lock 5 — with the
+chaos confined to the transitions between one lock and the next. This is
+period adding, and it is the structure the staircase has to reproduce, not
+a single point in it.
+
+The level count moves those bands. Counting the sampled frequencies where
+both are chaotic against those where either is:
+
+| levels | chaotic frequencies | shared with Van der Pol | agreement |
+| --- | --- | --- | --- |
+| 5 | 3 | 0 of 9 | 0.000 |
+| 9 | 9 | 2 of 9 | 0.125 |
+| 17 | 9 | 5 of 9 | 0.385 |
+| 33 | 7 | 6 of 9 | 0.600 |
+| 65 | 8 | **8 of 9** | **0.889** |
+
+At five levels the bands are in the wrong place entirely. By sixty-five
+they sit on Van der Pol's, with exponents agreeing to within the noise —
+$`+0.106`$ against $`+0.110`$ at $`\Omega = 2.435`$, $`+0.118`$ against
+$`+0.098`$ at 2.470. The seventeen level row is not an anomaly but the same
+effect: its bands are shifted, so a single frequency samples one system
+inside a band and another outside it.
+
+### Matching the free cycle is a much weaker test than matching the driven one
+
+This is the part that bears on fitting field data. At nine levels the
+staircase's unforced cycle already matches Van der Pol's to half a per
+cent — radius 2.0118 against 2.0215, period 11.480 against 11.612 — while
+its chaotic bands are still almost entirely in the wrong place, 2 of 9.
+Agreement on the free response is not evidence of agreement under
+excitation.
+
+A model fitted to a ringdown can therefore reproduce it faithfully and
+still predict the wrong behaviour when the machine is driven. The
+two-amplitude class test in `speculation.md` is a partial guard; matching a
+*driven* response at two frequencies would be a stronger one.
+
+### Numerical note
+
+Sample the transition, not the range. A first sweep of this comparison
+stepped $`\Omega`$ by 0.05 and reported **zero** chaotic points for Van der
+Pol — a system the same code, same initial state and same transient had
+confirmed chaotic at $`\Omega = 2.466`$ minutes earlier. Nothing was
+inconsistent: the chaotic bands are narrower than that spacing and the grid
+stepped over them, 2.450 landing on lock 4 and 2.500 on lock 5. Reported as
+it stood, the table would have said the staircase was chaotic where Van der
+Pol was not, which is the reverse of the truth and entirely an artefact of
+grid spacing.
+
+The scan resolution used above is 0.005, ten times finer than the bands.
+Where a quantity varies on a scale set by the dynamics rather than by the
+range being explored, the grid has to be chosen from the former.
