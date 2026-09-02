@@ -1196,15 +1196,25 @@ which is to say weak damping on both sides of the deadzone — and that is the
 free cycle's logarithmic decrement, something you can read off a ringdown.
 
 Following that down does produce the expected precursors. As
-$`\exp(2\Lambda)`$ rises the section stops being a simple curve and breaks
-into island chains, the near-resonant structure of a nearly
-area-preserving map:
+$`\exp(2\Lambda)`$ rises the staircase fills in — high order locks appear
+where there had been only the 1:1 tongue and smooth tori — and some
+sections stop being simple curves and break into chains of islands. Both
+are the near-resonant structure of a nearly area-preserving map:
 
-| $`\zeta_{+}`$ | $`\zeta_{-}`$ | $`\exp(2\Lambda)`$ | what appears |
-| --- | --- | --- | --- |
-| 0.300 | $`-0.1000`$ | 0.2036 | locks and tori only |
-| 0.050 | $`-0.0150`$ | 0.7731 | locks and tori only |
-| 0.010 | $`-0.0030`$ | 0.9498 | island chains of 7 and 9 |
+| $`\zeta_{+}`$ | $`\zeta_{-}`$ | $`\exp(2\Lambda)`$ | lock orders seen | max Lyapunov |
+| --- | --- | --- | --- | --- |
+| 0.300 | $`-0.1000`$ | 0.2036 | 1, 2, 4, 5, 11 | $`+0.0012`$ |
+| 0.050 | $`-0.0150`$ | 0.7731 | 1, 3 | $`+0.0004`$ |
+| 0.010 | $`-0.0030`$ | 0.9498 | 1, 2, 3, 9, 13, 19 | $`+0.0002`$ |
+| 0.003 | $`-0.0009`$ | 0.9847 | 1, 2, 3, 6, 7, 8, 9, 13, 17, 19 | $`+0.00002`$ |
+
+Alongside those, island chains: at $`\zeta_{+} = 0.01`$, $`\zeta_{-} = -0.003`$
+the section at $`a = 0.1`$, $`r = 1.4`$ settles onto seven small closed
+curves permuted cyclically, and stays at a scatter of $`1.6\times10^{-4}`$
+however long the transient is run — so it is a chain, not a lock that has
+not finished settling. That is the middle case the third panel above draws.
+
+Every one of those rows still has no chaotic cell in it.
 
 $`\exp(2\Lambda)`$ here is verified against a directly differenced monodromy
 matrix, not taken from the algebra: at the reference pair the formula gives
@@ -1212,12 +1222,14 @@ matrix, not taken from the algebra: at the reference pair the formula gives
 one being the neutral direction along the cycle.
 
 **A limit, stated plainly.** This is a negative result over a tested range,
-not a proof. Chaos is not excluded — the island chains say the mechanism is
-assembling — only unobserved at every parameter combination reached here.
-And the reach is bounded by settling time, not by patience: a transient
-decays by $`\exp(2\Lambda)`$ per cycle, so the closer the contraction is to
-unity the longer a sweep must run before a lock can be distinguished from a
-torus at all.
+not a proof. Chaos is not excluded — the filling staircase and the island
+chains say the mechanism is assembling — only unobserved at every parameter
+combination reached here. And the reach is bounded by settling time, not by
+patience: a transient decays by $`\exp(2\Lambda)`$ per cycle, so the closer
+the contraction is to unity the longer a sweep must run before a lock can be
+distinguished from a torus at all. At $`\exp(2\Lambda) = 0.985`$ that is
+already about 1200 cycles per grid point, and the cost of going further rises
+as $`1/\lvert\Lambda\rvert`$.
 
 ### Numerical note
 
