@@ -351,6 +351,31 @@ class Model:
             y = y_new
         return None, np.nan, None
 
+    def adjacent_walls(self, y):
+        """The walls that bound the zone containing ``y``.
+
+        A trajectory leaves a zone through one of its own boundaries, so
+        those are the only crossings worth searching for.
+
+        ``y`` must be nudged along the flow first, exactly as ``zone_of`` is
+        called elsewhere. Passing the raw state is a correctness bug, not a
+        rounding one: sitting on a wall after a crossing, the zone is
+        ambiguous, the wall set comes back for the wrong side, the real exit
+        wall is missing from it, and the step then coasts through the whole
+        drive period in the wrong zone. That sent a 30 step chain to 777.5
+        where integration gives 1.757.
+        """
+        k = self.zone_of(y)
+        out = []
+        for g, lv in self.walls:
+            for eps in (1e-9, -1e-9):
+                probe = np.array(y, float)
+                probe[0 if g[0] else 1] = lv + eps
+                if self.zone_of(probe) == k:
+                    out.append((g, lv))
+                    break
+        return out or self.walls
+
     def _f(self, y):
         """Field at ``y``, in whichever zone ``y`` is in."""
         zeta, centre = self.zones[self.zone_of(y)]
@@ -496,7 +521,7 @@ def forced_state_at(zeta, y0, centre, phase, amp, om, t):
 
 
 def forced_crossing(zeta, y0, centre, phase, amp, om, g, level, tmax,
-                    ngrid=400, tmin=1e-10):
+                    ngrid=None, tmin=1e-10):
     """First crossing of ``g^T y = level`` within ``tmax``, under forcing.
 
     Same idea as the unforced version, but the residual now carries the
@@ -507,18 +532,85 @@ def forced_crossing(zeta, y0, centre, phase, amp, om, g, level, tmax,
         x, v = forced_state_at(zeta, y0, centre, phase, amp, om, t)
         return (x if g[0] else v) - level
 
+    # Search in widening windows rather than one grid over the whole
+    # remaining period. A fine staircase makes zones narrow while the orbit
+    # stays fast -- at 65 levels a zone is crossed in about 0.005 time units
+    # against a drive period of 2.55 -- so a uniform grid must either be
+    # enormous or step over crossings. Sizing one from the distance to the
+    # wall instead blew up to 200000 points whenever the state sat near it,
+    # which is most of the time. Windows keep the resolution where the fast
+    # crossings are and stay cheap further out.
+    if ngrid is None:
+        ngrid = 600
+
+    speed = max(abs(float(y0[1])), 1e-3)
+    gap = abs(float(y0[0]) - level) if g[0] else 1.0
+    w = min(tmax, max(4.0*gap/speed, tmax/64.0))
+    while True:
+        t = _scan_window(resid, tmin, w, ngrid)
+        if np.isfinite(t):
+            return t
+        if w >= tmax:
+            return np.nan
+        w = min(tmax, 2.0*w)
+
+
+def _scan_window(resid, tmin, tmax, ngrid):
+    """First genuine sign change of ``resid`` in ``[tmin, tmax]``."""
     grid = np.linspace(tmin, tmax, ngrid)
     val = resid(grid)
     ok = np.isfinite(val)
-    cross = ok[:-1] & ok[1:] & (np.sign(val[:-1]) != np.sign(val[1:]))
+
+    # A state sitting exactly on this wall makes the residual zero at t = 0,
+    # and the search then returns a crossing at t = 0 for ever: the step
+    # advances nothing, ping-pongs until it runs out of events, and returns
+    # a silently truncated state. That is not hypothetical -- fitting 33
+    # levels over x in [0, 3] puts an edge at exactly 2.0, the natural
+    # starting amplitude, and it produced a wrong Lyapunov exponent that
+    # read as plausible.
+    #
+    # So a root only counts once the trajectory has genuinely left the wall.
+    scale = max(1.0, float(np.max(np.abs(val[ok]))) if ok.any() else 1.0)
+    away = np.abs(val) > 1e-9*scale
+    start = int(np.argmax(away)) if away.any() else 0
+    if not away.any():
+        return np.nan
+
+    seg = slice(start, None)
+    v, o = val[seg], ok[seg]
+    g = grid[seg]
+    cross = o[:-1] & o[1:] & (np.sign(v[:-1]) != np.sign(v[1:]))
     idx = np.nonzero(cross)[0]
     if not idx.size:
         return np.nan
     k = idx[0]
-    return brentq(resid, grid[k], grid[k + 1], xtol=1e-14, rtol=8.9e-16)
+    return brentq(resid, g[k], g[k + 1], xtol=1e-14, rtol=8.9e-16)
 
 
-def strobe_step(model, y, phase, amp, om, max_events=48):
+def _zone_ahead(model, y, phase, amp, om, dt=1e-7):
+    """Zone the trajectory is entering, resolved by a small step in time.
+
+    Nudging the *state* along the velocity fails where the trajectory is
+    tangent to a wall — at a turning point ``xdot = 0``, so the nudge is
+    identically zero and the zone stays ambiguous. That is not a corner
+    case: fitting a staircase of 33 levels over ``x`` in ``[0, 3]`` puts an
+    edge at exactly 2.0, which is the natural starting amplitude, and a run
+    begun there ping-ponged on the wall and returned a state that had barely
+    advanced — 30 steps ended at ``x = 2.0`` where integration gives
+    ``-1.72``.
+
+    Stepping a little way in time instead resolves it at second order,
+    which is what a tangency needs. Which zone's ``zeta`` is used for that
+    step does not matter: the two candidates differ only at order
+    ``zeta dt^2``.
+    """
+    k = model.zone_of(y)
+    zeta, centre = model.zones[k]
+    x, _ = forced_state_at(zeta, y, centre, phase, amp, om, dt)
+    return model.zone_of(np.array([float(x), y[1]]))
+
+
+def strobe_step(model, y, phase, amp, om, max_events=20000):
     """Advance exactly one drive period, and return the tangent Jacobian.
 
     The stroboscopic map samples once per drive period, so unlike the
@@ -538,10 +630,14 @@ def strobe_step(model, y, phase, amp, om, max_events=48):
     ph = float(phase)
     j = np.eye(2)
     for _ in range(max_events):
-        k = model.zone_of(y + 1e-11*np.array([y[1], 0.0]))
+        k = _zone_ahead(model, y, ph, amp, om)
         zeta, centre = model.zones[k]
+        # Only the walls bounding the current zone are reachable without
+        # first crossing one of them, so testing the rest is wasted work.
+        # Scanning all of them made the 65 level staircase roughly an order
+        # of magnitude slower than the 17 level one for no change in answer.
         best_t, best_g, best_l = np.nan, None, None
-        for g, lv in model.walls:
+        for g, lv in model.adjacent_walls(y + 1e-11*np.array([y[1], 0.0])):
             t = forced_crossing(zeta, y, centre, ph, amp, om, g, lv, left)
             if np.isfinite(t) and (not np.isfinite(best_t) or t < best_t):
                 best_t, best_g, best_l = t, g, lv
@@ -560,7 +656,14 @@ def strobe_step(model, y, phase, amp, om, max_events=48):
             ph + om*best_t)])
         j = saltation(f_m, f_p, best_g) @ j
         y, ph, left = y_new, ph + om*best_t, left - best_t
-    return y, ph, j
+    # Running out of events must fail loudly. Returning the state reached so
+    # far looks like a completed step and is not one: with 65 levels an
+    # orbit crosses roughly 66 zones per drive period, the old cap of 48
+    # truncated it silently, and the resulting Lyapunov exponent was
+    # plausible and wrong.
+    raise RuntimeError(
+        "strobe_step exceeded %d events without completing a drive period; "
+        "the step is incomplete, not slow" % max_events)
 
 
 def forced_lyapunov(model, y0, amp, om, n_skip=200, n=800, phase0=0.0):
