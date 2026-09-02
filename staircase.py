@@ -303,6 +303,100 @@ def vdp_staircase(mu, n, xmax=3.0):
     return tuple(levels), edges
 
 
+# --------------------------------------------- driving it beside Van der Pol
+#: Drive and fit used for the side by side. ``A`` and ``Om`` near 2.466 are
+#: the classic chaotic forced Van der Pol case, and ``XMAX`` comfortably
+#: contains the driven orbit, which never leaves ``|x| ~ 2.15`` — so the
+#: staircase's outer plateau is never visited and the only thing the level
+#: count changes is how finely the nonlinearity is resolved where the orbit
+#: actually goes.
+CMP_MU, CMP_XMAX, CMP_AMP = 5.0, 3.0, 5.0
+CMP_NSKIP = 400
+
+_SCAN_CACHE = {}
+
+
+def forced_label(flow, om, n_skip=CMP_NSKIP, y0=(2.0, 0.0)):
+    """Classify a driven response as a lock, a torus or chaos.
+
+    Uses `section.py`, the same engine the earlier forcing work used, so the
+    staircase and Van der Pol are measured identically and the only
+    difference between them is the field.
+
+    Returns ``(label, lam)``; ``lam`` is zero on a lock, where it is not
+    computed.
+    """
+    import section
+    td = 2.0*np.pi/om
+    q = section.lock_order(section.strobe(flow, td, list(y0), n_skip))
+    if q:
+        return "lock%d" % q, 0.0
+    lam = section.lyapunov(flow, td, list(y0), n_skip//2, n=400)
+    return ("chaos" if lam > section.LAM_TOL else "torus"), lam
+
+
+def _scan_one(args):
+    """Worker for :func:`window_scan` (module level so it can be pickled)."""
+    tag, om, mu, xmax, amp = args
+    if tag == "vdp":
+        import vanderpol
+        flow = vanderpol.field(mu, amp, om)
+    else:
+        lv, ed = vdp_staircase(mu, int(tag), xmax)
+        flow = field(lv, ed, amp, om)
+    return tag, om, forced_label(flow, om)
+
+
+def window_scan(oms, level_counts, mu=CMP_MU, xmax=CMP_XMAX, amp=CMP_AMP,
+                workers=None):
+    """Classify staircase and Van der Pol responses across drive frequency.
+
+    A coarse sweep here is worse than none. The chaotic bands sit in the
+    narrow transitions between one lock and the next, and a grid stepping
+    0.05 in ``Om`` jumped straight over Van der Pol's, reporting zero
+    chaotic points for a system confirmed chaotic at 2.466 by the same code
+    minutes earlier. Sample finely enough to resolve the transition, not the
+    range.
+
+    Returns ``{tag: [(om, label, lam), ...]}`` with ``"vdp"`` among the tags.
+    Results are cached per argument set so both themes of a figure share one
+    scan.
+    """
+    import multiprocessing as mp
+    key = (tuple(oms), tuple(level_counts), mu, xmax, amp)
+    if key in _SCAN_CACHE:
+        return _SCAN_CACHE[key]
+    tags = [str(n) for n in level_counts] + ["vdp"]
+    args = [(t, om, mu, xmax, amp) for t in tags for om in oms]
+    with mp.Pool(workers or mp.cpu_count()) as pool:
+        out = pool.map(_scan_one, args, chunksize=1)
+    res = {t: [] for t in tags}
+    for tag, om, (lab, lam) in out:
+        res[tag].append((om, lab, lam))
+    for t in tags:
+        res[t].sort()
+    _SCAN_CACHE[key] = res
+    return res
+
+
+def window_agreement(scan):
+    """Share of Van der Pol's chaotic frequencies each staircase reproduces.
+
+    Returns ``{tag: (n_chaotic, n_shared, jaccard)}``. The Jaccard index —
+    shared divided by combined — is the honest measure here because a
+    staircase can be chaotic where Van der Pol is not, and that counts
+    against agreement just as a miss does.
+    """
+    ref = {om for om, lab, _ in scan["vdp"] if lab == "chaos"}
+    out = {}
+    for tag, rows in scan.items():
+        s = {om for om, lab, _ in rows if lab == "chaos"}
+        union = len(s | ref)
+        out[tag] = (len(s), len(s & ref), (len(s & ref)/union) if union else
+                    float("nan"))
+    return out
+
+
 def check_reduces(zp=0.4, zm=-0.15, x0=1.0):
     """Confirm the averaging here is the two level equation already in use.
 

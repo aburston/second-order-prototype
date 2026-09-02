@@ -1348,6 +1348,103 @@ def fig_staircase(th, name):
     save(fig, name, "staircase")
 
 
+#: Drive frequencies for the side by side. Fine enough to resolve the
+#: chaotic bands, which sit in the transitions between one lock and the
+#: next: a 0.05 grid stepped straight over Van der Pol's and reported it as
+#: having none.
+SVDP_OMS = np.round(np.linspace(2.40, 2.56, 33), 4)
+SVDP_LEVELS = (5, 9, 17, 33, 65)
+
+
+def fig_staircase_vdp(th, name):
+    """Drive the staircase beside Van der Pol and compare what comes out.
+
+    Left: the damping laws themselves. Van der Pol's ``-mu(1-x^2)/2`` is
+    smooth; the staircase samples it in steps. This is the only difference
+    between the two systems, and the level count is the only thing varied.
+
+    Middle: how each responds as the drive frequency is swept, one strip per
+    system. All of them run lock 3, then a chaotic band, then lock 4,
+    another chaotic band, then lock 5 — the chaos lives in the transitions.
+    The strips make the convergence visible: at five levels the bands are in
+    the wrong place, and by sixty-five they sit on Van der Pol's.
+
+    Right: that convergence as a number. The Jaccard index counts
+    frequencies where both are chaotic against frequencies where either is,
+    so a staircase going chaotic where Van der Pol does not counts against
+    it exactly as a miss does.
+
+    The orbit stays within ``|x| ~ 2.15`` throughout, well inside the fitted
+    range, so none of this is about the staircase's outer plateau.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
+    scan = staircase.window_scan(SVDP_OMS, SVDP_LEVELS)
+    agree = staircase.window_agreement(scan)
+
+    fig, axes = newfig(th, 1, 3, figsize=(14.6, 4.4))
+
+    xs = np.linspace(0.0, staircase.CMP_XMAX, 800)
+    axes[0].plot(xs, staircase.vdp_zeta(xs, staircase.CMP_MU),
+                 color=th["ink2"], linewidth=1.8, zorder=5,
+                 label="Van der Pol")
+    for k, n in enumerate((5, 17)):
+        lv, ed = staircase.vdp_staircase(staircase.CMP_MU, n,
+                                         staircase.CMP_XMAX)
+        ys = [staircase.zeta_at(x, lv, ed) for x in xs]
+        axes[0].step(xs, ys, color=th["series"][k], linewidth=1.4, zorder=4,
+                     where="mid", label="staircase, %d levels" % n)
+    axes[0].axhline(0.0, color=th["axis"], linewidth=0.9, zorder=2)
+    style(axes[0], th, "$x$", "damping ratio  $\\zeta$",
+          "The only difference: how finely\nthe same law is resolved")
+    legend(axes[0], th, loc="upper left")
+
+    tags = [str(n) for n in SVDP_LEVELS] + ["vdp"]
+    labels = ["%d levels" % n for n in SVDP_LEVELS] + ["Van der Pol"]
+    code = {"chaos": 2, "torus": 1}
+    grid = np.array([[code.get(lab, 0) for _, lab, _ in scan[t]]
+                     for t in tags])
+    cmap = matplotlib.colors.ListedColormap(list(th["series"]))
+    axes[1].pcolormesh(SVDP_OMS, np.arange(len(tags)), grid, cmap=cmap,
+                       vmin=-0.5, vmax=2.5, shading="nearest", zorder=1)
+    axes[1].set_yticks(np.arange(len(tags)))
+    axes[1].set_yticklabels(labels)
+    style(axes[1], th, "drive frequency  $\\Omega$", "",
+          "Chaos lives in the transitions\nbetween one lock and the next")
+    handles = [matplotlib.patches.Patch(facecolor=th["series"][i], label=t)
+               for i, t in enumerate(("locked", "quasi-periodic", "chaotic"))]
+    axes[1].legend(handles=handles, fontsize=8, labelcolor=th["ink2"],
+                   frameon=True, facecolor=th["surface"], edgecolor="none",
+                   framealpha=0.92, loc="lower left").set_zorder(9)
+
+    js = [agree[str(n)][2] for n in SVDP_LEVELS]
+    axes[2].plot(SVDP_LEVELS, js, "o-", color=th["series"][0], linewidth=1.8,
+                 markersize=5, zorder=4, label="agreement with Van der Pol")
+    for n, j in zip(SVDP_LEVELS, js):
+        axes[2].annotate("%.2f" % j, (n, j), fontsize=8, color=th["ink2"],
+                         xytext=(0, -14), textcoords="offset points",
+                         ha="center")
+    axes[2].axhline(1.0, color=th["ink2"], linewidth=1.1,
+                    linestyle=(0, (5, 3)), zorder=3)
+    axes[2].text(SVDP_LEVELS[-1], 1.0, "Van der Pol ", fontsize=8,
+                 color=th["ink2"], va="bottom", ha="right", zorder=6)
+    axes[2].set_xscale("log")
+    axes[2].set_xticks(list(SVDP_LEVELS))
+    axes[2].set_xticklabels([str(n) for n in SVDP_LEVELS])
+    axes[2].set_ylim(-0.05, 1.12)
+    style(axes[2], th, "levels in the staircase",
+          "shared chaotic frequencies / combined",
+          "A piecewise model converges on\nthe chaos, not just the cycle")
+    legend(axes[2], th, loc="upper left")
+
+    fig.suptitle("Driving the staircase at forced Van der Pol's chaotic "
+                 "point", color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "staircase-vdp")
+
+
 if __name__ == "__main__":
     for name, th in THEMES.items():
         print(f"{name}:")
@@ -1364,4 +1461,5 @@ if __name__ == "__main__":
         fig_forced_tongues(th, name)
         fig_forced_sections(th, name)
         fig_staircase(th, name)
+        fig_staircase_vdp(th, name)
         fig_vanderpol_compare(th, name)
