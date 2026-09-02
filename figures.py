@@ -34,6 +34,11 @@ Five figures, in the order the README develops the argument:
 ``forced-sections``
     The three things the stroboscopic section is ever observed to be —
     a point, a closed curve, a chain of islands — and no fourth.
+``vanderpol-compare``
+    The same forcing analysis run on Van der Pol, whose damping is
+    unbounded rather than saturating: at weak nonlinearity it matches the
+    prototype, and at strong nonlinearity it goes chaotic where the
+    prototype cannot.
 
 Each figure is rendered once per entry in ``THEMES`` and saved as
 ``<name>-light.png`` and ``<name>-dark.png``. The README embeds the pair in
@@ -54,6 +59,8 @@ import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 
 import forced
+import section
+import vanderpol
 import frequency
 import symmetric
 import displacement
@@ -1137,6 +1144,83 @@ def fig_forced_sections(th, name):
     save(fig, name, "forced-sections")
 
 
+#: Grid the comparison is drawn from. Wide in frequency because Van der
+#: Pol's chaos lives well above the cycle frequency -- an earlier scan
+#: stopping at 2.4 would have missed all of it.
+CMP_R = np.round(np.linspace(0.5, 8.0, 31), 3)
+CMP_A_VDP = (0.5, 1.0, 2.0, 5.0, 10.0)
+CMP_A_PROTO = (0.3, 0.8, 1.5, 3.0, 5.0)
+
+
+def _regime_codes(lab, q, lam):
+    """0 locked, 1 quasi-periodic, 2 chaotic, from a regime map."""
+    return np.where(q > 0, 0, np.where(lam > section.LAM_TOL, 2, 1))
+
+
+def fig_vanderpol_compare(th, name):
+    """Draw the prototype beside Van der Pol under identical forcing.
+
+    Four panels over the same drive frequency range, all classified by the
+    same engine: the deadzone prototype, then Van der Pol at three
+    relaxation parameters. Cells are locked, quasi-periodic, or chaotic.
+
+    The comparison is the point. At ``mu = 0.1`` Van der Pol is nearly
+    harmonic and its map is the prototype's — a 1:1 tongue, narrow higher
+    order locks, tori between them, and no chaos. Raising ``mu`` strengthens
+    the nonlinearity and chaos appears, at drive frequencies several times
+    the cycle frequency. The prototype never gets there at any drive
+    strength, because its damping saturates: outside the deadzone the ratio
+    is exactly ``zp`` however hard the orbit is driven, so a bigger orbit is
+    not a more nonlinear one. Van der Pol's ``-mu(1 - x^2)`` grows without
+    limit, so drive amplitude buys nonlinearity that the prototype cannot
+    buy at any price.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
+    fig, axes = newfig(th, 1, 4, figsize=(15.0, 4.2))
+    cmap = matplotlib.colors.ListedColormap(list(th["series"]))
+
+    lab, q, w, lam = forced.regime_map(CMP_R, np.array(CMP_A_PROTO))
+    panels = [(axes[0], CMP_A_PROTO, _regime_codes(lab, q, lam),
+               "deadzone prototype", "$A/\\omega_n v_0$",
+               "$\\zeta_{+}=0.3$, $\\zeta_{-}=-0.1$")]
+    for k, mu in enumerate((0.1, 1.0, 5.0)):
+        lab, q, w, lam = vanderpol.regime_map(mu, CMP_R,
+                                              np.array(CMP_A_VDP))
+        panels.append((axes[k + 1], CMP_A_VDP, _regime_codes(lab, q, lam),
+                       "Van der Pol  $\\mu=%g$" % mu, "$A$",
+                       "contraction %.1e" % vanderpol.contraction(mu)))
+
+    for ax, amps, code, title, ylab, sub in panels:
+        ax.pcolormesh(CMP_R, np.arange(len(amps)), code, cmap=cmap,
+                      vmin=-0.5, vmax=2.5, shading="nearest", zorder=1)
+        ax.set_yticks(np.arange(len(amps)))
+        ax.set_yticklabels(["%g" % a for a in amps])
+        style(ax, th, "$\\Omega / \\omega_{lc}$", ylab, title)
+        ax.text(0.5, -0.30, sub, transform=ax.transAxes, fontsize=8,
+                color=th["ink2"], ha="center", va="top")
+        n_chaos = int(np.sum(code == 2))
+        ax.text(0.97, 0.04,
+                "chaotic cells: %d" % n_chaos, transform=ax.transAxes,
+                fontsize=8.5, color=th["ink"], ha="right", va="bottom",
+                zorder=7,
+                bbox=dict(boxstyle="round,pad=0.3", fc=th["surface"],
+                          ec=th["grid"], lw=0.8, alpha=0.94))
+
+    handles = [matplotlib.patches.Patch(facecolor=th["series"][i],
+                                        label=t)
+               for i, t in enumerate(("locked", "quasi-periodic", "chaotic"))]
+    axes[0].legend(handles=handles, fontsize=8, labelcolor=th["ink2"],
+                   frameon=True, facecolor=th["surface"], edgecolor="none",
+                   framealpha=0.92, loc="upper left").set_zorder(9)
+    fig.suptitle("Same drive, same measurements: a saturating nonlinearity "
+                 "against an unbounded one", color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "vanderpol-compare")
+
+
 if __name__ == "__main__":
     for name, th in THEMES.items():
         print(f"{name}:")
@@ -1152,3 +1236,4 @@ if __name__ == "__main__":
         fig_four_models(th, name)
         fig_forced_tongues(th, name)
         fig_forced_sections(th, name)
+        fig_vanderpol_compare(th, name)

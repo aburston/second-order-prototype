@@ -1173,6 +1173,13 @@ same held at $`(\zeta_{+}, \zeta_{-})`$ of $`(1.0, -0.5)`$, $`(2.0, -0.8)`$,
 $`(4.0, -0.9)`$ and $`(8.0, -0.95)`$ — overdamped outside, nearly escaping
 inside — with every exponent still negative.
 
+That grid stops at $`r = 2.4`$, which turned out to be too narrow a window to
+draw a conclusion from: the control system's chaos lives above $`r = 4`$. A
+second grid taking $`r`$ out to 8 at drive strengths up to $`a = 5`$ — 155
+cells — also finds none, and the four largest exponents in it converge to
+$`-0.0007`$, $`+0.00003`$, $`-0.0118`$ and $`-0.0003`$ under a fivefold longer
+run. The result stands; the window it stands over is $`r \le 8`$.
+
 ### Why not, and where to look
 
 The unforced Floquet result survives forcing unchanged, and it explains the
@@ -1190,10 +1197,15 @@ from the dwell weighted sum of the pole real parts:
 The pair itself is sometimes real and sometimes complex, so only the product
 is pinned — but the product is what matters. The stroboscopic map contracts
 area by $`\exp(2\Lambda)`$ every cycle, and at ordinary damping ratios that
-is 0.20: far too strong for a multiplier to reach $`-1`$ and start a period
-doubling cascade. **Chaos in this family needs the contraction near unity**,
-which is to say weak damping on both sides of the deadzone — and that is the
-free cycle's logarithmic decrement, something you can read off a ringdown.
+is 0.20.
+
+It is tempting to stop there and say chaos needs that contraction near unity,
+so that a multiplier can reach $`-1`$ and start a period doubling cascade.
+**That explanation is wrong, and the next section is what refutes it.** Van
+der Pol at $`\mu = 5`$ contracts by $`6.1\times10^{-4}`$ per cycle — a
+thousand times more strongly than this prototype — and is chaotic. Strong
+contraction does not prevent chaos. What distinguishes the two systems is
+something else, and the comparison isolates it.
 
 Following that down does produce the expected precursors. As
 $`\exp(2\Lambda)`$ rises the staircase fills in — high order locks appear
@@ -1257,3 +1269,114 @@ The lesson generalises past this section: in a piecewise linear system the
 orbit's scale and its settling time both vary by orders of magnitude across
 the parameter plane, so any fixed tolerance is a claim about a region rather
 than a method.
+
+
+## Control: the same analysis on Van der Pol
+
+Every result above is about one system, and a negative result about one
+system is worth little without a control. Van der Pol is the natural one.
+It is also a second order oscillator with nonlinear damping and a limit
+cycle, it is the most studied forced oscillator there is, and it is *known*
+to go chaotic — so it tests the measurements as much as the prototype.
+
+```math
+\ddot{x} - \mu(1 - x^2)\dot{x} + \omega_n^2 x = A\cos\Omega t
+```
+
+`vanderpol.py` carries it. Both systems are measured by the same engine,
+`section.py`, which takes the flow as an argument; `forced.py` is left
+untouched, so the two are independent code paths, and `section.py`'s self
+check reproduces `forced.py`'s answers on all eight cases its lock test was
+debugged against.
+
+### The positive control
+
+At $`\mu = 5`$, $`A = 5`$, $`\Omega = 2.466`$ — the classic chaotic case —
+the classifier returns **chaos, $`\lambda = +0.094`$**, while the
+neighbouring cells come back as clean locks of order 3 and 5 at
+$`\lambda = -0.20`$ to $`-0.40`$.
+
+This matters more than any single number in this document. Before it, every
+"no chaos" result here was produced by machinery that had never once
+detected chaos, and so was equally consistent with the machinery not working.
+It works.
+
+### What is the same, and what is not
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/vanderpol-compare-dark.png">
+  <img alt="Regime maps for the deadzone prototype and Van der Pol at three relaxation parameters" src="figures/vanderpol-compare-light.png">
+</picture>
+
+*The same drive, the same grid, the same measurements. At weak nonlinearity Van der Pol reproduces the prototype; at strong nonlinearity it goes chaotic where the prototype does not.*
+
+Over $`r \in [0.5, 8]`$, 155 cells each, chaotic cells counted after the
+convergence check described below:
+
+| system | contraction | chaotic cells | largest $`\lambda`$ |
+| --- | --- | --- | --- |
+| deadzone prototype | 0.2036 | 0 | $`+0.0034`$ |
+| Van der Pol, $`\mu = 0.1`$ | 0.5330 | 0 | $`+0.0002`$ |
+| Van der Pol, $`\mu = 1.0`$ | $`8.6\times10^{-4}`$ | 1 | $`+0.0380`$ |
+| Van der Pol, $`\mu = 5.0`$ | $`6.1\times10^{-4}`$ | 2 | $`+0.1180`$ |
+
+**At $`\mu = 0.1`$ Van der Pol *is* the prototype**, behaviourally: a 1:1
+tongue opening from $`\Omega = \omega_{lc}`$, narrow higher order locks at
+$`r = 2, 3, 7`$, tori between them, no chaos. Everything the forcing section
+above concluded is reproduced by a completely different nonlinearity.
+
+**The contraction does not order the outcome.** $`\mu = 1`$ and $`\mu = 5`$
+have almost the same contraction, $`8.6\times10^{-4}`$ against
+$`6.1\times10^{-4}`$, and behave very differently; $`\mu = 0.1`$ has by far
+the *weakest* contraction of the three and is the one with no chaos at all.
+Whatever separates these systems, it is not how fast they forget a
+transient — which retires the explanation offered in the previous section.
+
+### What does separate them
+
+Two structural differences, both measurable rather than argued.
+
+**The damping saturates in one and not the other.** Outside the deadzone the
+prototype's damping ratio is exactly $`\zeta_{+}`$, however hard the orbit is
+driven; the nonlinearity lives in a band of width $`2v_0`$ and a large orbit
+spends proportionally less of its time there. The prototype is therefore
+*asymptotically linear*, and driving it harder makes it more linear, not
+less. Van der Pol's damping is $`-\mu(1-x^2)`$, which grows without bound, so
+a larger orbit is a more nonlinear one. Drive amplitude buys nonlinearity in
+Van der Pol; in the prototype it buys the opposite.
+
+That also explains the shape of the maps: the prototype's 1:1 tongue widens
+with drive until it swallows the whole frequency range, which is exactly what
+an oscillator being driven towards linearity should do.
+
+**There is no free amplitude scale in Van der Pol.** The prototype's cycle
+amplitude is proportional to $`v_0`$, so $`v_0`$ scales out and the forced
+problem has exactly two parameters. Van der Pol's cycle sits at $`x \approx 2`$
+whatever $`\mu`$ is — measured as 2.00010 at $`\mu = 0.1`$ and 2.02151 at
+$`\mu = 5`$ — fixed by the polynomial, with nothing to scale out. Scaling the
+drive by three grows the prototype's orbit by exactly 3.0 and Van der Pol's by
+1.0890. So $`\mu`$ is an irreducible third parameter, and it is the one that
+turns chaos on.
+
+### What this says about the family
+
+The prototypes buy their clean stability boundaries with a bounded
+nonlinearity, and that same bound appears to be why forcing them produces
+entrainment rather than chaos. They are the right tool for fitting a system
+whose nonlinearity saturates — a deadzone, a clearance, a friction
+threshold, a limiter. They are the wrong tool for one whose nonlinearity
+grows with amplitude, and the honest test for which case a measurement falls
+into is the two-amplitude class test in `speculation.md`: drive it at two
+amplitudes and see whether the effective damping keeps changing.
+
+### Numerical note
+
+The chaos threshold was set from the noise floor rather than chosen. A first
+pass called seven cells chaotic; re-running each exponent at five times the
+run length and a hundred times the twin separation flipped four of them —
+$`+0.0071 \to -0.0003`$, $`+0.0079 \to +0.0004`$, $`+0.0123 \to -0.0001`$,
+$`+0.0041 \to -0.0010`$ — while the three that held, $`+0.094`$, $`+0.101`$
+and $`+0.036`$, barely moved. The floor is therefore about 0.008, and the
+threshold used above is 0.02, with a factor of two of clearance either side.
+`section.confirm_chaos` runs that test, so a marginal cell can be checked
+rather than trusted.
