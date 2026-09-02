@@ -1450,6 +1450,151 @@ def fig_staircase_vdp(th, name):
     save(fig, name, "staircase-vdp")
 
 
+# --------------------------------------------------- the strange attractor
+#: Drive at which forced Van der Pol is chaotic, and the staircase fitted to
+#: it. The same settings the comparison in ``README.md`` uses.
+ATT_MU, ATT_XMAX, ATT_A, ATT_OM = 5.0, 3.0, 5.0, 2.466
+ATT_KEEP, ATT_SKIP = 30000, 400
+
+_CLOUD = {}
+
+
+def _strobe_cloud(kind, n_keep=ATT_KEEP):
+    """Stroboscopic points on the attractor, cached across themes.
+
+    Integrated at a looser tolerance than the analysis elsewhere uses. That
+    is deliberate and it changes what the picture is: on a chaotic
+    attractor a slightly perturbed trajectory *shadows* the attractor rather
+    than tracking any one orbit, so the cloud fills out the attractor's
+    shape faithfully while not being a picture of a particular trajectory.
+    For geometry that is the right trade; for an exponent it would not be,
+    which is why the exponents come from ``maps.py`` instead.
+    """
+    if kind in _CLOUD:
+        return _CLOUD[kind]
+    cache = os.path.join(OUT, ".attractor-%s.npy" % kind)
+    if os.path.exists(cache):
+        _CLOUD[kind] = np.load(cache)
+        return _CLOUD[kind]
+    td = 2.0*np.pi/ATT_OM
+    if kind == "vdp":
+        f = vanderpol.field(ATT_MU, ATT_A, ATT_OM)
+    else:
+        lv, ed = staircase.vdp_staircase(ATT_MU, int(kind), ATT_XMAX)
+        f = staircase.field(lv, ed, ATT_A, ATT_OM)
+    t = td*np.arange(ATT_SKIP, ATT_SKIP + n_keep + 1)
+    sol = solve_ivp(f, (0.0, t[-1]), [2.0, 0.0], t_eval=t, method="LSODA",
+                    rtol=1e-7, atol=1e-9)
+    _CLOUD[kind] = sol.y.T
+    os.makedirs(OUT, exist_ok=True)
+    np.save(cache, _CLOUD[kind])
+    return _CLOUD[kind]
+
+
+def _ramp(th, k):
+    """Single hue sequential ramp for the density encoding, per theme.
+
+    Density is a magnitude, so it takes a sequential scale: one hue running
+    from the sparse end to the dense end, never a rainbow. The dark ramp is
+    chosen against the dark surface rather than flipped from the light one —
+    on a dark ground the dense end has to be the bright one to read at all,
+    and on a light ground it has to be the deep one.
+
+    Each panel keeps its own hue so the two systems stay distinguishable,
+    but identity is carried by the panel titles, not by the colour.
+    """
+    hue = th["series"][k]
+    dark = th["surface"].lower().startswith("#1")
+    stops = [th["grid"], hue, "#ffffff" if dark else "#0d0d12"]
+    return matplotlib.colors.LinearSegmentedColormap.from_list(
+        "attractor%d" % k, stops)
+
+
+def _density(pts, bins=260):
+    """Log point density at each sample, for the colour encoding.
+
+    Log because an attractor's visit density spans orders of magnitude: on a
+    linear scale two or three dense folds saturate the ramp and every other
+    filament reads as empty, which is exactly the structure worth seeing.
+    """
+    h, xe, ye = np.histogram2d(pts[:, 0], pts[:, 1], bins=bins)
+    i = np.clip(np.digitize(pts[:, 0], xe) - 1, 0, bins - 1)
+    j = np.clip(np.digitize(pts[:, 1], ye) - 1, 0, bins - 1)
+    return np.log1p(h[i, j])
+
+
+def fig_strange_attractor(th, name):
+    """Draw the chaotic stroboscopic section, beside Van der Pol's, and zoomed.
+
+    Sampling the forced response once per drive period turns a chaotic
+    trajectory into a point set, and that set is the attractor. It is not a
+    curve: a quasi-periodic response gives a closed curve, and what
+    distinguishes chaos geometrically is that the curve has been stretched
+    and folded so often that it becomes a Cantor-like stack of filaments —
+    the same structure at every magnification, which is what the third panel
+    shows.
+
+    Left and middle are the piecewise staircase at 65 levels and the smooth
+    Van der Pol it was fitted to, driven identically at the point where Van
+    der Pol is chaotic. #20 established numerically that the piecewise model
+    reproduces the chaos; drawn side by side, the claim is that it
+    reproduces the attractor's *geometry* and not merely its exponent.
+
+    Right zooms one filament of the staircase attractor. Layers that look
+    solid at full extent separate into more layers, which is the visible
+    signature of the stretching a positive Lyapunov exponent measures.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
+    fig, axes = newfig(th, 1, 3, figsize=(14.4, 4.8))
+
+    stair = _strobe_cloud("65")
+    vdp_pts = _strobe_cloud("vdp")
+
+    for ax, pts, title, k in ((axes[0], stair, "piecewise staircase,\n65 levels", 0),
+                              (axes[1], vdp_pts, "Van der Pol,\n$\\mu = 5$", 1)):
+        ax.scatter(pts[:, 0], pts[:, 1], s=0.30, c=_density(pts),
+                   cmap=_ramp(th, k), linewidths=0, zorder=4,
+                   rasterized=True)
+        style(ax, th, "$x_1 = x$", "$x_2 = \\dot{x}$", title)
+
+    lim = [min(stair[:, 0].min(), vdp_pts[:, 0].min()),
+           max(stair[:, 0].max(), vdp_pts[:, 0].max()),
+           min(stair[:, 1].min(), vdp_pts[:, 1].min()),
+           max(stair[:, 1].max(), vdp_pts[:, 1].max())]
+    for ax in axes[:2]:
+        ax.set_xlim(lim[0], lim[1])
+        ax.set_ylim(lim[2], lim[3])
+
+    # zoom on the densest patch, found from the data rather than chosen
+    h, xe, ye = np.histogram2d(stair[:, 0], stair[:, 1], bins=40)
+    i, j = np.unravel_index(np.argmax(h), h.shape)
+    cx, cy = 0.5*(xe[i] + xe[i + 1]), 0.5*(ye[j] + ye[j + 1])
+    wx, wy = 0.055*(lim[1] - lim[0]), 0.055*(lim[3] - lim[2])
+    axes[2].scatter(stair[:, 0], stair[:, 1], s=2.4, c=_density(stair),
+                    cmap=_ramp(th, 0), linewidths=0, zorder=4,
+                    rasterized=True)
+    axes[2].set_xlim(cx - wx, cx + wx)
+    axes[2].set_ylim(cy - wy, cy + wy)
+    style(axes[2], th, "$x_1 = x$", "$x_2 = \\dot{x}$",
+          "the staircase attractor,\nmagnified about 18 times")
+    for ax in axes[:1]:
+        ax.add_patch(matplotlib.patches.Rectangle(
+            (cx - wx, cy - wy), 2*wx, 2*wy, fill=False, lw=1.0,
+            edgecolor=th["ink2"], zorder=7))
+
+    axes[0].text(0.03, 0.03, "brighter = more often visited",
+                 transform=axes[0].transAxes, fontsize=8, color=th["ink2"],
+                 ha="left", va="bottom", zorder=8)
+    fig.suptitle("Sampled once per drive period, the chaotic response is a "
+                 "set of filaments, not a curve", color=th["ink"],
+                 fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "strange-attractor")
+
+
 if __name__ == "__main__":
     for name, th in THEMES.items():
         print(f"{name}:")
@@ -1467,4 +1612,5 @@ if __name__ == "__main__":
         fig_forced_sections(th, name)
         fig_staircase(th, name)
         fig_staircase_vdp(th, name)
+        fig_strange_attractor(th, name)
         fig_vanderpol_compare(th, name)
