@@ -78,7 +78,21 @@ D0_REL = 1e-6
 QMAX = 24
 
 #: Exponent magnitudes below this read as zero.
-LAM_TOL = 5e-3
+#:
+#: Set from the measured spread, not chosen. Re-running the exponent on the
+#: cells a first pass called chaotic, at five times the run length and a
+#: hundred times the separation, moved marginal values by up to 0.008 and
+#: flipped four of seven verdicts: +0.0071 became -0.0003, +0.0079 became
+#: +0.0004, +0.0123 became -0.0001, +0.0041 became -0.0010. The three that
+#: held -- +0.0938, +0.1005, +0.0362 -- barely moved. So the noise floor on
+#: these estimates is about 0.008 and a threshold of 5e-3 sat inside it.
+#: At 2e-2 the confirmed and rejected cells separate with a factor of two
+#: below and a factor of two above, and re-thresholding the stored maps at
+#: 2e-2 reproduces the convergence test's verdicts exactly.
+#:
+#: A cell near the threshold still deserves :func:`confirm_chaos` rather
+#: than trust.
+LAM_TOL = 2e-2
 
 #: A rotation number this close to ``p/q`` counts as locked.
 W_TOL = 1e-6
@@ -214,6 +228,29 @@ def multipliers(flow, td, y0, n_skip, h_rel=1e-6):
         e[k] = h
         j[:, k] = (qmap(p + e) - qmap(p - e))/(2.0*h)
     return np.linalg.eigvals(j), q
+
+
+def confirm_chaos(flow, td, y0, n_skip, n_short=300, n_long=1500):
+    """Re-test a positive exponent for convergence before believing it.
+
+    A single Lyapunov estimate near the threshold is not evidence: the
+    estimate is a finite difference on a finite run, and both the run length
+    and the separation ``d0`` bias it. This recomputes the exponent at five
+    times the run length and again at a hundred times the separation, and
+    calls the cell chaotic only if every estimate clears ``LAM_TOL``.
+
+    On the cells this was built for, the genuinely chaotic ones moved by
+    less than 0.008 across all three estimates while four marginal ones
+    changed sign.
+
+    Returns ``(is_chaos, (lam_short, lam_long, lam_wide))``.
+    """
+    scale = float(np.max(np.abs(strobe(flow, td, y0, n_skip, n_keep=200))))
+    ls = lyapunov(flow, td, y0, n_skip//2, n=n_short)
+    ll = lyapunov(flow, td, y0, n_skip, n=n_long)
+    lw = lyapunov(flow, td, y0, n_skip, n=n_long,
+                  d0=max(LOCK_SCATTER_FLOOR, 1e-4*scale))
+    return (min(ls, ll, lw) > LAM_TOL), (ls, ll, lw)
 
 
 def settle_periods(mu_cycle, r=1.0, tol=1e-9, floor=500, cap=8000):
