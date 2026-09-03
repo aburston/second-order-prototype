@@ -324,11 +324,65 @@ of the damping law.
 
 ## Van der Pol at $`\mu = 1`$: the nearly harmonic mode
 
-<!-- MU1 -->
+Van der Pol at $`\mu = 1`$ is a different mode of operation from
+$`\mu = 5`$. Its free cycle is nearly a sinusoid, and under a drive it does
+not run through a period adding sequence: at every drive strength on the
+grid it has a 1:1 tongue and a 3:1 tongue with quasi-periodic response
+almost everywhere else, and its only chaos is a band three fine cells wide
+at $`A = 1`$ near a drive ratio of 0.5 — a drive at half the cycle
+frequency — reached by period doubling of the 1:1 lock, not by a
+transition between locks. `staircase.fit_mu1` fits the model to this mode
+the same way: the end of the 1:1 plateau and the start of the 3:1 plateau
+at $`A = 5`$, ratios 2.195 and 2.555, with the free cycle within 20%.
+
+| | $`\zeta`$ | edges | free $`r`$ | free $`T`$ | plateau edges, ratio |
+| --- | --- | --- | --- | --- | --- |
+| Van der Pol, $`\mu = 1`$ | — | — | 2.0086 | 6.663 | 2.195, 2.555 |
+| sampled from the law, scaled | $`-0.39,\ 0.78,\ 3.12`$ | 1.10, 2.20 | 2.0086 | 6.663 | 2.139, 2.222 |
+| fitted, 59 evaluations | $`-0.36,\ 0.87,\ 3.57`$ | 1.16, 1.98 | 1.981 ($`-1.4\%`$) | 6.670 ($`+0.1\%`$) | 2.256, 2.506 |
+
+The fit moves the sampled staircase's plateau edges from 0.06 and 0.33
+below the targets to 0.06 above and 0.05 below, and does it by raising the
+band and outer levels and narrowing the band; the free cycle it lands on is
+better than the leeway asked for. Swept at $`A = 5`$ across the whole
+range at 0.02 in the ratio, against Van der Pol:
+
+| | lock 1 | lock 3 | lock 5 | elsewhere |
+| --- | --- | --- | --- | --- |
+| Van der Pol | to 2.20 | 2.56–3.40 | 5.00–5.06 | quasi-periodic |
+| three levels | to 2.24 | 2.54–3.42 | 4.88–5.08 | quasi-periodic, with narrow locks of order 11, 4, 6 and 7 that Van der Pol does not show |
+
+The end of the 3:1 plateau, which was not fitted, lands within 0.02 of Van
+der Pol's. The model has a few more narrow high order locks than Van der
+Pol at this drive, which is the same tendency the $`\mu = 5`$ fit showed
+inside its chaotic region. Across the drive grid:
+
+<!-- MU1MAP -->
 
 ## Parameters against the relaxation parameter
 
-<!-- AGAINST_MU -->
+Two rows, which is a table and not yet a rule. Both fits are at
+$`\omega_n = 1`$ with Van der Pol's amplitude 2; the columns are the five
+parameters and the measurable quantities each mode has.
+
+| $`\mu`$ | $`\zeta_{0}`$ | $`\zeta_{1}`$ | $`\zeta_{2}`$ | $`a`$ | $`b`$ | free $`T`$ | plateau edges at $`A = 5`$ | chaos |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | $`-0.36`$ | 0.87 | 3.57 | 1.16 | 1.98 | 6.67 | lock 1 ends 2.26, lock 3 starts 2.51 | <!-- MU1CHAOS --> |
+| 5 | $`-1.74`$ | 3.84 | 15.0 | 1.08 | 1.98 | 12.44 | lock 3 ends 2.43, lock 5 starts 2.50 (in $`\Omega`$) | bands at the lock transitions from $`A = 5`$ up |
+
+What moves with $`\mu`$ is plain to read. The outer edge $`b`$ stays at
+2, the core edge $`a`$ barely moves, and the three ratios scale together
+by a factor near five between $`\mu = 1`$ and $`\mu = 5`$ — the core from
+$`-0.36`$ to $`-1.74`$, the band from 0.87 to 3.84, the outer from 3.6 to
+15 — with the outer level growing fastest. Van der Pol's own law scales all
+of $`\zeta(x)`$ by $`\mu`$ exactly, so the fitted ratios track the law's
+scale while their *shape* does not track its shape: at $`\mu = 5`$ the
+fitted core is $`-1.74`$ where the law is $`-2.5`$ at the origin. What the
+two rows say about behaviour is the useful part: with ratios below about
+1 the model entrains and does not go chaotic; with the outer ratio above
+about 10 and the core below about $`-1`$ it goes chaotic at the transitions
+between its locks. Where the boundary between those lies is not known;
+one fit between them would place it.
 
 ## What to measure, and which parameter it sets
 

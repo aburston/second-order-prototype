@@ -618,6 +618,27 @@ TWO_FITTED = ((-1.2419249232482135, 8.328703618461768), (1.43646639597176,))
 THREE_FITTED = ((-1.7350655010015574, 3.8359503860037094, 15.047130340757839),
                 (1.0750014202405769, 1.9812442858436983))
 
+#: The same fit to Van der Pol at ``mu = 1``: free cycle 2.0086 and 6.6633,
+#: plateau targets the end of lock 1 at ratio 2.195 and the start of lock 3
+#: at 2.555 at ``A = 5``, window ratio 1.8 to 3.3 at 0.05. About an hour.
+MU1 = 1.0
+VDP_R_MU1, VDP_T_MU1 = 2.0086, 6.66329
+VDP_END1_MU1, VDP_START3_MU1 = 2.195, 2.555
+THREE_FITTED_MU1 = ((-0.35783384494211046, 0.8653252168440303, 3.57309031296195),
+                    (1.1597467884015344, 1.9836384057971845))
+
+
+def fit_mu1(maxfev=60, workers=None, log=print):
+    """Re-run the ``mu = 1`` fit from the uniformly matched sampled staircase."""
+    import vanderpol
+    wl = vanderpol.w_lc(MU1)
+    lv, ed, _, _ = uniform_matched(3, mu=MU1, T=VDP_T_MU1, R=VDP_R_MU1)
+    oms = tuple(np.round(np.arange(1.80, 3.301, 0.05)*wl, 5))
+    return fit_bands(lv, ed, maxfev=maxfev, workers=workers, log=log,
+                     targets=(VDP_END1_MU1*wl, VDP_START3_MU1*wl),
+                     free=(VDP_R_MU1, VDP_T_MU1), amp=CMP_AMP, oms=oms,
+                     locks=("lock1", "lock3"))
+
 #: Van der Pol's period adding region at ``CMP_AMP``: the last frequency
 #: locked 3:1 and the first locked 5:1 from there on, from the fine scan.
 VDP_END3, VDP_START5 = 2.4275, 2.4975
@@ -1022,6 +1043,14 @@ if __name__ == "__main__":
         pickle.dump(regime_compare(), open("regime.pkl", "wb"))
         print()
         regime_transitions()
+        sys.exit(0)
+    if len(sys.argv) > 1 and sys.argv[1] == "fit1":
+        print("landed on", fit_mu1())
+        sys.exit(0)
+    if len(sys.argv) > 1 and sys.argv[1] == "regime1":
+        import pickle
+        pickle.dump(regime_compare(mu=MU1, model=THREE_FITTED_MU1),
+                    open("regime_mu1.pkl", "wb"))
         sys.exit(0)
     if len(sys.argv) > 1 and sys.argv[1] == "fit":
         for lv, ed in (two_level_matched(7.25), uniform_matched(3)[:2]):
