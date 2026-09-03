@@ -736,3 +736,68 @@ and the smooth oscillator trace the same shape under identical forcing,
 which is the geometric counterpart of the agreement in exponent and in lock
 structure that `README.md` reports: the piecewise model reproduces not just
 that there is chaos, but where the orbit goes.
+
+---
+
+# Why this line of work is closed
+
+The maps in this document work, in the narrow sense that their numbers are
+right: every multiplier here matches algebra or an independent
+implementation, and the forced chain reproduces integration to
+$`10^{-12}`$. They are nonetheless a **dead path**, and the reason is
+structural rather than a matter of more careful implementation.
+
+## The zone sequence cannot be known in advance
+
+The appeal of the approach was that a trajectory is a finite chain of
+analytic pieces, so the flow becomes a difference equation you can iterate,
+differentiate and continue in a parameter. That holds only if you know
+*which* pieces, in which order.
+
+You do not. Entering a zone does not guarantee leaving it on the far side:
+the orbit may turn around inside and come back out the way it went in, and
+which of those happens depends on the state. So the chain has to be
+discovered by stepping — determine the zone, find the earliest crossing or
+turning point, take it, repeat — which is what `maps.py` does, and it is why
+its answers are correct.
+
+But that concedes the point. **A chain you can only discover by stepping is
+an event-driven simulation, not a predictive formula.** The single
+per-cycle matrix $`C(r)`$ is valid only for the branch that particular
+amplitude happens to take, and the branch structure changes with amplitude.
+Nothing can be said about the map in advance of running it, which is the
+one thing the exercise was for.
+
+## Grazing makes it worse than merely inconvenient
+
+Where a trajectory is *tangent* to a boundary — touching without crossing —
+the branch structure changes discontinuously. The map is not smooth there,
+and its Jacobian, the quantity this document spends most of its effort
+computing exactly, is undefined.
+
+This is not hypothetical. Fitting a staircase of 33 levels puts a threshold
+at exactly $`x = 2.0`$, and starting there with zero velocity is a tangency:
+the step ping-ponged on the wall, advanced nothing, and returned a state
+that looked like a completed drive period. It took a special case to
+handle, and the general problem — that grazings are dense in parameter
+space and each one is a discontinuity in the map — does not have a special
+case.
+
+## The same weakness shows up in the arithmetic
+
+The 200-fold integration floor recorded above is this problem from the other
+direction. Boundaries are where the numerics degrade *and* where the
+reasoning degrades, because both depend on resolving which side of a
+surface the state is on.
+
+## What survives
+
+The zone flow, the crossing equation and the saltation matrix are correct
+and remain useful for what they are: a fast, exact way to advance a
+piecewise linear system between events, and to get a Floquet multiplier
+without differencing an integrated orbit. The numbers this document reports
+stand.
+
+What does not survive is the ambition — that chaining them yields a
+predictive difference equation for the prototypes. It does not, and no
+amount of care with the pieces repairs that.
