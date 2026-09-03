@@ -1780,6 +1780,23 @@ response. Which is the point the previous subsection made about fitting
 field data, turned into a method: fit the driven response, let the free
 cycle follow within its leeway, and the model needs almost no levels.
 
+**Where this leaves a prototype for chaos.** The candidate is the three
+level model of the second threshold section, with its five parameters
+chosen for the driven response. It carries the right chaos, it does so
+with five numbers, it stays exact by pieces with the map machinery of
+`MAPS.md` applying unchanged, and it has the bistability the two level
+model lacks. What it has not yet been asked to do is hold across drive
+amplitude: it has been matched at one drive strength, one frequency
+window and one $`\mu`$. The forcing section found the two level
+prototype's tongues widening differently from Van der Pol's as the drive
+grows, because a saturating damping makes a larger orbit more linear, and
+the fitted three level orbit peaks at 2.06 against an outer edge at 1.98,
+so a stronger drive would put it on its outer plateau while Van der Pol
+keeps getting more nonlinear. The test that decides between a prototype
+and a fit is the regime map in drive ratio and drive strength, on the grid
+the control section used, for the fitted three level model beside Van der
+Pol. That is the next thing to run.
+
 ### Matching the free cycle is a much weaker test than matching the driven one
 
 This is the part that bears on fitting field data. At nine levels the
