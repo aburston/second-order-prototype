@@ -1435,7 +1435,11 @@ contracts transverse to its cycle by more than double precision can express
 through a finite difference. The other two rows survive the same test:
 0.53307 holds across six orders of step, and $`8.6\times10^{-4}`$ to about a
 tenth. `vanderpol.contraction_resolved` now applies that test and returns
-``nan`` rather than a number it cannot stand behind.
+``nan`` rather than a number it cannot stand behind. `VANDERPOL.md` later
+resolves the same multiplier by a different route — the variational
+equation integrated along one revolution in polar coordinates, which never
+forms a difference — and finds $`7.7\times10^{-38}`$, stable to six figures
+across integrators; small beyond any finite difference, but not zero.
 
 The conclusion is unaffected, and if anything sharpened: contraction runs
 0.5330, $`8.6\times10^{-4}`$, immeasurably small across the three, while
