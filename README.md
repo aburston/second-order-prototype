@@ -1279,7 +1279,11 @@ quasi-periodic.
 non-locked cell of that grid is $`+0.0012`$, consistent with a torus. The
 same held at $`(\zeta_{+}, \zeta_{-})`$ of $`(1.0, -0.5)`$, $`(2.0, -0.8)`$,
 $`(4.0, -0.9)`$ and $`(8.0, -0.95)`$ — overdamped outside, nearly escaping
-inside — with every exponent still negative.
+inside — with every exponent still negative. That is the limit of the
+tested range, not of the prototype: at the heavier pair
+$`(10.63, -0.62)`$ this same model is chaotic, at drive ratios and
+strengths inside this grid. The staircase section's *Two levels is the
+floor* has the sweep.
 
 That grid stops at $`r = 2.4`$, which turned out to be too narrow a window to
 draw a conclusion from: the control system's chaos lives above $`r = 4`$. A
@@ -1553,12 +1557,18 @@ At $`\mu = 5`$, $`A = 5`$, $`\Omega = 2.466`$ — the classic chaotic case:
 Every chaotic verdict here passed `section.confirm_chaos` — five times the
 run length and a hundred times the twin separation.
 
-**So piecewise constant damping is not an obstruction to chaos.** The
-earlier prototypes are not chaotic because two or three levels are too
-coarse to carry the mechanism, not because the damping is switched. That
-retires the last of the structural explanations offered for their
-immunity: it was never the switch, and here it is not the saturation
-either — it is resolution.
+**So piecewise constant damping is not an obstruction to chaos.** That
+retires the last of the structural explanations offered for the earlier
+prototypes' immunity: it was never the switch, and here it is not the
+saturation either.
+
+*Correction.* This table was first read as saying that two or three levels
+are too coarse to carry the mechanism at all. They are not. The single
+frequency above happens to sit on their lock 3; swept across frequency, the
+two level staircase — the original piecewise constant Van der Pol — has two
+chaotic bands of its own, at the transitions its own locks make. The
+sweep is below, under *Two levels is the floor*. What the level count sets
+is *where* the bands sit, not whether they exist.
 
 ### The chaos lives between the locks
 
@@ -1595,6 +1605,71 @@ $`+0.106`$ against $`+0.110`$ at $`\Omega = 2.435`$, $`+0.118`$ against
 $`+0.098`$ at 2.470. The seventeen level row is not an anomaly but the same
 effect: its bands are shifted, so a single frequency samples one system
 inside a band and another outside it.
+
+### Two levels is the floor: the bands move, they do not vanish
+
+The single frequency and the narrow window both tested the coarse
+staircases where Van der Pol's transitions are, and a coarse staircase
+has a different free cycle — two levels runs at $`T = 8.88`$ against Van
+der Pol's $`11.61`$ — so its locks, and the transitions between them,
+need not be there at all. `staircase.level_floor` sweeps 2, 3 and 5 levels
+over the narrow window and then over $`\Omega \in [1.8, 3.2]`$ at the
+same 0.005 spacing, 281 frequencies, with Van der Pol alongside:
+
+| levels | free $`T`$ | chaotic in $`[2.40, 2.56]`$ | chaotic in $`[1.8, 3.2]`$ | where the bands are |
+| --- | --- | --- | --- | --- |
+| 2 | 8.88 | 0 of 33 | 21 of 281 | 1.850–1.900 (between locks 1 and 3), 2.955–3.050 (locks 3 to 4) |
+| 3 | 11.81 | 1 of 33 | 13 of 281 | 2.560–2.590 (locks 3 to 4), 2.625–2.665 (locks 4 to 5) |
+| 5 | 11.34 | 3 of 33 | 7 of 281 | 2.520–2.535, 2.570–2.595 |
+| Van der Pol | 11.61 | 9 of 33 | 9 of 281 | 2.430–2.440, 2.465–2.470, 2.480–2.495 |
+
+Every one of the fifty chaotic cells in the wide window — 21, 13, 7 and 9
+— passed `section.confirm_chaos`, five times the run length and a hundred
+times the twin separation, with no estimate below $`+0.023`$ against a
+threshold of $`0.02`$. Every system has chaotic bands, and every band sits
+in a transition between one lock and the next. Two levels stays locked 3:1 from
+$`\Omega = 1.92`$ to $`2.95`$ — the whole of the earlier window and well
+beyond — and goes chaotic on either side of that lock. The narrow window
+saw a lock at two levels because the lock is a full unit of frequency
+wide. Van der Pol's count is the same over both windows, so the earlier
+window contained all of its bands and none of the coarse staircases'.
+
+Three checks stand behind the two level rows, because they overturn a
+claim this document made. The exact-Jacobian exponent of `maps.py`,
+which has no noise floor, gives $`+0.113`$ at $`\Omega = 1.890`$ and
+$`+0.029`$ at $`3.000`$, against $`-0.319`$ on the lock at $`2.500`$; three
+levels gives $`+0.096`$ at $`2.585`$ and $`-0.583`$ on the lock at
+$`2.300`$. Starting the two level system from four different states, the
+band at $`3.000`$ is chaotic from all four; the band at $`1.890`$ is
+chaotic from one and a 3:1 lock from the other three, so there the chaos
+coexists with a lock and which one is found depends on where the system
+starts. And the deadzone prototype of the forcing section — the same
+dynamics, since the two level staircase is its derivative — classified
+directly at the corresponding drive $`A/\Omega`$ with
+$`\zeta_{+} = 10.63`$, $`\zeta_{-} = -0.62`$, $`v_0 = 1.5`$, is chaotic
+at $`(r, a) = (4.24, 1.11)`$ from every one of five starting states, with
+rotation number $`0.2727`$ against the staircase's $`0.2724`$, and at
+$`(2.67, 1.76)`$ from three of five. Both drive ratios and both drive
+strengths are inside the window the forcing section swept. What that
+section did not reach is the damping: its heaviest pair was
+$`(8.0, -0.95)`$, and its negative result stands over the pairs it
+tested and no further.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/level-floor-dark.png">
+  <img alt="Regime strips for 2, 3 and 5 level staircases and Van der Pol across a wide drive frequency window, with the earlier narrow window marked" src="figures/level-floor-light.png">
+</picture>
+
+*The coarsest staircases and Van der Pol across a wide window. Every strip has chaotic bands in the transitions between its locks; the two level strip's sit outside the earlier window entirely, one below its long 3:1 lock and one above.*
+
+So the level floor for chaos in this family is two — the first
+nonlinear prototype in this document. What more levels buy is
+convergence: the bands move onto Van der Pol's as the damping law is
+resolved, which is the agreement table above. A two level prototype for
+chaos is therefore available, and its chaotic bands are exact-by-pieces
+objects like everything else here; the price is that they sit at a
+drive-frequency and damping pair of their own, not at the smooth
+system's.
 
 ### Matching the free cycle is a much weaker test than matching the driven one
 
