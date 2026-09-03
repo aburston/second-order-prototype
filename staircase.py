@@ -397,7 +397,7 @@ def window_agreement(scan):
     return out
 
 
-#: The README's comparison window, and a wide one for the level floor.
+#: The comparison window of ``VANDERPOL.md``, and a wide one for the level floor.
 NARROW_OMS = tuple(np.round(np.linspace(2.40, 2.56, 33), 4))
 WIDE_OMS = tuple(np.round(np.arange(1.80, 3.2001, 0.005), 4))
 FLOOR_LEVELS = (2, 3, 5)
@@ -442,16 +442,16 @@ def runs(rows):
 def level_floor(level_counts=FLOOR_LEVELS, workers=None):
     """Sweep the coarsest staircases for chaos, to find the level floor.
 
-    The README's comparison established chaos at 9 levels and above at the
+    The level count comparison established chaos at 9 levels and above at the
     classic point, and found three chaotic frequencies at 5 levels in the
     narrow window, but 2 and 3 levels were only ever tested at the single
-    frequency 2.466. This sweeps them: first over the README's window, then
+    frequency 2.466. This sweeps them: first over that comparison's window, then
     over a wide one, ``WIDE_OMS``, in case their period-adding transitions
     sit elsewhere — the coarser the staircase the further its free cycle is
     from Van der Pol's, so its locks need not be where Van der Pol's are.
     Every chaotic verdict is then re-tested with `section.confirm_chaos`.
 
-    Prints the tables ``README.md`` quotes and returns
+    Prints the tables ``VANDERPOL.md`` quotes and returns
     ``(narrow, wide, confirmed_narrow, confirmed_wide)``.
     """
     import time
@@ -482,7 +482,7 @@ def floor_crosschecks(mu=CMP_MU, xmax=CMP_XMAX, amp=CMP_AMP):
 
     The exact-Jacobian exponent from `maps.py`, which has no noise floor;
     the same cells from several initial conditions, which is what tells a
-    coexisting lock from a fragile verdict; and the README's own deadzone
+    coexisting lock from a fragile verdict; and the forcing chapter's deadzone
     prototype at the corresponding drive. The two-level staircase is the
     displacement-switched model, and the deadzone model is its
     derivative: a drive ``A cos(Om t)`` on the staircase is ``(A/Om) sin``
@@ -779,7 +779,7 @@ def normalise(workers=None):
     `fit_bands` produced with 20% leeway, `TWO_FITTED` and `THREE_FITTED`,
     and the plain fitted staircases for reference. Each is swept over
     ``NORM_OMS`` beside Van der Pol and scored by the Jaccard agreement of
-    `window_agreement`. Prints the tables ``README.md`` quotes and returns
+    `window_agreement`. Prints the tables ``VANDERPOL.md`` quotes and returns
     ``(systems, scan)``.
     """
     systems = {"vdp": None}
