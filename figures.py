@@ -1562,6 +1562,60 @@ def fig_normalised(th, name, scan=None):
     save(fig, name, "normalised")
 
 
+CHAOS_OM = 2.470
+
+
+def fig_chaos_phase(th, name, om=CHAOS_OM, n_trace=40, n_strobe=3000):
+    """The fitted three level prototype beside Van der Pol, both chaotic.
+
+    Same drive, ``A = 5`` at ``Om = 2.470``, a frequency inside the chaotic
+    band of both. Each panel draws forty drive periods of the orbit after
+    the transient as a thin line, and three thousand stroboscopic samples,
+    one per drive period, on top: the samples are the attractor, the line
+    is how the orbit threads it. The prototype's zone edges are drawn as
+    chrome, since the only nonlinearity it has is which zone it is in.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+        om: drive frequency.
+        n_trace: drive periods of continuous orbit to draw.
+        n_strobe: stroboscopic samples to draw.
+    """
+    import section
+    import vanderpol
+    lv, ed = staircase.THREE_FITTED
+    systems = [("three level prototype, fitted\n$\\zeta = (%.2f, %.2f, %.1f)$,"
+                " edges $(%.2f, %.2f)$" % (lv[0], lv[1], lv[2], ed[0], ed[1]),
+                staircase.field(lv, ed, staircase.CMP_AMP, om), ed),
+               ("Van der Pol, $\\mu = %g$" % staircase.CMP_MU,
+                vanderpol.field(staircase.CMP_MU, staircase.CMP_AMP, om), ())]
+    td = 2.0*np.pi/om
+    fig, axes = newfig(th, 1, 2, figsize=(12.0, 5.6))
+    for ax, (label, flow, edges) in zip(axes, systems):
+        pts = section.strobe(flow, td, [2.0, 0.0], staircase.CMP_NSKIP,
+                             n_keep=n_strobe)
+        sol = solve_ivp(flow, (0.0, n_trace*td), pts[-1], method=section.METHOD,
+                        rtol=1e-9, atol=1e-11,
+                        t_eval=np.linspace(0.0, n_trace*td, 400*n_trace))
+        ax.plot(sol.y[0], sol.y[1], color=th["series"][0], linewidth=0.35,
+                alpha=0.55, zorder=2, label="orbit, %d drive periods" % n_trace)
+        ax.plot(pts[:, 0], pts[:, 1], ".", color=th["series"][1], markersize=1.6,
+                zorder=3, label="stroboscopic samples, %d" % n_strobe)
+        for e in edges:
+            for xv in (e, -e):
+                ax.axvline(xv, color=th["ink2"], linewidth=1.0,
+                           linestyle=(0, (5, 3)), zorder=4)
+        style(ax, th, "$x$", "$\\dot{x}$", label)
+        ax.set_xlim(-2.6, 2.6)
+        ax.set_ylim(-13, 13)
+        legend(ax, th, loc="upper left", markerscale=4)
+    fig.suptitle("Chaotic mode, side by side: $A = %g$, $\\Omega = %.3f$"
+                 % (staircase.CMP_AMP, om), color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "chaos-phase")
+
+
 # --------------------------------------------------- the strange attractor
 #: Drive at which forced Van der Pol is chaotic, and the staircase fitted to
 #: it. The same settings the comparison in ``README.md`` uses.
@@ -1733,5 +1787,6 @@ if __name__ == "__main__":
         fig_staircase_vdp(th, name)
         fig_level_floor(th, name)
         fig_normalised(th, name)
+        fig_chaos_phase(th, name)
         fig_strange_attractor(th, name)
         fig_vanderpol_compare(th, name)

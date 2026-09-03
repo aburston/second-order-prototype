@@ -1797,6 +1797,13 @@ and a fit is the regime map in drive ratio and drive strength, on the grid
 the control section used, for the fitted three level model beside Van der
 Pol. That is the next thing to run.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/chaos-phase-dark.png">
+  <img alt="Phase plane of the fitted three level prototype and of Van der Pol, both driven into chaos at the same amplitude and frequency, with forty drive periods of orbit and three thousand stroboscopic samples each" src="figures/chaos-phase-light.png">
+</picture>
+
+*The candidate and the real thing in chaotic mode, $`A = 5`$, $`\Omega = 2.470`$, a frequency inside both chaotic bands. Thin line: forty drive periods of orbit. Dots: three thousand stroboscopic samples, one per drive period, which are the attractor. The prototype's orbit is arcs joined with corners at its zone edges, where its field jumps; Van der Pol's is smooth. The attractors have the same shape — a strand from lower left to upper right threading the loops of the slow crawl — and differ in where the samples gather: on the prototype they pile up along the walls it has, on Van der Pol along the fold of the law it has instead.*
+
 ### Matching the free cycle is a much weaker test than matching the driven one
 
 This is the part that bears on fitting field data. At nine levels the
