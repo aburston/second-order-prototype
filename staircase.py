@@ -397,6 +397,430 @@ def window_agreement(scan):
     return out
 
 
+#: The README's comparison window, and a wide one for the level floor.
+NARROW_OMS = tuple(np.round(np.linspace(2.40, 2.56, 33), 4))
+WIDE_OMS = tuple(np.round(np.arange(1.80, 3.2001, 0.005), 4))
+FLOOR_LEVELS = (2, 3, 5)
+
+
+def confirm_scan(scan, mu=CMP_MU, xmax=CMP_XMAX, amp=CMP_AMP):
+    """Re-test every chaotic verdict in a scan with `section.confirm_chaos`.
+
+    Returns ``{tag: [(om, confirmed, (lam_short, lam_long, lam_wide))]}``
+    over the chaotic cells only.
+    """
+    import section
+    out = {}
+    for tag, rows in scan.items():
+        out[tag] = []
+        for om, lab, lam in rows:
+            if lab != "chaos":
+                continue
+            if tag == "vdp":
+                import vanderpol
+                flow = vanderpol.field(mu, amp, om)
+            else:
+                lv, ed = vdp_staircase(mu, int(tag), xmax)
+                flow = field(lv, ed, amp, om)
+            ok, lams = section.confirm_chaos(flow, 2.0*np.pi/om, [2.0, 0.0],
+                                             CMP_NSKIP)
+            out[tag].append((om, ok, lams))
+    return out
+
+
+def runs(rows):
+    """Compress ``[(om, label, lam), ...]`` into ``[(label, om_lo, om_hi, n)]``."""
+    out = []
+    for om, lab, _ in rows:
+        if out and out[-1][0] == lab:
+            out[-1] = (lab, out[-1][1], om, out[-1][3] + 1)
+        else:
+            out.append((lab, om, om, 1))
+    return out
+
+
+def level_floor(level_counts=FLOOR_LEVELS, workers=None):
+    """Sweep the coarsest staircases for chaos, to find the level floor.
+
+    The README's comparison established chaos at 9 levels and above at the
+    classic point, and found three chaotic frequencies at 5 levels in the
+    narrow window, but 2 and 3 levels were only ever tested at the single
+    frequency 2.466. This sweeps them: first over the README's window, then
+    over a wide one, ``WIDE_OMS``, in case their period-adding transitions
+    sit elsewhere — the coarser the staircase the further its free cycle is
+    from Van der Pol's, so its locks need not be where Van der Pol's are.
+    Every chaotic verdict is then re-tested with `section.confirm_chaos`.
+
+    Prints the tables ``README.md`` quotes and returns
+    ``(narrow, wide, confirmed_narrow, confirmed_wide)``.
+    """
+    import time
+    t0 = time.time()
+    narrow = window_scan(NARROW_OMS, level_counts, workers=workers)
+    print("narrow window %.3f to %.3f, %d points, %.0fs"
+          % (NARROW_OMS[0], NARROW_OMS[-1], len(NARROW_OMS), time.time() - t0),
+          flush=True)
+    _print_scan(narrow)
+    t0 = time.time()
+    wide = window_scan(WIDE_OMS, level_counts, workers=workers)
+    print("\nwide window %.3f to %.3f, %d points, %.0fs"
+          % (WIDE_OMS[0], WIDE_OMS[-1], len(WIDE_OMS), time.time() - t0),
+          flush=True)
+    _print_scan(wide)
+    cn, cw = confirm_scan(narrow), confirm_scan(wide)
+    print("\nconfirmation of every chaotic verdict, wide window")
+    for tag, rows in cw.items():
+        for om, ok, (ls, ll, lw) in rows:
+            print("  %5s  Om = %.3f  %s  lam short %+.4f long %+.4f wide %+.4f"
+                  % (tag, om, "confirmed" if ok else "REJECTED", ls, ll, lw),
+                  flush=True)
+    return narrow, wide, cn, cw
+
+
+def floor_crosschecks(mu=CMP_MU, xmax=CMP_XMAX, amp=CMP_AMP):
+    """Three independent checks on the coarse staircases' chaotic cells.
+
+    The exact-Jacobian exponent from `maps.py`, which has no noise floor;
+    the same cells from several initial conditions, which is what tells a
+    coexisting lock from a fragile verdict; and the README's own deadzone
+    prototype at the corresponding drive. The two-level staircase is the
+    displacement-switched model, and the deadzone model is its
+    derivative: a drive ``A cos(Om t)`` on the staircase is ``(A/Om) sin``
+    on the deadzone, with the same damping ratios and ``v0 = x0``.
+    """
+    import maps
+    import section
+    import forced
+    print("exact-Jacobian Lyapunov exponent, per unit time")
+    for n, om in ((2, 1.890), (2, 3.000), (2, 2.500), (3, 2.585), (3, 2.300)):
+        lv, ed = vdp_staircase(mu, n, xmax)
+        lam = maps.forced_lyapunov(maps.staircase_model(lv, ed), [2.0, 0.0],
+                                   amp, om, n_skip=400, n=1500)
+        print("  %d levels  Om = %.3f  %+.4f" % (n, om, lam), flush=True)
+
+    print("two levels from several initial conditions")
+    lv, ed = vdp_staircase(mu, 2, xmax)
+    for om in (1.890, 3.000):
+        flow = field(lv, ed, amp, om)
+        for y0 in ([2.0, 0.0], [0.5, 0.0], [-1.0, 3.0], [1.7, -2.0]):
+            lab, q, w, lam = section.classify(flow, 2.0*np.pi/om, y0, CMP_NSKIP)
+            print("  Om = %.3f  y0 = %s  %s  w = %.4f" % (om, y0, lab, w),
+                  flush=True)
+
+    zm, zp = lv
+    v0 = float(ed[0])
+    print("the deadzone prototype, zp = %.3f zm = %.3f v0 = %.2f, drive A/Om"
+          % (zp, zm, v0))
+    for om in (1.890, 3.000, 2.500):
+        flow = forced.field(zp, zm, v0, amp/om, om)
+        print("  Om = %.3f  r = %.2f  a = %.2f"
+              % (om, om/forced.w_lc(zp, zm), amp/om/v0))
+        for y0 in ([2.0, 0.0], [0.0, 2.0], [0.5, 0.5], [-10.0, 0.0]):
+            lab, q, w, lam = section.classify(flow, 2.0*np.pi/om, y0, CMP_NSKIP)
+            print("    y0 = %s  %s  w = %.4f  lam = %s"
+                  % (y0, lab, w, "-" if lam is None else "%+.4f" % lam),
+                  flush=True)
+
+
+# ------------------------------------------ normalising the coarse models
+#: Van der Pol's free cycle at ``CMP_MU``: the amplitude and period every
+#: normalised model below is made to match.
+VDP_R, VDP_T = 2.0215, 11.612
+NORM_OMS = tuple(np.round(np.arange(2.30, 2.7001, 0.005), 4))
+
+
+def free_cycle(levels, edges):
+    """Radius on the section and period of the outermost stable cycle."""
+    ex = cycles_exact(levels, edges)
+    r = ex[-1][0]
+    return r, period(r, levels, edges)
+
+
+def free_cycle_num(levels, edges, n_settle=60, rtol=1e-9):
+    """Radius and period of the free cycle by integration.
+
+    `free_cycle` composes the arcs exactly but its cycle search can stall on
+    strongly overdamped three level shapes; this integrates instead, settles
+    for ``n_settle`` estimated cycles and times successive maxima of ``x``.
+    Agrees with `free_cycle` to about ``1e-6`` where both work.
+    """
+    from scipy.integrate import solve_ivp
+    import section
+    f = field(levels, edges)
+    warm = solve_ivp(f, (0.0, 12.0*n_settle), [2.5, 0.0], method=section.METHOD,
+                     rtol=rtol, atol=1e-11)
+
+    def top(t, y):
+        return y[1]
+    top.direction = -1.0
+    sol = solve_ivp(f, (0.0, 400.0), warm.y[:, -1], method=section.METHOD,
+                    rtol=rtol, atol=1e-11, events=top, dense_output=True)
+    te = sol.t_events[0]
+    te = te[te > 1e-8]
+    T = float((te[-1] - te[1])/(len(te) - 2))
+    return float(sol.sol(te[1])[0]), T
+
+
+def two_level_matched(z1, T=VDP_T, R=VDP_R):
+    """The two level model with outer ratio ``z1`` matched to a free cycle.
+
+    The period of the two level model depends on its damping ratios alone
+    and the edge sets the amplitude exactly proportionally, so matching a
+    period fixes ``zeta_0`` given ``zeta_1``, and matching the amplitude
+    then fixes the edge. What is left is the one dimensional family in
+    ``z1``: every member has the same free cycle and a different damping
+    *shape*. Returns ``(levels, edges)``.
+    """
+    z0 = brentq(lambda z: free_cycle((z, z1), (1.0,))[1] - T, -4.0, -0.05,
+                xtol=1e-6)
+    r, _ = free_cycle((z0, z1), (1.0,))
+    return (z0, z1), (R/r,)
+
+
+def uniform_matched(n, mu=CMP_MU, xmax=CMP_XMAX, T=VDP_T, R=VDP_R):
+    """The fitted ``n`` level staircase normalised the naive way.
+
+    Every damping ratio is scaled by one factor to hit the period, then
+    every edge by one factor to hit the amplitude — the two knobs a
+    person would reach for. Returns ``(levels, edges, s, k)``.
+    """
+    lv, ed = vdp_staircase(mu, n, xmax)
+    s = brentq(lambda f: free_cycle(tuple(f*z for z in lv), ed)[1] - T,
+               0.3, 4.0, xtol=1e-6)
+    lv2 = tuple(s*z for z in lv)
+    r, _ = free_cycle(lv2, ed)
+    k = R/r
+    return lv2, tuple(k*e for e in ed), s, k
+
+
+def three_level_matched(z2, mu=CMP_MU, xmax=CMP_XMAX, T=VDP_T, R=VDP_R):
+    """A three level model with outer ratio ``z2`` matched to a free cycle.
+
+    Keeps the fitted middle level and the edge ratio, solves the core
+    level for the period and scales the edges for the amplitude. One of
+    the two shape freedoms a three level model has after its free cycle
+    is fixed. Returns ``(levels, edges)``.
+    """
+    lv, ed = vdp_staircase(mu, 3, xmax)
+    z1 = lv[1]
+    z0 = brentq(lambda z: free_cycle_num((z, z1, z2), ed)[1] - T, -5.0, -0.05,
+                xtol=1e-6)
+    r, _ = free_cycle_num((z0, z1, z2), ed)
+    k = R/r
+    return (z0, z1, z2), tuple(k*e for e in ed)
+
+
+#: What `fit_bands` lands on with 20% leeway on the free cycle, every
+#: parameter free, from the matched two level model and the uniformly
+#: scaled three level one. About half an hour and three quarters of an hour
+#: respectively; ``python3 staircase.py fit`` re-runs them.
+TWO_FITTED = ((-1.2419249232482135, 8.328703618461768), (1.43646639597176,))
+THREE_FITTED = ((-1.7350655010015574, 3.8359503860037094, 15.047130340757839),
+                (1.0750014202405769, 1.9812442858436983))
+
+#: Van der Pol's period adding region at ``CMP_AMP``: the last frequency
+#: locked 3:1 and the first locked 5:1 from there on, from the fine scan.
+VDP_END3, VDP_START5 = 2.4275, 2.4975
+COARSE_OMS = tuple(np.round(np.arange(2.30, 2.7001, 0.01), 4))
+
+
+def _label_at(levels, edges, om, amp=CMP_AMP):
+    return forced_label(field(levels, edges, amp, om), om)[0]
+
+
+def band_edges(levels, edges, amp=CMP_AMP, workers=None, oms=COARSE_OMS):
+    """Where the lock 3 plateau ends and the lock 5 plateau begins.
+
+    A coarse sweep over ``oms``, then two bisections on each edge, so the
+    edges are located to a quarter of the grid step. The lock 5 plateau is
+    allowed quasi-periodic blips — Van der Pol's is unbroken, but a coarse
+    model's can carry an isolated torus inside it — so its start is the
+    first frequency from which nothing but lock 5 and tori follows. Returns
+    ``(end3, start5, labels)``; an edge outside the window is reported one
+    step beyond it.
+    """
+    import multiprocessing as mp
+    args = [("s", om, (levels, edges), CMP_MU, amp) for om in oms]
+    with mp.Pool(workers or mp.cpu_count()) as pool:
+        out = pool.map(_scan_system, args, chunksize=1)
+    labels = [lab for _, _, (lab, _) in sorted(out, key=lambda o: o[1])]
+    oms = list(oms)
+    step = oms[1] - oms[0]
+    ok5 = ("lock5", "torus")
+    i = 0
+    while i < len(labels) and labels[i] == "lock3":
+        i += 1
+    j = len(labels)
+    while j > 0 and labels[j - 1] in ok5:
+        j -= 1
+
+    def bisect(lo, hi, good):
+        """``lo`` satisfies ``good``, ``hi`` does not; narrow twice."""
+        for _ in range(2):
+            mid = 0.5*(lo + hi)
+            if good(_label_at(levels, edges, mid, amp)):
+                lo = mid
+            else:
+                hi = mid
+        return 0.5*(lo + hi)
+
+    if i == 0:
+        end3 = oms[0] - step
+    elif i == len(labels):
+        end3 = oms[-1] + step
+    else:
+        end3 = bisect(oms[i - 1], oms[i], lambda lab: lab == "lock3")
+    if j == len(labels):
+        start5 = oms[-1] + step
+    elif j == 0:
+        start5 = oms[0] - step
+    else:
+        start5 = bisect(oms[j], oms[j - 1], lambda lab: lab in ok5)
+    return end3, start5, labels
+
+
+def fit_bands(levels, edges, leeway=0.2, maxfev=40, workers=None,
+              log=print):
+    """Move a coarse model's period adding region onto Van der Pol's.
+
+    Every damping ratio and every edge is free. The objective is the
+    squared distance of the two plateau edges from `VDP_END3` and
+    `VDP_START5`, in units of the coarse step, plus a penalty once the
+    free amplitude or period leaves ``leeway`` of Van der Pol's. Nelder-Mead
+    on the parameters, with the positive ratios and the edges in log form.
+    Each evaluation is a coarse sweep, about a minute.
+
+    Returns ``(levels, edges, end3, start5, r, T)`` at the best point seen.
+    """
+    from scipy.optimize import minimize
+    n = len(levels)
+    z0 = levels[0]
+    pos = [z > 0 for z in levels[1:]]
+
+    def unpack(p):
+        lv = [p[0]]
+        for k, ispos in enumerate(pos):
+            lv.append(float(np.exp(p[1 + k])) if ispos else float(p[1 + k]))
+        ed = tuple(float(np.exp(v)) for v in p[n:])
+        return tuple(lv), ed
+
+    p0 = [z0] + [np.log(z) if ispos else z for z, ispos in zip(levels[1:], pos)]
+    p0 += [np.log(e) for e in edges]
+    best = {"J": np.inf}
+
+    def J(p):
+        lv, ed = unpack(p)
+        if any(ed[k] >= ed[k + 1] for k in range(len(ed) - 1)) or lv[0] >= 0:
+            return 1e4
+        try:
+            r, T = free_cycle_num(lv, ed)
+        except Exception:
+            return 1e4
+        dr, dT = abs(r/VDP_R - 1.0), abs(T/VDP_T - 1.0)
+        pen = 1e3*(max(0.0, dr - leeway)**2 + max(0.0, dT - leeway)**2)
+        end3, start5, labels = band_edges(lv, ed, workers=workers)
+        val = ((end3 - VDP_END3)/0.01)**2 + ((start5 - VDP_START5)/0.01)**2 + pen
+        log("  J=%9.3f  levels %s edges %s  r %.3f T %.3f  end3 %.4f start5 %.4f"
+            % (val, tuple(round(z, 3) for z in lv),
+               tuple(round(e, 3) for e in ed), r, T, end3, start5))
+        if val < best["J"]:
+            best.update(J=val, lv=lv, ed=ed, end3=end3, start5=start5, r=r, T=T)
+        return val
+
+    steps = [0.4] + [0.3]*(n - 1) + [0.15]*len(edges)
+    simplex = [np.array(p0, float)]
+    for k, st in enumerate(steps):
+        q = np.array(p0, float)
+        q[k] += st
+        simplex.append(q)
+    minimize(J, np.array(p0, float), method="Nelder-Mead",
+             options=dict(initial_simplex=np.array(simplex), maxfev=maxfev,
+                          xatol=1e-3, fatol=0.05))
+    return best["lv"], best["ed"], best["end3"], best["start5"], best["r"], best["T"]
+
+
+def _scan_system(args):
+    """Worker for :func:`system_scan` (module level so it can be pickled)."""
+    tag, om, sysd, mu, amp = args
+    if sysd is None:
+        import vanderpol
+        flow = vanderpol.field(mu, amp, om)
+    else:
+        flow = field(sysd[0], sysd[1], amp, om)
+    return tag, om, forced_label(flow, om)
+
+
+def system_scan(oms, systems, mu=CMP_MU, amp=CMP_AMP, workers=None):
+    """`window_scan` for explicit ``{tag: (levels, edges)}`` systems.
+
+    A tag mapped to ``None`` is Van der Pol itself. Returns the same
+    ``{tag: [(om, label, lam), ...]}`` shape as `window_scan`.
+    """
+    import multiprocessing as mp
+    args = [(t, om, sysd, mu, amp) for t, sysd in systems.items()
+            for om in oms]
+    with mp.Pool(workers or mp.cpu_count()) as pool:
+        out = pool.map(_scan_system, args, chunksize=1)
+    res = {t: [] for t in systems}
+    for tag, om, (lab, lam) in out:
+        res[tag].append((om, lab, lam))
+    for t in res:
+        res[t].sort()
+    return res
+
+
+def normalise(workers=None):
+    """Can a coarse staircase be normalised onto Van der Pol's regime map?
+
+    Three families, each member matched to Van der Pol's free amplitude and
+    period first: the two level model along its remaining shape freedom
+    ``z1``; the fitted 2, 3 and 5 level staircases scaled uniformly; and
+    the three level model along its outer ratio. Then the two models
+    `fit_bands` produced with 20% leeway, `TWO_FITTED` and `THREE_FITTED`,
+    and the plain fitted staircases for reference. Each is swept over
+    ``NORM_OMS`` beside Van der Pol and scored by the Jaccard agreement of
+    `window_agreement`. Prints the tables ``README.md`` quotes and returns
+    ``(systems, scan)``.
+    """
+    systems = {"vdp": None}
+    for n in (2, 3):
+        systems["fitted %d" % n] = vdp_staircase(CMP_MU, n, CMP_XMAX)
+    for z1 in (3.0, 5.0, 6.5, 7.25, 8.0, 9.0, 10.63, 12.0, 15.0, 25.0, 40.0):
+        systems["two z1=%.2f" % z1] = two_level_matched(z1)
+    for n in (2, 3, 5):
+        lv, ed, s, k = uniform_matched(n)
+        systems["uniform %d" % n] = (lv, ed)
+        print("uniform %d: zeta scale %.4f, edge scale %.4f" % (n, s, k))
+    for z2 in (6.0, 8.0, 10.0, 20.0):
+        systems["three z2=%.0f" % z2] = three_level_matched(z2)
+    systems["two fitted bands"] = TWO_FITTED
+    systems["three fitted bands"] = THREE_FITTED
+    for tag, sysd in systems.items():
+        if sysd is not None:
+            r, T = free_cycle(*sysd)
+            print("  %-16s levels %s edges %s  r %.4f T %.3f"
+                  % (tag, tuple(round(z, 3) for z in sysd[0]),
+                     tuple(round(float(e), 3) for e in sysd[1]), r, T))
+    scan = system_scan(NORM_OMS, systems, workers=workers)
+    agree = window_agreement(scan)
+    print("\n%-16s %8s %7s %8s" % ("system", "chaotic", "shared", "jaccard"))
+    for tag in systems:
+        n, sh, j = agree[tag]
+        print("%-16s %8d %7d %8.3f" % (tag, n, sh, j))
+    print()
+    _print_scan(scan)
+    return systems, scan
+
+
+def _print_scan(scan):
+    for tag in scan:
+        rows = scan[tag]
+        nch = sum(1 for _, lab, _ in rows if lab == "chaos")
+        print("  %5s: %d chaotic of %d; runs:" % (tag, nch, len(rows)))
+        for lab, lo, hi, n in runs(rows):
+            print("         %-6s %.3f - %.3f  (%d)" % (lab, lo, hi, n))
+
+
 def check_reduces(zp=0.4, zm=-0.15, x0=1.0):
     """Confirm the averaging here is the two level equation already in use.
 
@@ -411,6 +835,20 @@ def check_reduces(zp=0.4, zm=-0.15, x0=1.0):
 
 
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "sweep":
+        level_floor()
+        print()
+        floor_crosschecks()
+        sys.exit(0)
+    if len(sys.argv) > 1 and sys.argv[1] == "normalise":
+        normalise()
+        sys.exit(0)
+    if len(sys.argv) > 1 and sys.argv[1] == "fit":
+        for lv, ed in (two_level_matched(7.25), uniform_matched(3)[:2]):
+            print("fitting from", lv, ed)
+            print("  landed on", fit_bands(lv, ed))
+        sys.exit(0)
     print("the two level case must reproduce displacement.py")
     a, b = check_reduces()
     print("  staircase %.10f   displacement.py %.10f   diff %.2e\n"

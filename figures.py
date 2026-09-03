@@ -1450,6 +1450,172 @@ def fig_staircase_vdp(th, name):
     save(fig, name, "staircase-vdp")
 
 
+FLOOR_LEVELS = (2, 3, 5)
+
+
+def fig_level_floor(th, name, scan=None):
+    """The coarsest staircases swept wide: the chaotic bands move, they do
+    not vanish.
+
+    One strip per system over ``staircase.WIDE_OMS``, the same encoding as
+    ``fig_staircase_vdp``. Two levels is the original piecewise constant
+    Van der Pol, and it has two chaotic bands of its own — at the
+    transitions its own locks make, which sit far from Van der Pol's
+    because its free cycle is faster. The README's narrow window is drawn
+    on top, to show why the earlier single-frequency test saw a lock.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+        scan: a ``window_scan`` result to draw, or ``None`` to compute it,
+            which takes about a quarter of an hour.
+    """
+    oms = np.array(staircase.WIDE_OMS)
+    if scan is None:
+        scan = staircase.window_scan(oms, FLOOR_LEVELS)
+    tags = [str(n) for n in FLOOR_LEVELS] + ["vdp"]
+    labels = ["%d levels" % n for n in FLOOR_LEVELS] + ["Van der Pol"]
+    code = {"chaos": 2, "torus": 1}
+    grid = np.array([[code.get(lab, 0) for _, lab, _ in scan[t]]
+                     for t in tags])
+
+    fig, ax = newfig(th, figsize=(12.0, 3.6))
+    cmap = matplotlib.colors.ListedColormap(list(th["series"]))
+    ax.pcolormesh(oms, np.arange(len(tags)), grid, cmap=cmap, vmin=-0.5,
+                  vmax=2.5, shading="nearest", zorder=1)
+    lo, hi = staircase.NARROW_OMS[0], staircase.NARROW_OMS[-1]
+    for x in (lo, hi):
+        ax.axvline(x, color=th["ink2"], linewidth=1.2, linestyle=(0, (5, 3)),
+                   zorder=5)
+    ax.text(0.5*(lo + hi), len(tags) - 0.5, "the earlier window",
+            fontsize=8, color=th["ink2"], ha="center", va="bottom", zorder=6)
+    ax.set_yticks(np.arange(len(tags)))
+    ax.set_yticklabels(labels)
+    ax.set_ylim(-0.5, len(tags) - 0.1)
+    style(ax, th, "drive frequency  $\\Omega$", "",
+          "Two levels is enough: the chaotic bands move with the level "
+          "count, they do not vanish")
+    handles = [matplotlib.patches.Patch(facecolor=th["series"][i], label=t)
+               for i, t in enumerate(("locked", "quasi-periodic", "chaotic"))]
+    ax.legend(handles=handles, fontsize=8, labelcolor=th["ink2"],
+              frameon=False, ncol=3, loc="upper center",
+              bbox_to_anchor=(0.5, -0.2)).set_zorder(9)
+    fig.tight_layout()
+    save(fig, name, "level-floor")
+
+
+NORM_ROWS = (("vdp", "Van der Pol"),
+             ("three fitted bands", "three levels, fitted to the bands"),
+             ("two fitted bands", "two levels, fitted to the bands"),
+             ("two z1=7.25", "two levels, cycle matched, $\\zeta_1 = 7.25$"),
+             ("uniform 3", "three levels, scaled uniformly"),
+             ("uniform 2", "two levels, scaled uniformly"),
+             ("fitted 3", "three levels, as fitted"),
+             ("fitted 2", "two levels, as fitted"))
+
+
+def fig_normalised(th, name, scan=None):
+    """Coarse staircases normalised onto Van der Pol's free cycle, driven.
+
+    From the bottom: the staircases as fitted, whose bands sit elsewhere;
+    the same scaled uniformly onto Van der Pol's free cycle, which leaves
+    the bands where they were; the two level model with its free cycle
+    matched and its remaining shape freedom spent on the bands; and the two
+    models `staircase.fit_bands` produced with every parameter free and 20%
+    leeway on the free cycle, whose plateau edges sit on Van der Pol's.
+    Thin lines mark Van der Pol's chaotic frequencies. Same encoding as
+    ``fig_staircase_vdp``.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+        scan: the ``staircase.normalise`` scan to draw, or ``None`` to
+            compute it, which takes about half an hour.
+    """
+    if scan is None:
+        _, scan = staircase.normalise()
+    oms = np.array(staircase.NORM_OMS)
+    tags = [t for t, _ in NORM_ROWS][::-1]
+    labels = [l for _, l in NORM_ROWS][::-1]
+    code = {"chaos": 2, "torus": 1}
+    grid = np.array([[code.get(lab, 0) for _, lab, _ in scan[t]]
+                     for t in tags])
+
+    fig, ax = newfig(th, figsize=(12.0, 4.4))
+    cmap = matplotlib.colors.ListedColormap(list(th["series"]))
+    ax.pcolormesh(oms, np.arange(len(tags)), grid, cmap=cmap, vmin=-0.5,
+                  vmax=2.5, shading="nearest", zorder=1)
+    for om in (om for om, lab, _ in scan["vdp"] if lab == "chaos"):
+        ax.axvline(om, color=th["ink2"], linewidth=0.5, alpha=0.5, zorder=4)
+    ax.set_yticks(np.arange(len(tags)))
+    ax.set_yticklabels(labels)
+    ax.set_ylim(-0.5, len(tags) - 0.5)
+    style(ax, th, "drive frequency  $\\Omega$", "",
+          "Matching the free cycle does not place the bands; "
+          "the damping shape does")
+    handles = [matplotlib.patches.Patch(facecolor=th["series"][i], label=t)
+               for i, t in enumerate(("locked", "quasi-periodic", "chaotic"))]
+    ax.legend(handles=handles, fontsize=8, labelcolor=th["ink2"],
+              frameon=False, ncol=3, loc="upper center",
+              bbox_to_anchor=(0.5, -0.16)).set_zorder(9)
+    fig.tight_layout()
+    save(fig, name, "normalised")
+
+
+CHAOS_OM = 2.470
+
+
+def fig_chaos_phase(th, name, om=CHAOS_OM, n_trace=40, n_strobe=3000):
+    """The fitted three level prototype beside Van der Pol, both chaotic.
+
+    Same drive, ``A = 5`` at ``Om = 2.470``, a frequency inside the chaotic
+    band of both. Each panel draws forty drive periods of the orbit after
+    the transient as a thin line, and three thousand stroboscopic samples,
+    one per drive period, on top: the samples are the attractor, the line
+    is how the orbit threads it. The prototype's zone edges are drawn as
+    chrome, since the only nonlinearity it has is which zone it is in.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+        om: drive frequency.
+        n_trace: drive periods of continuous orbit to draw.
+        n_strobe: stroboscopic samples to draw.
+    """
+    import section
+    import vanderpol
+    lv, ed = staircase.THREE_FITTED
+    systems = [("three level prototype, fitted\n$\\zeta = (%.2f, %.2f, %.1f)$,"
+                " edges $(%.2f, %.2f)$" % (lv[0], lv[1], lv[2], ed[0], ed[1]),
+                staircase.field(lv, ed, staircase.CMP_AMP, om), ed),
+               ("Van der Pol, $\\mu = %g$" % staircase.CMP_MU,
+                vanderpol.field(staircase.CMP_MU, staircase.CMP_AMP, om), ())]
+    td = 2.0*np.pi/om
+    fig, axes = newfig(th, 1, 2, figsize=(12.0, 5.6))
+    for ax, (label, flow, edges) in zip(axes, systems):
+        pts = section.strobe(flow, td, [2.0, 0.0], staircase.CMP_NSKIP,
+                             n_keep=n_strobe)
+        sol = solve_ivp(flow, (0.0, n_trace*td), pts[-1], method=section.METHOD,
+                        rtol=1e-9, atol=1e-11,
+                        t_eval=np.linspace(0.0, n_trace*td, 400*n_trace))
+        ax.plot(sol.y[0], sol.y[1], color=th["series"][0], linewidth=0.35,
+                alpha=0.55, zorder=2, label="orbit, %d drive periods" % n_trace)
+        ax.plot(pts[:, 0], pts[:, 1], ".", color=th["series"][1], markersize=1.6,
+                zorder=3, label="stroboscopic samples, %d" % n_strobe)
+        for e in edges:
+            for xv in (e, -e):
+                ax.axvline(xv, color=th["ink2"], linewidth=1.0,
+                           linestyle=(0, (5, 3)), zorder=4)
+        style(ax, th, "$x$", "$\\dot{x}$", label)
+        ax.set_xlim(-2.6, 2.6)
+        ax.set_ylim(-13, 13)
+        legend(ax, th, loc="upper left", markerscale=4)
+    fig.suptitle("Chaotic mode, side by side: $A = %g$, $\\Omega = %.3f$"
+                 % (staircase.CMP_AMP, om), color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "chaos-phase")
+
+
 # --------------------------------------------------- the strange attractor
 #: Drive at which forced Van der Pol is chaotic, and the staircase fitted to
 #: it. The same settings the comparison in ``README.md`` uses.
@@ -1619,5 +1785,8 @@ if __name__ == "__main__":
         fig_forced_sections(th, name)
         fig_staircase(th, name)
         fig_staircase_vdp(th, name)
+        fig_level_floor(th, name)
+        fig_normalised(th, name)
+        fig_chaos_phase(th, name)
         fig_strange_attractor(th, name)
         fig_vanderpol_compare(th, name)
