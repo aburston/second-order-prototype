@@ -575,7 +575,7 @@ $`A = 5`$, $`\Omega = 2.466`$:
 | --- | --- | --- | --- | --- |
 | 5 | lock 3 | $`-0.442424`$ | $`-0.441577`$ | 0.0008 |
 | 9 | not locked | $`+0.105275`$ | $`+0.093137`$ | 0.0121 |
-| 17 | not locked | $`-0.012498`$ | $`-0.011869`$ | 0.0006 |
+| 17 | **lock 4** (see below) | $`-0.012498`$ | $`-0.011869`$ | 0.0006 |
 | 33 | not locked | $`+0.069203`$ | $`+0.055238`$ | 0.0140 |
 | 65 | not locked | $`+0.072203`$ | $`+0.088378`$ | 0.0162 |
 
@@ -592,6 +592,93 @@ floor. The twin-trajectory estimator has a noise floor near 0.008 — enough
 to have flipped four verdicts out of seven elsewhere in this repository —
 because it must choose a separation and renormalise. The Jacobian product
 chooses nothing.
+
+### The regime labels are less reliable than the exponents
+
+The 17 level row is marked as a lock above, and was originally published
+here as a torus. It is a **period 4 orbit**, and the correction matters less
+for that one row than for what it exposes.
+
+The lock test asks whether the stroboscopic point returns to within
+$`10^{-6}`$ of itself, relative to the orbit. Integrating a strongly damped
+piecewise system accumulates error faster than that. At 17 levels the
+period 4 residual measures $`1.5\times10^{-6}`$ — above the threshold, so no
+lock is certified — and it stays there at integrator tolerances of
+$`10^{-9}`$, $`10^{-11}`$ and $`10^{-12}`$ alike. It is an error floor, not a
+tolerance that can be bought down. The orbit was therefore reported as
+unlocked, and then, its exponent being negative, as a torus.
+
+It is a floor and not an unconverged transient, which is the obvious
+competing explanation and had to be ruled out separately: discarding thirty
+times as long a transient does not move it.
+
+| discarded periods | staircase, 17 levels | Van der Pol, a locked case |
+| --- | --- | --- |
+| 400 | $`8.0\times10^{-7}`$ | $`5.2\times10^{-9}`$ |
+| 1500 | $`1.2\times10^{-6}`$ | $`6.0\times10^{-9}`$ |
+| 6000 | $`1.0\times10^{-6}`$ | $`4.5\times10^{-9}`$ |
+| 12000 | $`1.1\times10^{-6}`$ | $`4.8\times10^{-9}`$ |
+
+**And the floor belongs to the piecewise model, not to integration in
+general.** Run on smooth Van der Pol at one of its locked drive
+frequencies, the same measurement floors at $`5\times10^{-9}`$ — two hundred
+times lower, and far enough inside the threshold that its locks certify
+without difficulty. The difference is the discontinuities: the integrator
+must detect and cross thirty-two changes of damping ratio per drive period,
+and each crossing injects an error that tightening the tolerance does not
+remove.
+
+That is a real cost of piecewise modelling, and it is worth stating next to
+the benefits. A staircase buys an exactly solvable arc structure and pays
+for it with a numerically rougher field. Which is precisely the argument for
+not integrating it at all: the exact map resolves the same orbit at
+$`2.4\times10^{-9}`$, three orders inside the threshold, because a product of
+matrices crosses no boundaries numerically. Not an argument from principle
+but an orbit the integrator could not classify and the map could.
+
+**So a "torus" verdict from `section.py` means no lock was detected, not
+that no lock exists.** `section.lock_margin` now reports how close the call
+was, and `classify` returns `undecided` rather than `torus` when the margin
+is within thirty times the threshold. Measured at the drive used here:
+
+| levels | verdict | margin |
+| --- | --- | --- |
+| 5 | lock 1:3 | $`1.0\times10^{-7}`$ |
+| 9 | torus | $`1.1`$ |
+| 17 | undecided | $`1.3\times10^{-6}`$ |
+| 33 | torus | $`1.2`$ |
+| 65 | torus | $`1.1`$ |
+
+The genuinely non-periodic cases miss by a factor of a million, so those
+verdicts are safe; only the marginal one needed flagging.
+
+### Sensitive dependence, measured on both
+
+The piecewise model reproduces the smooth one here too. At the chaotic
+drive, two initial conditions $`10^{-10}`$ apart:
+
+| system | pointwise divergence | overlap as a set |
+| --- | --- | --- |
+| Van der Pol | 12.24 | 74.0% |
+| staircase, 65 levels | 12.00 | 75.5% |
+
+Both diverge to full scale — the orbits have nothing in common after a few
+hundred periods — while still tracing the same attractor to within a few per
+cent. That is the whole character of chaos in two numbers, and it is why the
+Lyapunov exponent is well defined when no individual trajectory is: the
+exponent averages over the attractor, which is stable, rather than following
+the orbit, which is not.
+
+It also explains what the attractor figure can and cannot be. The cloud is
+one trajectory integrated for 30000 drive periods; at $`\lambda \approx 0.07`$
+any error is amplified beyond all recognition long before the end. The
+picture is faithful as a *set* and meaningless as a *trajectory*.
+
+**What this does not touch.** Every chaos or no-chaos conclusion in this
+repository rests on the sign of the Lyapunov exponent, and mistaking a lock
+for a torus does not change "not chaotic". The Arnold tongue widths and the
+agreement figures compare *chaotic* frequencies. What is unreliable is the
+split between lock and torus within the non-chaotic cells.
 
 ### What building it cost, which is the part worth recording
 
@@ -649,3 +736,68 @@ and the smooth oscillator trace the same shape under identical forcing,
 which is the geometric counterpart of the agreement in exponent and in lock
 structure that `README.md` reports: the piecewise model reproduces not just
 that there is chaos, but where the orbit goes.
+
+---
+
+# Why this line of work is closed
+
+The maps in this document work, in the narrow sense that their numbers are
+right: every multiplier here matches algebra or an independent
+implementation, and the forced chain reproduces integration to
+$`10^{-12}`$. They are nonetheless a **dead path**, and the reason is
+structural rather than a matter of more careful implementation.
+
+## The zone sequence cannot be known in advance
+
+The appeal of the approach was that a trajectory is a finite chain of
+analytic pieces, so the flow becomes a difference equation you can iterate,
+differentiate and continue in a parameter. That holds only if you know
+*which* pieces, in which order.
+
+You do not. Entering a zone does not guarantee leaving it on the far side:
+the orbit may turn around inside and come back out the way it went in, and
+which of those happens depends on the state. So the chain has to be
+discovered by stepping — determine the zone, find the earliest crossing or
+turning point, take it, repeat — which is what `maps.py` does, and it is why
+its answers are correct.
+
+But that concedes the point. **A chain you can only discover by stepping is
+an event-driven simulation, not a predictive formula.** The single
+per-cycle matrix $`C(r)`$ is valid only for the branch that particular
+amplitude happens to take, and the branch structure changes with amplitude.
+Nothing can be said about the map in advance of running it, which is the
+one thing the exercise was for.
+
+## Grazing makes it worse than merely inconvenient
+
+Where a trajectory is *tangent* to a boundary — touching without crossing —
+the branch structure changes discontinuously. The map is not smooth there,
+and its Jacobian, the quantity this document spends most of its effort
+computing exactly, is undefined.
+
+This is not hypothetical. Fitting a staircase of 33 levels puts a threshold
+at exactly $`x = 2.0`$, and starting there with zero velocity is a tangency:
+the step ping-ponged on the wall, advanced nothing, and returned a state
+that looked like a completed drive period. It took a special case to
+handle, and the general problem — that grazings are dense in parameter
+space and each one is a discontinuity in the map — does not have a special
+case.
+
+## The same weakness shows up in the arithmetic
+
+The 200-fold integration floor recorded above is this problem from the other
+direction. Boundaries are where the numerics degrade *and* where the
+reasoning degrades, because both depend on resolving which side of a
+surface the state is on.
+
+## What survives
+
+The zone flow, the crossing equation and the saltation matrix are correct
+and remain useful for what they are: a fast, exact way to advance a
+piecewise linear system between events, and to get a Floquet multiplier
+without differencing an integrated orbit. The numbers this document reports
+stand.
+
+What does not survive is the ambition — that chaining them yields a
+predictive difference equation for the prototypes. It does not, and no
+amount of care with the pieces repairs that.
