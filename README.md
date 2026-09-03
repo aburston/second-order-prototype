@@ -1795,7 +1795,7 @@ so a stronger drive would put it on its outer plateau while Van der Pol
 keeps getting more nonlinear. The test that decides between a prototype
 and a fit is the regime map in drive ratio and drive strength, on the grid
 the control section used, for the fitted three level model beside Van der
-Pol. That is the next thing to run.
+Pol. That map is below, under *Across the drive grid*.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="figures/chaos-phase-dark.png">
@@ -1803,6 +1803,92 @@ Pol. That is the next thing to run.
 </picture>
 
 *The candidate and the real thing in chaotic mode, $`A = 5`$, $`\Omega = 2.470`$, a frequency inside both chaotic bands. Thin line: forty drive periods of orbit. Dots: three thousand stroboscopic samples, one per drive period, which are the attractor. The prototype's orbit is arcs joined with corners at its zone edges, where its field jumps; Van der Pol's is smooth. The attractors have the same shape — a strand from lower left to upper right threading the loops of the slow crawl — and differ in where the samples gather: on the prototype they pile up along the walls it has, on Van der Pol along the fold of the law it has instead.*
+
+### Across the drive grid: a prototype, not a fit
+
+`staircase.regime_compare` classifies the fitted three level model and
+Van der Pol over the control section's grid refined to 76 drive ratios,
+$`\Omega/\omega_{lc}`$ from 0.5 to 8 in steps of 0.1 with $`\omega_{lc}`$
+Van der Pol's, at drive amplitudes 0, 0.5, 1, 2, 5 and 10, the same
+classifier throughout and every chaotic verdict re-tested. The model was
+fitted at $`A = 5`$ only. Where its lock plateaus fall, against Van der
+Pol's, in units of the drive ratio:
+
+| $`A`$ | lock 1 | lock 3 | lock 5 | lock 7 |
+| --- | --- | --- | --- | --- |
+| 0.5 | 0.8–1.1 vs 0.9–1.1 | 2.7–2.9 vs 2.9–3.1 | 4.5–4.8 vs 4.9–5.1 | 6.4–6.6 vs 7.0 |
+| 1 | 0.6–1.3 vs 0.7–1.3 | 2.4–3.1 vs 2.7–3.3 | 4.3–5.0 vs 4.8–5.2 | 6.3–6.8 vs 6.9–7.1 |
+| 2 | 0.5–1.6 vs 0.5–1.7 | 2.2–3.5 vs 2.2–3.6 | 4.1–5.3 vs 4.5–5.5 | 6.1–7.0 vs 6.8–7.3 |
+| 5 | to 2.7 vs to 2.6 | 2.8–4.4 vs 2.7–4.4 | 4.7–6.1 vs 4.7–6.1 | 6.6–7.8 vs 6.7–7.8 |
+| 10 | to 4.1 vs to 4.0 | 4.2–5.8 vs 4.2–5.6 | 5.9–7.3 vs 5.7–7.1 | 7.6–8 vs 7.4–8 |
+
+The same locks in the same order at every drive strength, the plateau
+edges within a cell or two everywhere and identical at the fitted
+amplitude, and the systematic offset is the one the free cycle predicts:
+the model's free period is seven per cent longer, so its locks sit a few
+per cent lower in $`\Omega/\omega_{lc}`$, most visibly at the weakest
+drive where the tongues are narrowest. The unforced row is painted as
+chrome in the figure, because with no drive there is nothing to lock to
+and what the classifier reports there is the sampling frequency being
+commensurate with the free cycle, a property of the grid; the right
+unforced comparison is the two free cycles themselves, drawn beside the
+maps.
+
+**The chaos.** On the coarse grid Van der Pol has six confirmed chaotic
+cells, at the 3-to-5 and 5-to-7 transitions at $`A = 5`$ and the 1-to-3
+and 5-to-7 transitions at $`A = 10`$; the model shows one, at the 3-to-5
+transition at $`A = 5`$ where it was fitted. That is not the whole story,
+because a step of 0.1 in the ratio is coarser than a band, and the earlier
+numerical note said what to do about it. `staircase.regime_transitions`
+sweeps the three transitions the model appeared to miss at 0.01, with
+confirmation:
+
+| transition | three level model | Van der Pol |
+| --- | --- | --- |
+| $`A = 10`$, lock 5 to 7 | lock 5 to 7.33, **15 chaotic cells** in 7.34–7.59, lock 7 from 7.60 | lock 5 to 7.19, **15 chaotic cells** in 7.20–7.36, lock 7 from 7.37 |
+| $`A = 10`$, lock 1 to 3 | lock 1 to 4.10, lock 3 from 4.11 | lock 1 to 4.08, one chaotic cell at 4.10, lock 3 from 4.11 |
+| $`A = 5`$, lock 5 to 7 | lock 5 to 6.16, 5 chaotic cells in 6.18–6.31, lock 7 from 6.53 | lock 5 to 6.19, 8 chaotic cells in 6.22–6.64, lock 7 from 6.68 |
+
+So at twice the drive it was fitted at, the model has the chaotic band Van
+der Pol has, with the same number of confirmed cells, shifted up by two
+per cent in frequency and interleaved with the same locks and tori; the
+coarse grid had landed on an interleaved lock inside it. The one thing it
+does not reproduce is a sliver of chaos one cell wide at Van der Pol's
+1-to-3 transition, where the model switches directly at the same
+frequency. The second band at $`A = 5`$ is there, somewhat narrower.
+
+**Why the saturation worry did not bite.** The candidate paragraph above
+expected a stronger drive to push the orbit onto the model's outer plateau
+while Van der Pol kept getting more nonlinear. It does not, because a
+stronger drive at these frequencies grows the velocity and not the
+displacement: at $`A = 10`$ inside the chaotic band the orbit peaks at
+$`\lvert x \rvert = 2.02`$ for the model and 2.04 for Van der Pol, against
+2.07 and 2.15 at $`A = 5`$. The outer zone starts at 1.98, so the model is
+barely more in it at twice the drive, and the damping shape the driven
+orbit sees is the same shape it was fitted with. Over this grid the
+saturation the control section identified as the prototypes' limitation
+is never reached.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/regime-three-dark.png">
+  <img alt="Regime maps over drive ratio and amplitude for the fitted three level model and for Van der Pol, with the unforced row marked, and the two free limit cycles in the phase plane" src="figures/regime-three-light.png">
+</picture>
+
+*Left and middle: the same drive grid, the same classifier. Locked, quasi-periodic and chaotic cells, with the unforced row as chrome. Right: no forcing at all — the free cycles of the two systems, the model's a polygon of arcs with corners at its zone edges, Van der Pol's smooth, seven per cent apart in period.*
+
+**Verdict.** Fitted at one drive strength, the three level model reproduces
+Van der Pol's lock structure at every drive strength on the grid and its
+chaotic bands at the two strengths that have them, missing one band a
+single fine cell wide. By the test the candidate paragraph set, that is a
+prototype: five parameters, exact by pieces, with the map machinery of
+`MAPS.md` applying to it unchanged. Its limits are the grid's — drive
+amplitude to 10, ratio to 8, this $`\mu`$ — and the two per cent frequency
+offset that its seven per cent longer free period carries into every
+lock. A fit with the free period given less leeway, or a second drive
+amplitude in the objective, would presumably close that, and is the
+obvious refinement. What it costs is what the normalisation section said:
+the parameters are a shape chosen for the driven response, not a sampling
+of the damping law.
 
 ### Matching the free cycle is a much weaker test than matching the driven one
 
