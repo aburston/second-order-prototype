@@ -393,6 +393,119 @@ Neither is the closed form that would have made Van der Pol a fifth
 prototype. The map itself, and what it says about the cycle, is left for
 the mapping analysis as intended.
 
+## An integrable model instead: the Hopf normal form
+
+If the revolution cannot be integrated, the other way round is to start
+from something that can, and ask how far it can be tuned towards Van der
+Pol. The natural candidate is the **Hopf normal form**, also called
+Stuart–Landau, taken as a planar system rather than as a second order
+equation in $`x`$:
+
+```math
+\dot{r} = \frac{\mu}{2}\, r\left(1 - \frac{r^2}{R^2}\right), \qquad
+\dot{\theta} = \frac{2\pi}{T}
+```
+
+The radial law separates, so everything about it is closed form: the
+transient, the one-revolution map
+
+```math
+P(r_0) = \frac{R}{\sqrt{1 + (R^2/r_0^2 - 1)\, e^{-\mu T}}}
+```
+
+its multiplier $`e^{-\mu T}`$ at the fixed point $`R`$, and its period
+$`T`$. With $`R = 2`$ and $`T = 2\pi`$ its map is exactly the first order
+term of the series above — it *is* the averaged Van der Pol — and it is the
+system every weakly nonlinear oscillator reduces to near its Hopf point. It
+generalises without losing the closed form: any radial law
+$`\dot{r} = r\,h(r^2)`$ with $`h`$ rational integrates by quadrature, and
+$`\dot{\theta}`$ may depend on $`r^2`$, so nested cycles and an
+amplitude-dependent frequency can be added. `polar.stuart_landau_map`
+carries it.
+
+Untuned, with $`\mu`$ taken literally, the absolute error of its map
+against the integrated Van der Pol revolution:
+
+| $`\mu`$ | $`r_0 = 1`$ | $`r_0 = 2`$ | $`r_0 = 3`$ | $`r_0 = 5`$ |
+| --- | --- | --- | --- | --- |
+| 0.1 | $`5.6\times10^{-4}`$ | $`4.9\times10^{-5}`$ | $`7.4\times10^{-3}`$ | $`7.7\times10^{-2}`$ |
+| 0.3 | $`1.1\times10^{-2}`$ | $`7.9\times10^{-4}`$ | $`1.6\times10^{-2}`$ | $`5.9\times10^{-2}`$ |
+| 0.5 | $`1.8\times10^{-2}`$ | $`2.4\times10^{-3}`$ | $`8.5\times10^{-3}`$ | $`2.1\times10^{-2}`$ |
+| 1 | $`4.1\times10^{-3}`$ | $`8.6\times10^{-3}`$ | $`7.7\times10^{-3}`$ | $`7.2\times10^{-3}`$ |
+
+Compare the series table above: near the cycle at $`\mu = 0.3`$ the two are
+equally good, and at $`r_0 = 3`$ and $`5`$, where the series had left
+entirely, the normal form is still within a few per cent, because it is
+bounded by construction rather than a polynomial in $`r_0`$.
+
+**Tuned**, it has three parameters and Van der Pol's cycle has three
+observables. Pinning $`R`$ to the amplitude, $`T`$ to the period and
+$`\mu_{\text{eff}} = -\ln P'(r^*)/T`$ to the multiplier makes the tuned map
+match the fixed point, its slope and the revolution time by construction;
+what it predicts elsewhere is the test. Relative error of the tuned map:
+
+| $`\mu`$ | $`\mu_{\text{eff}}`$ | $`R`$ | $`r_0 = 0.5`$ | $`r_0 = 1`$ | $`r_0 = 3`$ | $`r_0 = 5`$ |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0.3 | 0.3017 | 2.0009 | $`1.3\times10^{-2}`$ | $`1.0\times10^{-2}`$ | $`7.4\times10^{-3}`$ | $`2.7\times10^{-2}`$ |
+| 0.5 | 0.5077 | 2.0025 | $`4.5\times10^{-2}`$ | $`1.6\times10^{-2}`$ | $`4.3\times10^{-3}`$ | $`1.0\times10^{-2}`$ |
+| 1 | 1.0594 | 2.0086 | $`2.5\times10^{-2}`$ | $`3.7\times10^{-3}`$ | $`1.7\times10^{-4}`$ | $`3.0\times10^{-4}`$ |
+| 2 | 2.3826 | 2.0199 | $`2.2\times10^{-4}`$ | $`7.8\times10^{-6}`$ | $`3.2\times10^{-9}`$ | $`5.0\times10^{-9}`$ |
+
+So as a model of the **free** response it beats the series, and it beats
+the two-level prototype: three fitted numbers, a closed form for the whole
+transient, no root finds. The $`\mu = 2`$ row is not the triumph it looks:
+there the map is so contracting that one revolution lands within
+$`10^{-8}`$ of the cycle from anywhere, so any model with the right fixed
+point and slope is right everywhere. The rows at $`0.3`$ to $`1`$, a few
+per cent, are the honest measure.
+
+### Why the staircase says this is the wrong test
+
+`README.md`'s staircase section established two things about fitting Van
+der Pol that bear directly here. Matching the free cycle is a weak test: at
+nine levels the staircase matched the free radius and period to half a per
+cent while placing its chaotic bands almost entirely in the wrong place.
+And what sets the driven response is the *shape* of the damping law across
+the amplitude range the driven orbit visits — not the switch, not the
+saturation, but the resolution with which $`\mu(1 - x^2)`$ is represented.
+
+The normal form has no shape in $`x`$ at all. Its damping depends on
+$`r^2 = x^2 + \dot{x}^2`$ alone, and that rotational symmetry is exactly
+what makes it integrable. Three things follow, none of them fixable by
+tuning:
+
+- **The cycle is an exact circle**, so the waveform has no harmonics. Van
+  der Pol's third harmonic is about $`\mu/8`$ of the fundamental at small
+  $`\mu`$, and the harmonic signatures `speculation.md` uses to tell the
+  models apart vanish.
+- **Under a drive it cannot go chaotic.** In the frame rotating with the
+  drive it is planar and autonomous, so Poincaré–Bendixson caps it at
+  locking and beating. The period-adding bands between the 3, 4 and 5
+  locks — the structure the staircase needed sixty-five levels to place —
+  do not exist in it.
+- **Its nonlinearity does not grow with amplitude in $`x`$.** A larger orbit
+  is not a more nonlinear one in the sense that mattered in the control
+  section, so it lives on the same side of that distinction as the
+  two-level prototype, by a different route.
+
+The general point is worth stating, because it is the answer to whether
+some *other* integrable equation might do better. Integrability means a
+first integral or a separating symmetry; a damping law that changes with
+$`x`$ across the orbit is what the relaxation regime and its chaos are made
+of; and the two are in tension by definition. A globally integrable model
+can be made to fit the free cycle to a few per cent, as above, and can be
+made to fit it exactly at a point. It cannot carry the driven response,
+because the structure that would carry it is the structure integrability
+removes. The staircase's answer stands for that regime: exact by pieces,
+not exact globally.
+
+So the split is by regime. Below about $`\mu = 1`$ the tuned normal form
+is the better prototype, closed form throughout, which the piecewise model
+is not — and that is the regime where the README found Van der Pol
+behaviourally identical to the two-level prototype and free of chaos
+anyway. In the relaxation regime nothing integrable is known to apply, and
+the staircase is the model.
+
 ## Numerical note
 
 The polar revolution and the Cartesian return are integrated with
