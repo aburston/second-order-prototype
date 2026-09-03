@@ -26,7 +26,7 @@ separation, which is the part that makes a chart plausible at all:
 | --- | --- | --- |
 | $`\omega_n`$ | the timescale, nothing else | shape, stability |
 | boundary $`v_0`$ or $`x_0`$ | the amplitude, exactly proportionally | period, stability, shape |
-| $`\zeta_{+}, \zeta_{-}$ | stability, period, orbit shape | — |
+| $`\zeta_{+}, \zeta_{-}`$ | stability, period, orbit shape | — |
 
 So amplitude and frequency are independently adjustable, and only two
 numbers govern behaviour. **Established:** the existence boundaries are
@@ -216,3 +216,191 @@ Worth stating plainly, since the ambition invites over-claiming.
    and see what the fitted parameters do.
 4. **Only then, the chart.** A single figure with the parameter plane, the
    existence boundaries, and the forced behaviour regions marked.
+
+## Where to look next: other disciplines that have solved parts of this
+
+**Speculative throughout, and of a different kind to the rest of this file.**
+Everything above is a direction with an experiment attached. This section is
+a reading list: the claim is only that these fields appear to have built,
+for their own reasons, the machinery that the work here kept running into.
+None of it has been checked against the sources from inside this repository,
+and the summaries below are from memory rather than from the papers. Treat
+each entry as a lead to verify, not as a result.
+
+The context for asking is that the first three items of the order of work
+above are now done, and two routes onward have closed rather than opened:
+
+- the discrete-map route, in `MAPS.md`, because the zone sequence a
+  trajectory takes cannot be known ahead of stepping it, and because
+  grazing makes the map's derivative undefined on a dense set of
+  parameters;
+- the closed-form route for the smooth control, in `VANDERPOL.md`, because
+  one revolution of Van der Pol is an Abel equation of the second kind and
+  only its expansion in $`\mu`$ integrates.
+
+Both obstacles are old, and neither is peculiar to this repository. That is
+the reason to go looking sideways.
+
+### Power electronics: the same system, with a design language attached
+
+A switched-mode converter is a second order piecewise-linear system with a
+switching boundary in the state plane — structurally the same object as the
+prototypes here, with duty cycle in the role of the boundary parameter.
+Because these ship in volume, the field was forced to produce engineering
+answers rather than phase portraits, and the two that look most transferable
+are:
+
+- **Border-collision bifurcation theory.** The normal form for what happens
+  when a fixed point of the return map crosses a switching boundary. This is
+  exactly the grazing event that made the Jacobian in `MAPS.md` undefined,
+  and the treatment is the opposite of the one attempted there: rather than
+  chain arcs globally, work with the *local* map at the boundary, which is
+  piecewise-linear with two branches. Its outcomes — period doubling, direct
+  transition to chaos, robust chaos — are then classified as regions in the
+  plane of the two branch slopes. Two numbers and a chart of regions is very
+  close to the deliverable this file has been calling the target.
+- **Fast-scale against slow-scale instability** as vocabulary, with slope
+  compensation as the standard corrective term. That is the PID analogy
+  done properly: measure, identify the region, apply the known fix.
+
+### Impact mechanics: what the grazing singularity actually is
+
+Vibro-impact dynamics — gear rattle, rotor-stator rub, machining chatter,
+loose components — met the "cannot guarantee which side the trajectory
+leaves by" problem decades ago. The result to look up is **Nordmark's**:
+near grazing the return map is not smooth but carries a **square root**
+singularity, so the local map behaves like $`\sqrt{\cdot}`$ rather than
+linearly. If that holds for these prototypes too, it says the derivative in
+`MAPS.md` did not merely fail to converge — there was no derivative there to
+find, and a linear difference equation was the wrong object rather than a
+badly conditioned one. The map itself remains tractable; it is only
+differentiability that is lost.
+
+This is the most direct diagnosis of the closed route, and the cheapest
+thing on this list to check: take one of the staircase models, put an orbit
+onto a grazing tangency by tuning the boundary, and see whether the
+amplitude response goes as the square root of the distance past it.
+
+### Hybrid systems verification: propagate sets, not trajectories
+
+Reachability analysis for hybrid automata exists precisely because a
+verifier cannot know which discrete mode a trajectory will take. Its answer
+to that is not to choose: propagate a **set** of states through every branch
+at once, represented as zonotopes or support functions, and return a
+guaranteed over-approximation of where the state can go. The output is
+"this region cannot be left" or "this region is reachable", with a proof,
+instead of a single trajectory that is wrong as soon as the zone sequence
+differs.
+
+Given that the goal here is stability *boundaries* rather than particular
+trajectories, this may be the right shape of tool, and the tooling is mature
+and open source (CORA, SpaceEx, Flow\*, JuliaReach). The same mathematics
+underlies verification of ReLU neural networks, which is piecewise-linear
+with hyperplane boundaries for the same reason, and which is why the
+computational side has had money spent on it.
+
+### Threshold time series: the statistics of finding the boundary
+
+The most unwitting of the parallels. **Threshold autoregressive** models
+(Tong's TAR and SETAR) and **Markov-switching** models are piecewise-linear
+difference equations with a switching threshold — very nearly the object
+`MAPS.md` set out to build, arrived at independently in econometrics. What
+that literature has and dynamics does not is the **estimation theory**:
+
+- how to locate the threshold from a noisy record;
+- how to *test* whether a threshold exists at all, against the null of a
+  single linear regime;
+- how to put a confidence interval on the threshold once found.
+
+For an engineer holding a measured vibration and no prior idea where the
+switch sits, that is the missing half of the identification section above.
+It also speaks directly to the open question at the end of this file, which
+is whether any of these observables survive noise: threshold estimation is
+built for noisy data from the start, where the fitting sketched here assumed
+clean records.
+
+### The measurement front end: two things that already exist
+
+- **Relay autotuning.** Drive the plant with a relay, let it settle into a
+  limit cycle, read amplitude and frequency, back out the model, set the
+  controller. That is literally the PID workflow named as the target at the
+  top of this file, already productised, and its theory — describing
+  functions for relay feedback, Tsypkin's locus — gives exact limit cycle
+  existence and stability conditions for switched systems.
+- **Hilbert transform instantaneous modal analysis.** From a single free
+  decay record, Feldman's method extracts instantaneous frequency and
+  **instantaneous damping as a function of amplitude**. That curve is the
+  $`\zeta(A)`$ staircase, measured directly. If it works as advertised it
+  would tell an engineer which prototype they have from one hammer test,
+  with no fitting search at all — and it measures the same amplitude
+  dependence that the class test above uses, so the two cross-check.
+
+### What each field supplies
+
+| obstacle met here | field | what it appears to supply |
+| --- | --- | --- |
+| grazing makes the map non-differentiable | impact mechanics | the square root normal form; the derivative was never there |
+| zone sequence unknown in advance | hybrid systems verification | set propagation over all branches, with guarantees |
+| want regions, not trajectories | power electronics | border-collision classification in the branch-slope plane |
+| boundary location unknown from data | threshold time series | estimation, testing and confidence intervals for the threshold |
+| noise robustness untested | threshold time series | the same, since it assumes noise from the start |
+| fitting from a field measurement | relay autotuning, Hilbert methods | amplitude, frequency and $`\zeta(A)`$ from one test |
+
+### The order I would take them in
+
+1. **Nordmark's square root**, because it is a diagnosis of a specific
+   failure already recorded here, and can be tested against the existing
+   staircase code in an afternoon.
+2. **Feldman's instantaneous damping** on a synthetic decay from each
+   prototype, because it turns identification from a fit into a
+   measurement, and the prototypes provide their own ground truth.
+3. **Border-collision normal form**, once the boundary behaviour is
+   understood, because it is the format the final chart should be in.
+4. **Reachability tooling**, only if the chart needs guarantees rather than
+   observations — it is the largest investment of the four.
+
+### References
+
+These are pointers to locate the work, not sources consulted here.
+
+1. M. di Bernardo, C. Budd, A. Champneys, P. Kowalczyk, *Piecewise-smooth
+   Dynamical Systems: Theory and Applications*, Springer, 2008. The
+   canonical text for Filippov systems, sliding, grazing and the saltation
+   matrix.
+2. S. Banerjee, G. Verghese (eds), *Nonlinear Phenomena in Power
+   Electronics*, IEEE Press, 2001. Border collision and robust chaos in
+   switched converters.
+3. A. Nordmark, "Non-periodic motion caused by grazing incidence in an
+   impact oscillator", *Journal of Sound and Vibration* 145(2), 1991.
+4. H. Nusse, J. Yorke, "Border-collision bifurcations including period two
+   to period three for piecewise smooth systems", *Physica D* 57, 1992.
+5. M. Wiercigroch, B. de Kraker (eds), *Applied Nonlinear Dynamics and Chaos
+   of Mechanical Systems with Discontinuities*, World Scientific, 2000.
+6. M. Althoff, "An introduction to CORA", ARCH 2015; G. Frehse et al.,
+   "SpaceEx: scalable verification of hybrid systems", CAV 2011; X. Chen,
+   E. Abraham, S. Sankaranarayanan, "Flow\*: an analyzer for non-linear
+   hybrid systems", CAV 2013.
+7. H. Tong, *Non-linear Time Series: A Dynamical System Approach*, Oxford,
+   1990. SETAR models.
+8. B. Hansen, "Sample splitting and threshold estimation", *Econometrica*
+   68(3), 2000. Confidence intervals for an estimated threshold.
+9. J. Hamilton, "A new approach to the economic analysis of nonstationary
+   time series and the business cycle", *Econometrica* 57(2), 1989.
+   Markov switching.
+10. K. Astrom, T. Hagglund, "Automatic tuning of simple regulators with
+    specifications on phase and amplitude margins", *Automatica* 20(5),
+    1984. The relay autotuner.
+11. Y. Tsypkin, *Relay Control Systems*, Cambridge, 1984.
+12. M. Feldman, "Non-linear system vibration analysis using Hilbert
+    transform — I. Free vibration analysis method FREEVIB", *Mechanical
+    Systems and Signal Processing* 8(2), 1994; and "II. Forced vibration
+    analysis method FORCEVIB", 8(3), 1994.
+13. S. Masri, T. Caughey, "A nonparametric identification technique for
+    nonlinear dynamic problems", *Journal of Applied Mechanics* 46, 1979.
+    The restoring force surface method.
+14. D. Barton, "Control-based continuation: bifurcation and stability
+    analysis for physical experiments", *Mechanical Systems and Signal
+    Processing* 84, 2017. Tracing unstable branches on a rig.
+15. L. Glass, M. Mackey, *From Clocks to Chaos: The Rhythms of Life*,
+    Princeton, 1988. Circle maps, Arnold tongues and entrainment measured
+    in a physical system.
