@@ -7,6 +7,9 @@ introducing a switching boundary in the phase plane.
 `EXAMPLES.md` fits physical systems to each prototype — Maxwell's governor
 and a transistor LC oscillator — with the numbers produced by `examples.py`.
 
+`GLOSSARY.md` explains every unfamiliar term used anywhere in this
+repository, at first-year undergraduate level, with references.
+
 ## Second order linear prototype
 
 As a single second order ordinary differential equation:
