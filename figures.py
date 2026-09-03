@@ -1642,14 +1642,16 @@ def fig_regime_three(th, name, data=None):
     if data is None:
         data = staircase.regime_compare()
     ratios, amps = np.array(data["ratios"]), list(data["amps"])
+    mu = data.get("mu", staircase.CMP_MU)
+    lv, ed = data.get("model", staircase.THREE_FITTED)
+    stem = "regime-three" if mu == staircase.CMP_MU else "regime-three-mu%g" % mu
     fig, axes = newfig(th, 1, 3, figsize=(15.0, 4.6),
                        gridspec_kw=dict(width_ratios=(1.3, 1.3, 1.0)))
     cmap = matplotlib.colors.ListedColormap(list(th["series"]) + [th["grid"]])
-    lv, ed = staircase.THREE_FITTED
     panels = [(axes[0], "three", "three level prototype, fitted",
                "$\\zeta = (%.2f, %.2f, %.1f)$, edges $(%.2f, %.2f)$"
                % (lv[0], lv[1], lv[2], ed[0], ed[1])),
-              (axes[1], "vdp", "Van der Pol  $\\mu = %g$" % staircase.CMP_MU,
+              (axes[1], "vdp", "Van der Pol  $\\mu = %g$" % mu,
                "the same drive, the same classifier")]
     for ax, tag, title, sub in panels:
         lab, q, w, lam = data[tag]
@@ -1686,11 +1688,11 @@ def fig_regime_three(th, name, data=None):
     import vanderpol
     for k, (label, flow, r0) in enumerate((
             ("three level prototype", staircase.field(lv, ed), 2.0),
-            ("Van der Pol", vanderpol.field(staircase.CMP_MU), 2.0))):
+            ("Van der Pol", vanderpol.field(mu), 2.0))):
         warm = solve_ivp(flow, (0.0, 300.0), [r0, 0.0], method=section.METHOD,
                          rtol=1e-9, atol=1e-11)
         T = (staircase.free_cycle_num(lv, ed)[1] if k == 0
-             else vanderpol.cycle(staircase.CMP_MU)[0])
+             else vanderpol.cycle(mu)[0])
         sol = solve_ivp(flow, (0.0, T), warm.y[:, -1], method=section.METHOD,
                         rtol=1e-9, atol=1e-11, t_eval=np.linspace(0, T, 4000))
         ax.plot(sol.y[0], sol.y[1], color=th["series"][k], linewidth=1.8,
@@ -1705,7 +1707,7 @@ def fig_regime_three(th, name, data=None):
     fig.suptitle("Fitted at one drive strength, tested across the grid",
                  color=th["ink"], fontsize=11)
     fig.tight_layout()
-    save(fig, name, "regime-three")
+    save(fig, name, stem)
 
 
 # --------------------------------------------------- the strange attractor

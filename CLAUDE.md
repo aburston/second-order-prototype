@@ -9,6 +9,13 @@ switched quantity, then the offset boundary case that produces a
 hyperbolic limit cycle. `limit_cycle.py` is the Poincare map analysis
 behind the numbers quoted in the last section.
 
+The README stops at the four switched prototypes. `VANDERPOL.md` carries
+everything beyond them — forcing, chaos, Van der Pol as the target and the
+road to a model that reproduces it — and `THREELEVEL.md` is that model,
+the three level prototype, with its parameters, what to measure to set
+them, its proof and its gaps. `MAPS.md` turns every prototype into a
+discrete map. Each document's numbers come from a named script.
+
 Read the README before extending it — each section builds on the previous
 one and reuses its notation ($x_1 = x$, $x_2 = \dot{x}$, $\zeta_{\pm}$,
 $\bar{\zeta}$, $\Sigma$).

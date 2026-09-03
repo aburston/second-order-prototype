@@ -585,10 +585,10 @@ def uniform_matched(n, mu=CMP_MU, xmax=CMP_XMAX, T=VDP_T, R=VDP_R):
     person would reach for. Returns ``(levels, edges, s, k)``.
     """
     lv, ed = vdp_staircase(mu, n, xmax)
-    s = brentq(lambda f: free_cycle(tuple(f*z for z in lv), ed)[1] - T,
+    s = brentq(lambda f: free_cycle_num(tuple(f*z for z in lv), ed)[1] - T,
                0.3, 4.0, xtol=1e-6)
     lv2 = tuple(s*z for z in lv)
-    r, _ = free_cycle(lv2, ed)
+    r, _ = free_cycle_num(lv2, ed)
     k = R/r
     return lv2, tuple(k*e for e in ed), s, k
 
@@ -628,8 +628,9 @@ def _label_at(levels, edges, om, amp=CMP_AMP):
     return forced_label(field(levels, edges, amp, om), om)[0]
 
 
-def band_edges(levels, edges, amp=CMP_AMP, workers=None, oms=COARSE_OMS):
-    """Where the lock 3 plateau ends and the lock 5 plateau begins.
+def band_edges(levels, edges, amp=CMP_AMP, workers=None, oms=COARSE_OMS,
+               locks=("lock3", "lock5")):
+    """Where the lower lock plateau ends and the upper one begins.
 
     A coarse sweep over ``oms``, then two bisections on each edge, so the
     edges are located to a quarter of the grid step. The lock 5 plateau is
@@ -637,18 +638,20 @@ def band_edges(levels, edges, amp=CMP_AMP, workers=None, oms=COARSE_OMS):
     model's can carry an isolated torus inside it — so its start is the
     first frequency from which nothing but lock 5 and tori follows. Returns
     ``(end3, start5, labels)``; an edge outside the window is reported one
-    step beyond it.
+    step beyond it. ``locks`` names the two plateaus, lock 3 and lock 5 by
+    default.
     """
     import multiprocessing as mp
+    lo_lock, hi_lock = locks
     args = [("s", om, (levels, edges), CMP_MU, amp) for om in oms]
     with mp.Pool(workers or mp.cpu_count()) as pool:
         out = pool.map(_scan_system, args, chunksize=1)
     labels = [lab for _, _, (lab, _) in sorted(out, key=lambda o: o[1])]
     oms = list(oms)
     step = oms[1] - oms[0]
-    ok5 = ("lock5", "torus")
+    ok5 = (hi_lock, "torus")
     i = 0
-    while i < len(labels) and labels[i] == "lock3":
+    while i < len(labels) and labels[i] == lo_lock:
         i += 1
     j = len(labels)
     while j > 0 and labels[j - 1] in ok5:
@@ -669,7 +672,7 @@ def band_edges(levels, edges, amp=CMP_AMP, workers=None, oms=COARSE_OMS):
     elif i == len(labels):
         end3 = oms[-1] + step
     else:
-        end3 = bisect(oms[i - 1], oms[i], lambda lab: lab == "lock3")
+        end3 = bisect(oms[i - 1], oms[i], lambda lab: lab == lo_lock)
     if j == len(labels):
         start5 = oms[-1] + step
     elif j == 0:
@@ -680,7 +683,8 @@ def band_edges(levels, edges, amp=CMP_AMP, workers=None, oms=COARSE_OMS):
 
 
 def fit_bands(levels, edges, leeway=0.2, maxfev=40, workers=None,
-              log=print):
+              log=print, targets=(VDP_END3, VDP_START5), free=(VDP_R, VDP_T),
+              amp=CMP_AMP, oms=COARSE_OMS, locks=("lock3", "lock5")):
     """Move a coarse model's period adding region onto Van der Pol's.
 
     Every damping ratio and every edge is free. The objective is the
@@ -690,9 +694,16 @@ def fit_bands(levels, edges, leeway=0.2, maxfev=40, workers=None,
     on the parameters, with the positive ratios and the edges in log form.
     Each evaluation is a coarse sweep, about a minute.
 
-    Returns ``(levels, edges, end3, start5, r, T)`` at the best point seen.
+    ``targets`` are the two plateau edges to hit, ``free`` the amplitude and
+    period the leeway is measured against, ``amp`` the drive, ``oms`` the
+    coarse window and ``locks`` the two plateaus; the defaults are Van der
+    Pol at ``mu = 5``. Returns ``(levels, edges, end3, start5, r, T)`` at
+    the best point seen.
     """
     from scipy.optimize import minimize
+    t_end, t_start = targets
+    R_free, T_free = free
+    step = oms[1] - oms[0]
     n = len(levels)
     z0 = levels[0]
     pos = [z > 0 for z in levels[1:]]
@@ -716,10 +727,11 @@ def fit_bands(levels, edges, leeway=0.2, maxfev=40, workers=None,
             r, T = free_cycle_num(lv, ed)
         except Exception:
             return 1e4
-        dr, dT = abs(r/VDP_R - 1.0), abs(T/VDP_T - 1.0)
+        dr, dT = abs(r/R_free - 1.0), abs(T/T_free - 1.0)
         pen = 1e3*(max(0.0, dr - leeway)**2 + max(0.0, dT - leeway)**2)
-        end3, start5, labels = band_edges(lv, ed, workers=workers)
-        val = ((end3 - VDP_END3)/0.01)**2 + ((start5 - VDP_START5)/0.01)**2 + pen
+        end3, start5, labels = band_edges(lv, ed, amp=amp, workers=workers,
+                                          oms=oms, locks=locks)
+        val = ((end3 - t_end)/step)**2 + ((start5 - t_start)/step)**2 + pen
         log("  J=%9.3f  levels %s edges %s  r %.3f T %.3f  end3 %.4f start5 %.4f"
             % (val, tuple(round(z, 3) for z in lv),
                tuple(round(e, 3) for e in ed), r, T, end3, start5))
@@ -850,11 +862,11 @@ def regime_map(levels, edges, oms, amps, n_skip=CMP_NSKIP, workers=None):
 def _confirm_point(args):
     """Worker for :func:`confirm_map`."""
     import section
-    flow_kind, om, amp, n_skip = args
+    flow_kind, om, amp, n_skip, mu = args
     if flow_kind == "vdp":
         import vanderpol
-        flow = vanderpol.field(CMP_MU, amp, om)
-        _, y0 = vanderpol.cycle(CMP_MU)
+        flow = vanderpol.field(mu, amp, om)
+        _, y0 = vanderpol.cycle(mu)
         y0 = list(y0)
     else:
         flow = field(flow_kind[0], flow_kind[1], amp, om)
@@ -863,7 +875,8 @@ def _confirm_point(args):
     return ok, lams
 
 
-def confirm_map(flow_kind, oms, amps, lab, lam, n_skip=CMP_NSKIP, workers=None):
+def confirm_map(flow_kind, oms, amps, lab, lam, n_skip=CMP_NSKIP, workers=None,
+                mu=CMP_MU):
     """Re-test every chaotic cell of a regime map with `section.confirm_chaos`.
 
     ``flow_kind`` is ``"vdp"`` or ``(levels, edges)``. Returns a boolean
@@ -872,7 +885,7 @@ def confirm_map(flow_kind, oms, amps, lab, lam, n_skip=CMP_NSKIP, workers=None):
     import multiprocessing as mp
     cells = [(i, j) for i in range(len(amps)) for j in range(len(oms))
              if lab[i, j] == "chaos"]
-    args = [(flow_kind, oms[j], amps[i], n_skip) for i, j in cells]
+    args = [(flow_kind, oms[j], amps[i], n_skip, mu) for i, j in cells]
     with mp.Pool(workers or mp.cpu_count()) as pool:
         out = pool.map(_confirm_point, args, chunksize=1)
     keep = np.zeros(lab.shape, dtype=bool)
@@ -881,27 +894,29 @@ def confirm_map(flow_kind, oms, amps, lab, lam, n_skip=CMP_NSKIP, workers=None):
     return keep
 
 
-def regime_compare(workers=None, log=print):
+def regime_compare(workers=None, log=print, mu=CMP_MU, model=None):
     """The fitted three level model and Van der Pol over the whole drive grid.
 
     Absolute drive frequencies ``MAP_R`` times Van der Pol's free cycle
-    frequency, amplitudes ``MAP_A`` including no drive at all. Every chaotic
-    verdict is re-tested. Returns a dict with both raw maps and the
-    confirmation masks; ``figures.fig_regime_three`` draws it.
+    frequency at ``mu``, amplitudes ``MAP_A`` including no drive at all.
+    ``model`` is the ``(levels, edges)`` to compare, `THREE_FITTED` by
+    default. Every chaotic verdict is re-tested. Returns a dict with both
+    raw maps and the confirmation masks; ``figures.fig_regime_three`` draws
+    it.
     """
     import time
     import vanderpol
-    wl = vanderpol.w_lc(CMP_MU)
+    wl = vanderpol.w_lc(mu)
     oms = tuple(float(r*wl) for r in MAP_R)
-    out = dict(oms=oms, ratios=MAP_R, amps=MAP_A, w_lc=wl)
-    lv, ed = THREE_FITTED
+    lv, ed = THREE_FITTED if model is None else model
+    out = dict(oms=oms, ratios=MAP_R, amps=MAP_A, w_lc=wl, mu=mu, model=(lv, ed))
     t0 = time.time()
     out["three"] = regime_map(lv, ed, oms, MAP_A, workers=workers)
     log("three level map: %d cells, %.0fs, chaotic %d"
         % (len(oms)*len(MAP_A), time.time() - t0,
            int(np.sum(out["three"][0] == "chaos"))))
     t0 = time.time()
-    out["vdp"] = vanderpol.regime_map(CMP_MU, np.array(MAP_R), np.array(MAP_A),
+    out["vdp"] = vanderpol.regime_map(mu, np.array(MAP_R), np.array(MAP_A),
                                       workers=workers)
     log("Van der Pol map: %.0fs, chaotic %d"
         % (time.time() - t0, int(np.sum(out["vdp"][0] == "chaos"))))
@@ -909,7 +924,7 @@ def regime_compare(workers=None, log=print):
         t0 = time.time()
         lab, q, w, lam = out[tag]
         out[tag + "_ok"] = confirm_map(kind, oms, MAP_A, lab, lam,
-                                       workers=workers)
+                                       workers=workers, mu=mu)
         log("%s: %d of %d chaotic cells confirmed, %.0fs"
             % (tag, int(out[tag + "_ok"].sum()), int(np.sum(lab == "chaos")),
                time.time() - t0))
