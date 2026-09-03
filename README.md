@@ -1671,6 +1671,115 @@ objects like everything else here; the price is that they sit at a
 drive-frequency and damping pair of their own, not at the smooth
 system's.
 
+### Normalising a coarse model onto Van der Pol's map
+
+If two levels carry the mechanism, the natural question is whether a two
+or three level model can be *tuned* to put its bands where Van der Pol's
+are — by changing the damping ratios, or moving the zone edges — rather
+than fitted level by level. `staircase.normalise` tries three ways, and
+`staircase.fit_bands` a fourth; the tables are theirs.
+
+**Matching the free cycle first.** The two level model's period depends on
+its two damping ratios alone and its edge sets the amplitude exactly
+proportionally, so requiring Van der Pol's free amplitude and period fixes
+$`\zeta_0`$ given $`\zeta_1`$ and then fixes the edge. What remains is a
+one parameter family in $`\zeta_1`$: every member has Van der Pol's free
+cycle to the last digit, and a different damping *shape*. Swept over
+$`\Omega \in [2.30, 2.70]`$ at 0.005, scored by the same Jaccard agreement as
+the level count table:
+
+| $`\zeta_1`$ | $`\zeta_0`$ | $`x_0`$ | chaotic | shared | agreement | where the bands are |
+| --- | --- | --- | --- | --- | --- | --- |
+| 3 | $`-1.703`$ | 0.976 | 11 | 0 | 0.000 | 2.585–2.700 |
+| 5 | $`-1.351`$ | 1.308 | 16 | 3 | 0.136 | 2.485–2.590 |
+| 6.5 | $`-1.252`$ | 1.445 | 14 | 2 | 0.095 | 2.450–2.545 |
+| 7.25 | $`-1.220`$ | 1.496 | 12 | 6 | **0.400** | 2.435–2.530 |
+| 8 | $`-1.195`$ | 1.538 | 13 | 6 | 0.375 | 2.425–2.520 |
+| 9 | $`-1.169`$ | 1.585 | 13 | 5 | 0.294 | 2.415–2.505 |
+| 10.63 | $`-1.137`$ | 1.644 | 13 | 6 | 0.375 | 2.420–2.485 |
+| 15 | $`-1.089`$ | 1.745 | 13 | 3 | 0.158 | 2.390–2.455 |
+| 25 | $`-1.044`$ | 1.850 | 13 | 1 | 0.048 | 2.355–2.430 |
+| 40 | $`-1.020`$ | 1.912 | 16 | 1 | 0.042 | 2.345–2.415 |
+
+The bands slide monotonically down in frequency as the outer damping
+rises, and pass through Van der Pol's between $`\zeta_1 = 7`$ and $`11`$.
+Counts in these tables move by a cell between runs of the same scan, where
+a Lyapunov estimate sits near the threshold, so the agreement is read to
+about 0.05.
+At $`\zeta_1 = 7.25`$ the sequence is lock 3 to 2.430, chaos, lock 4 at
+2.450, chaos to 2.530, lock 5 from 2.535 — Van der Pol's within 0.03 —
+and across the whole wide window $`[1.8, 3.2]`$ that is the only chaotic
+region, as it is for Van der Pol; all twelve of its chaotic cells pass
+`section.confirm_chaos`. The agreement, 0.40, is what the fitted staircase
+reached at seventeen levels. Two levels with the right shape do what
+seventeen levels with the fitted shape do.
+
+**Scaling uniformly does not.** The obvious normalisation — every damping
+ratio by one factor to hit the period, every edge by another to hit the
+amplitude — lands somewhere on that family but not at the right place:
+
+| levels | $`\zeta`$ scale | edge scale | chaotic | shared | agreement | where the bands are |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2 | 1.716 | 1.194 | 16 | 2 | 0.087 | 2.370–2.445 |
+| 3 | 0.976 | 1.034 | 13 | 0 | 0.000 | 2.565–2.680 |
+| 5 | 1.040 | 1.032 | 6 | 2 | 0.154 | 2.455–2.525 |
+
+The three level row is the instructive one. Its fitted period was already
+within two per cent of Van der Pol's, so the scaling barely touches it,
+and its bands stay at 2.56 to 2.68 where the earlier sweep found them.
+Matching the free cycle does not place the bands. Nor does the outer
+level: holding the three level model's free cycle and moving its outer
+ratio from 6 to 20 leaves every band where it was, because the driven
+orbit peaks at $`\lvert x \rvert \approx 2.06`$ and the outer zone starts at
+2.1 — a level the orbit does not visit cannot move anything. What places
+the bands is the shape of the damping across the range the orbit
+actually sweeps, which is the same conclusion the level count reached from
+the other side.
+
+**Fitting the bands directly, with leeway.** Give up the exact free
+cycle — allow the amplitude and period 20% either way — free every
+parameter, and fit the two plateau edges, the last frequency locked 3:1
+and the first locked 5:1 from there on, to Van der Pol's 2.4275 and 2.4975.
+Each evaluation is a coarse sweep with bisection on the edges, about a
+minute; Nelder–Mead takes forty to sixty of them. Where it lands:
+
+| model | $`\zeta`$ | edges | free $`r`$ | free $`T`$ | plateau edges | chaotic | shared | agreement |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Van der Pol | — | — | 2.0215 | 11.612 | 2.4275, 2.4975 | 9 | 9 | 1 |
+| two levels | $`-1.242,\ 8.329`$ | 1.436 | 1.887 ($`-6.7\%`$) | 11.90 ($`+2.4\%`$) | 2.4263, 2.4962 | 12 | 7 | **0.500** |
+| three levels | $`-1.735,\ 3.836,\ 15.05`$ | 1.075, 1.981 | 1.996 ($`-1.3\%`$) | 12.44 ($`+7.1\%`$) | 2.4263, 2.4988 | 11 | 9 | **0.818** |
+
+Both put the plateau edges on Van der Pol's to within the grid. The two
+level model then fills the region between them with chaos, where Van der
+Pol has a 4:1 lock at 2.445 to 2.455: with one edge and two ratios there
+is nothing left to shape the inside of the region with, and 0.50 is where
+that lands — better than seventeen fitted levels, short of thirty three.
+The three level model reproduces the inside as well: lock 3 to 2.425,
+chaos 2.430 to 2.440, lock 4 at 2.445, a period doubled lock 8 at 2.450,
+a torus, chaos from 2.460 to 2.495, lock 5 from 2.500. Its one extra
+chaotic cell, 2.460, fails confirmation and is a torus at the longer run,
+which takes it to ten chaotic cells sharing all nine of Van der Pol's:
+agreement 0.90, the sixty five level staircase's 0.89 with five
+parameters instead of sixty four. The remaining ten cells all confirm.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/normalised-dark.png">
+  <img alt="Regime strips over drive frequency for Van der Pol and for two and three level staircases as fitted, scaled uniformly, cycle matched, and fitted to the bands" src="figures/normalised-light.png">
+</picture>
+
+*Bottom to top: the staircases as fitted, scaled uniformly onto Van der Pol's free cycle, the two level model with its shape freedom spent on the bands, and the two models fitted to the bands with 20% leeway. Thin lines mark Van der Pol's chaotic frequencies. Scaling moves nothing; shape moves everything.*
+
+So the answer is yes, and it is cheap: a three level model with five
+parameters, its free cycle within 1.3% in amplitude and 7% in period of
+Van der Pol's, reproduces the driven period adding structure as well as
+sixty five fitted levels do. The cost is that the parameters are no
+longer a sampling of Van der Pol's damping law — the three level model's
+core damping is $`-1.74`$ against the law's $`-2.5`$ at the origin, and
+its outer level 15 against 13 — but a shape chosen for the driven
+response. Which is the point the previous subsection made about fitting
+field data, turned into a method: fit the driven response, let the free
+cycle follow within its leeway, and the model needs almost no levels.
+
 ### Matching the free cycle is a much weaker test than matching the driven one
 
 This is the part that bears on fitting field data. At nine levels the
