@@ -397,6 +397,95 @@ def window_agreement(scan):
     return out
 
 
+#: The README's comparison window, and a wide one for the level floor.
+NARROW_OMS = tuple(np.round(np.linspace(2.40, 2.56, 33), 4))
+WIDE_OMS = tuple(np.round(np.arange(1.80, 3.2001, 0.005), 4))
+FLOOR_LEVELS = (2, 3, 5)
+
+
+def confirm_scan(scan, mu=CMP_MU, xmax=CMP_XMAX, amp=CMP_AMP):
+    """Re-test every chaotic verdict in a scan with `section.confirm_chaos`.
+
+    Returns ``{tag: [(om, confirmed, (lam_short, lam_long, lam_wide))]}``
+    over the chaotic cells only.
+    """
+    import section
+    out = {}
+    for tag, rows in scan.items():
+        out[tag] = []
+        for om, lab, lam in rows:
+            if lab != "chaos":
+                continue
+            if tag == "vdp":
+                import vanderpol
+                flow = vanderpol.field(mu, amp, om)
+            else:
+                lv, ed = vdp_staircase(mu, int(tag), xmax)
+                flow = field(lv, ed, amp, om)
+            ok, lams = section.confirm_chaos(flow, 2.0*np.pi/om, [2.0, 0.0],
+                                             CMP_NSKIP)
+            out[tag].append((om, ok, lams))
+    return out
+
+
+def runs(rows):
+    """Compress ``[(om, label, lam), ...]`` into ``[(label, om_lo, om_hi, n)]``."""
+    out = []
+    for om, lab, _ in rows:
+        if out and out[-1][0] == lab:
+            out[-1] = (lab, out[-1][1], om, out[-1][3] + 1)
+        else:
+            out.append((lab, om, om, 1))
+    return out
+
+
+def level_floor(level_counts=FLOOR_LEVELS, workers=None):
+    """Sweep the coarsest staircases for chaos, to find the level floor.
+
+    The README's comparison established chaos at 9 levels and above at the
+    classic point, and found three chaotic frequencies at 5 levels in the
+    narrow window, but 2 and 3 levels were only ever tested at the single
+    frequency 2.466. This sweeps them: first over the README's window, then
+    over a wide one, ``WIDE_OMS``, in case their period-adding transitions
+    sit elsewhere — the coarser the staircase the further its free cycle is
+    from Van der Pol's, so its locks need not be where Van der Pol's are.
+    Every chaotic verdict is then re-tested with `section.confirm_chaos`.
+
+    Prints the tables ``README.md`` quotes and returns
+    ``(narrow, wide, confirmed_narrow, confirmed_wide)``.
+    """
+    import time
+    t0 = time.time()
+    narrow = window_scan(NARROW_OMS, level_counts, workers=workers)
+    print("narrow window %.3f to %.3f, %d points, %.0fs"
+          % (NARROW_OMS[0], NARROW_OMS[-1], len(NARROW_OMS), time.time() - t0),
+          flush=True)
+    _print_scan(narrow)
+    t0 = time.time()
+    wide = window_scan(WIDE_OMS, level_counts, workers=workers)
+    print("\nwide window %.3f to %.3f, %d points, %.0fs"
+          % (WIDE_OMS[0], WIDE_OMS[-1], len(WIDE_OMS), time.time() - t0),
+          flush=True)
+    _print_scan(wide)
+    cn, cw = confirm_scan(narrow), confirm_scan(wide)
+    print("\nconfirmation of every chaotic verdict, wide window")
+    for tag, rows in cw.items():
+        for om, ok, (ls, ll, lw) in rows:
+            print("  %5s  Om = %.3f  %s  lam short %+.4f long %+.4f wide %+.4f"
+                  % (tag, om, "confirmed" if ok else "REJECTED", ls, ll, lw),
+                  flush=True)
+    return narrow, wide, cn, cw
+
+
+def _print_scan(scan):
+    for tag in scan:
+        rows = scan[tag]
+        nch = sum(1 for _, lab, _ in rows if lab == "chaos")
+        print("  %5s: %d chaotic of %d; runs:" % (tag, nch, len(rows)))
+        for lab, lo, hi, n in runs(rows):
+            print("         %-6s %.3f - %.3f  (%d)" % (lab, lo, hi, n))
+
+
 def check_reduces(zp=0.4, zm=-0.15, x0=1.0):
     """Confirm the averaging here is the two level equation already in use.
 
@@ -411,6 +500,10 @@ def check_reduces(zp=0.4, zm=-0.15, x0=1.0):
 
 
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "sweep":
+        level_floor()
+        sys.exit(0)
     print("the two level case must reproduce displacement.py")
     a, b = check_reduces()
     print("  staircase %.10f   displacement.py %.10f   diff %.2e\n"
