@@ -357,7 +357,37 @@ der Pol's. The model has a few more narrow high order locks than Van der
 Pol at this drive, which is the same tendency the $`\mu = 5`$ fit showed
 inside its chaotic region. Across the drive grid:
 
-<!-- MU1MAP -->
+| $`A`$ | Van der Pol | three levels |
+| --- | --- | --- |
+| 0.5 | lock 1 at 0.9–1.1, lock 3 at 3.0, tori elsewhere | the same, cell for cell |
+| 1 | chaos at 0.5, lock 1 to 1.2, lock 3 at 2.9–3.0 | lock 3 at 0.5, lock 1 to 1.2, lock 2 at 2.0, lock 3 at 2.9–3.0 |
+| 2 | lock 1 to 1.5, lock 2 at 2.0, lock 3 at 2.8–3.1 | lock 1 to 1.5, lock 2 at 2.0, lock 3 at 2.7–3.1, narrow locks 4 and 5 at 4.0 and 5.0 |
+| 5 | lock 1 to 2.1, lock 3 at 2.6–3.4 | lock 1 to 2.2, lock 3 at 2.6–3.4, narrow locks 4 to 7 at 4.1, 4.9–5.0, 6.0, 7.0 |
+| 10 | lock 1 to 2.9, lock 3 at 3.0–3.6, lock 5 at 5.1 | lock 1 to 2.9, lock 3 at 3.0–3.7, lock 5 at 5.0–5.1, lock 7 at 6.9–7.0 |
+
+The tongues are in the same places at every drive strength, within a cell,
+without any frequency offset this time: the free period matched to a tenth
+of a per cent. The model has narrow high order locks where Van der Pol has
+tori, at the integer ratios above 3 — it locks a little more readily than
+the smooth system, which is the same tendency the $`\mu = 5`$ fit showed.
+
+**The chaos.** On the coarse grid Van der Pol has its one confirmed chaotic
+cell, at $`A = 1`$ and ratio 0.5, and the model has none. Swept at 0.01
+from 0.40 to 0.80 at $`A = 1`$ with confirmation, the model has the same
+structure — a period doubled 2:1 lock, the 1:1 lock, a 2:2 lock, then 3:3,
+4:3 and 4:4 locks — and a confirmed chaotic band two cells wide at
+0.56–0.57, where Van der Pol's is three cells wide at 0.48–0.50. The
+subharmonic chaos of this mode is there, seven per cent higher in drive
+ratio, and the coarse grid stepped over it. So the model predicts that
+chaos appears in this mode, and where, to within the same kind of offset
+the plateau edges have.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/regime-three-mu1-dark.png">
+  <img alt="Regime maps over drive ratio and amplitude for the three level model fitted at mu = 1 and for Van der Pol at mu = 1, with the unforced row marked, and the two free limit cycles in the phase plane" src="figures/regime-three-mu1-light.png">
+</picture>
+
+*The nearly harmonic mode: the same drive grid and classifier as at $`\mu = 5`$. Two tongues and tori, on both; the model's extra narrow locks are the thin blue bars at integer ratios. Right: the free cycles, now nearly circular and nearly coincident.*
 
 ## Parameters against the relaxation parameter
 
@@ -367,7 +397,7 @@ parameters and the measurable quantities each mode has.
 
 | $`\mu`$ | $`\zeta_{0}`$ | $`\zeta_{1}`$ | $`\zeta_{2}`$ | $`a`$ | $`b`$ | free $`T`$ | plateau edges at $`A = 5`$ | chaos |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | $`-0.36`$ | 0.87 | 3.57 | 1.16 | 1.98 | 6.67 | lock 1 ends 2.26, lock 3 starts 2.51 | <!-- MU1CHAOS --> |
+| 1 | $`-0.36`$ | 0.87 | 3.57 | 1.16 | 1.98 | 6.67 | lock 1 ends 2.26, lock 3 starts 2.51 | one period-doubled band at $`A = 1`$, ratio 0.56–0.57, against Van der Pol's at 0.48–0.50 |
 | 5 | $`-1.74`$ | 3.84 | 15.0 | 1.08 | 1.98 | 12.44 | lock 3 ends 2.43, lock 5 starts 2.50 (in $`\Omega`$) | bands at the lock transitions from $`A = 5`$ up |
 
 What moves with $`\mu`$ is plain to read. The outer edge $`b`$ stays at
