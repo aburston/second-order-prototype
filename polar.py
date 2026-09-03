@@ -371,6 +371,31 @@ def series_period(ser, mu, r0, order=None):
     return float(expr.subs({ser["r0"]: r0, ser["mu"]: mu}))
 
 
+# ------------------------------------------- an integrable model instead
+def stuart_landau_map(mu, r0, R=2.0, T=2.0*np.pi):
+    """The one-revolution map of the Hopf normal form, in closed form.
+
+    ``rdot = (mu/2) r (1 - r^2/R^2)``, ``thetadot = 2 pi / T``: the radial
+    law separates, so the map is ``R / sqrt(1 + (R^2/r0^2 - 1) exp(-mu T))``
+    with multiplier ``exp(-mu T)`` at the fixed point ``R``. With ``R = 2``
+    and ``T = 2 pi`` its map is the first order term of Van der Pol's
+    series exactly.
+    """
+    return R/np.sqrt(1.0 + (R**2/r0**2 - 1.0)*np.exp(-mu*T))
+
+
+def tuned_stuart_landau(mu):
+    """Pin the normal form's three parameters to Van der Pol's cycle.
+
+    ``R`` from the amplitude, ``T`` from the period, and ``mu_eff`` from the
+    multiplier, so that the tuned map has Van der Pol's fixed point, slope
+    and revolution time by construction. What it predicts elsewhere is the
+    test. Returns ``(mu_eff, R, T)``.
+    """
+    R, m, T = fixed_point(mu)
+    return -np.log(m)/T, R, T
+
+
 # ------------------------------------------------------------- the checks
 def checks():
     import sympy as sp
@@ -449,6 +474,27 @@ def checks():
                  float(ser["mult"].subs(mu, m)),
                  float(sp.exp(ser["lnmult"].subs(mu, m))), T,
                  float(ser["Tstar"].subs(mu, m))))
+
+    print("\nStuart-Landau against Van der Pol, |error| in r(2 pi), untuned")
+    print("%6s %12s %12s %12s %12s" % ("mu", "r0 = 1", "r0 = 2", "r0 = 3",
+                                      "r0 = 5"))
+    for m in (0.1, 0.3, 0.5, 1.0):
+        errs = [abs(stuart_landau_map(m, rr) - revolution(m, rr)[0])
+                for rr in (1.0, 2.0, 3.0, 5.0)]
+        print("%6.2f " % m + " ".join("%12.1e" % e for e in errs))
+
+    print("\ntuned to the amplitude, period and multiplier: relative error"
+          " elsewhere")
+    print("%6s %8s %8s %12s %12s %12s %12s"
+          % ("mu", "mu_eff", "R", "r0 = 0.5", "r0 = 1", "r0 = 3", "r0 = 5"))
+    for m in (0.3, 0.5, 1.0, 2.0):
+        me, R, T = tuned_stuart_landau(m)
+        errs = []
+        for rr in (0.5, 1.0, 3.0, 5.0):
+            pv = revolution(m, rr)[0]
+            errs.append(abs(stuart_landau_map(me, rr, R, T) - pv)/pv)
+        print("%6.2f %8.4f %8.4f " % (m, me, R)
+              + " ".join("%12.1e" % e for e in errs))
     return ser, fp
 
 
