@@ -1620,11 +1620,13 @@ def fig_regime_three(th, name, data=None):
     """The fitted three level model against Van der Pol over the drive grid.
 
     Left and middle: regime maps over ``staircase.MAP_R`` ratios and
-    ``staircase.MAP_A`` amplitudes, the bottom row unforced, cells locked,
-    quasi-periodic or chaotic, with chaotic verdicts that failed
-    ``section.confirm_chaos`` drawn as quasi-periodic. Right: no forcing at
-    all — the two free limit cycles in the phase plane, with the three
-    level model's zone edges.
+    ``staircase.MAP_A`` amplitudes, cells locked, quasi-periodic or chaotic,
+    with chaotic verdicts that failed ``section.confirm_chaos`` drawn as
+    quasi-periodic. The unforced row is painted as chrome: with no drive
+    there is nothing to lock to, and what the classifier reports there is
+    the sampling frequency being commensurate with the free cycle. Right:
+    no forcing at all — the two free limit cycles in the phase plane, with
+    the three level model's zone edges.
 
     This is the test the candidate paragraph in ``README.md`` asked for:
     matched at one drive strength, does the model track Van der Pol across
@@ -1642,7 +1644,7 @@ def fig_regime_three(th, name, data=None):
     ratios, amps = np.array(data["ratios"]), list(data["amps"])
     fig, axes = newfig(th, 1, 3, figsize=(15.0, 4.6),
                        gridspec_kw=dict(width_ratios=(1.3, 1.3, 1.0)))
-    cmap = matplotlib.colors.ListedColormap(list(th["series"]))
+    cmap = matplotlib.colors.ListedColormap(list(th["series"]) + [th["grid"]])
     lv, ed = staircase.THREE_FITTED
     panels = [(axes[0], "three", "three level prototype, fitted",
                "$\\zeta = (%.2f, %.2f, %.1f)$, edges $(%.2f, %.2f)$"
@@ -1653,8 +1655,17 @@ def fig_regime_three(th, name, data=None):
         lab, q, w, lam = data[tag]
         code = _regime_codes(lab, q, lam)
         code = np.where((code == 2) & ~data[tag + "_ok"], 1, code)
+        # with no drive there is nothing to lock to: the classifier's locks
+        # in that row are the sampling frequency being commensurate with
+        # the free cycle, which is a property of the grid, not the system
+        code[[i for i, a in enumerate(amps) if a == 0.0], :] = 3
         ax.pcolormesh(ratios, np.arange(len(amps)), code, cmap=cmap,
-                      vmin=-0.5, vmax=2.5, shading="nearest", zorder=1)
+                      vmin=-0.5, vmax=3.5, shading="nearest", zorder=1)
+        if 0.0 in amps:
+            ax.text(0.5*(ratios[0] + ratios[-1]), amps.index(0.0),
+                    "no drive: the free cycle, nothing to lock to",
+                    fontsize=8, color=th["ink2"], ha="center", va="center",
+                    zorder=6)
         ax.set_yticks(np.arange(len(amps)))
         ax.set_yticklabels(["%g" % a for a in amps])
         style(ax, th, "$\\Omega / \\omega_{lc}$ (Van der Pol's)", "$A$", title)

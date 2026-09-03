@@ -916,6 +916,60 @@ def regime_compare(workers=None, log=print):
     return out
 
 
+#: Transitions the coarse regime map cannot resolve, swept at 0.01 in the
+#: ratio: the two chaotic transitions Van der Pol has at ``A = 10`` and its
+#: second band at ``A = 5``.
+TRANSITION_WINDOWS = ((10.0, 3.90, 4.40), (10.0, 7.00, 7.70), (5.0, 6.10, 6.70))
+
+
+def _transition_point(args):
+    """Worker for :func:`regime_transitions`: classify, confirm if chaotic."""
+    import section
+    import vanderpol
+    tag, r, amp, wl = args
+    om = r*wl
+    lv, ed = THREE_FITTED
+    if tag == "vdp":
+        flow = vanderpol.field(CMP_MU, amp, om)
+        y0 = list(vanderpol.cycle(CMP_MU)[1])
+    else:
+        flow = field(lv, ed, amp, om)
+        y0 = [2.0, 0.0]
+    lab, q, w, lam = section.classify(flow, 2.0*np.pi/om, y0, CMP_NSKIP)
+    if lab == "chaos":
+        ok, _ = section.confirm_chaos(flow, 2.0*np.pi/om, y0, CMP_NSKIP)
+        lab = "chaos" if ok else "torus"
+    return tag, amp, r, lab, lam
+
+
+def regime_transitions(windows=TRANSITION_WINDOWS, workers=None):
+    """Sweep the fitted three level model and Van der Pol across the
+    transitions the coarse map steps over, at 0.01 in the ratio, with
+    every chaotic verdict confirmed. Returns
+    ``{(tag, amp): [(r, label, lam), ...]}`` and prints the runs.
+    """
+    import multiprocessing as mp
+    import vanderpol
+    wl = vanderpol.w_lc(CMP_MU)
+    args = [(tag, float(r), amp, wl) for amp, lo, hi in windows
+            for r in np.round(np.arange(lo, hi + 0.001, 0.01), 3)
+            for tag in ("three", "vdp")]
+    with mp.Pool(workers or mp.cpu_count()) as pool:
+        out = pool.map(_transition_point, args, chunksize=1)
+    res = {}
+    for tag, amp, r, lab, lam in out:
+        res.setdefault((tag, amp), []).append((r, lab, lam))
+    for key in sorted(res):
+        rows = sorted(res[key])
+        res[key] = rows
+        print("%s at A = %g: %d chaotic, confirmed" %
+              (key[0], key[1], sum(1 for _, l, _ in rows if l == "chaos")))
+        for lab, lo, hi, n in runs(rows):
+            if n > 1 or lab == "chaos":
+                print("    %-12s r %.2f - %.2f (%d)" % (lab, lo, hi, n))
+    return res
+
+
 def _print_scan(scan):
     for tag in scan:
         rows = scan[tag]
@@ -951,6 +1005,8 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "regime":
         import pickle
         pickle.dump(regime_compare(), open("regime.pkl", "wb"))
+        print()
+        regime_transitions()
         sys.exit(0)
     if len(sys.argv) > 1 and sys.argv[1] == "fit":
         for lv, ed in (two_level_matched(7.25), uniform_matched(3)[:2]):
