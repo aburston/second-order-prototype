@@ -1616,6 +1616,87 @@ def fig_chaos_phase(th, name, om=CHAOS_OM, n_trace=40, n_strobe=3000):
     save(fig, name, "chaos-phase")
 
 
+def fig_regime_three(th, name, data=None):
+    """The fitted three level model against Van der Pol over the drive grid.
+
+    Left and middle: regime maps over ``staircase.MAP_R`` ratios and
+    ``staircase.MAP_A`` amplitudes, the bottom row unforced, cells locked,
+    quasi-periodic or chaotic, with chaotic verdicts that failed
+    ``section.confirm_chaos`` drawn as quasi-periodic. Right: no forcing at
+    all — the two free limit cycles in the phase plane, with the three
+    level model's zone edges.
+
+    This is the test the candidate paragraph in ``README.md`` asked for:
+    matched at one drive strength, does the model track Van der Pol across
+    the rest of the grid?
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+        data: a ``staircase.regime_compare`` result, or ``None`` to
+            compute it, which takes an hour or two.
+    """
+    import section
+    if data is None:
+        data = staircase.regime_compare()
+    ratios, amps = np.array(data["ratios"]), list(data["amps"])
+    fig, axes = newfig(th, 1, 3, figsize=(15.0, 4.6),
+                       gridspec_kw=dict(width_ratios=(1.3, 1.3, 1.0)))
+    cmap = matplotlib.colors.ListedColormap(list(th["series"]))
+    lv, ed = staircase.THREE_FITTED
+    panels = [(axes[0], "three", "three level prototype, fitted",
+               "$\\zeta = (%.2f, %.2f, %.1f)$, edges $(%.2f, %.2f)$"
+               % (lv[0], lv[1], lv[2], ed[0], ed[1])),
+              (axes[1], "vdp", "Van der Pol  $\\mu = %g$" % staircase.CMP_MU,
+               "the same drive, the same classifier")]
+    for ax, tag, title, sub in panels:
+        lab, q, w, lam = data[tag]
+        code = _regime_codes(lab, q, lam)
+        code = np.where((code == 2) & ~data[tag + "_ok"], 1, code)
+        ax.pcolormesh(ratios, np.arange(len(amps)), code, cmap=cmap,
+                      vmin=-0.5, vmax=2.5, shading="nearest", zorder=1)
+        ax.set_yticks(np.arange(len(amps)))
+        ax.set_yticklabels(["%g" % a for a in amps])
+        style(ax, th, "$\\Omega / \\omega_{lc}$ (Van der Pol's)", "$A$", title)
+        ax.text(0.5, -0.26, sub, transform=ax.transAxes, fontsize=8,
+                color=th["ink2"], ha="center", va="top")
+        ax.text(0.97, 0.04, "chaotic cells: %d" % int(np.sum(code == 2)),
+                transform=ax.transAxes, fontsize=8.5, color=th["ink"],
+                ha="right", va="bottom", zorder=7,
+                bbox=dict(boxstyle="round,pad=0.3", fc=th["surface"],
+                          ec=th["grid"], lw=0.8, alpha=0.94))
+    handles = [matplotlib.patches.Patch(facecolor=th["series"][i], label=t)
+               for i, t in enumerate(("locked", "quasi-periodic", "chaotic"))]
+    axes[0].legend(handles=handles, fontsize=8, labelcolor=th["ink2"],
+                   frameon=True, facecolor=th["surface"], edgecolor="none",
+                   framealpha=0.92, loc="upper left").set_zorder(9)
+
+    ax = axes[2]
+    import vanderpol
+    for k, (label, flow, r0) in enumerate((
+            ("three level prototype", staircase.field(lv, ed), 2.0),
+            ("Van der Pol", vanderpol.field(staircase.CMP_MU), 2.0))):
+        warm = solve_ivp(flow, (0.0, 300.0), [r0, 0.0], method=section.METHOD,
+                         rtol=1e-9, atol=1e-11)
+        T = (staircase.free_cycle_num(lv, ed)[1] if k == 0
+             else vanderpol.cycle(staircase.CMP_MU)[0])
+        sol = solve_ivp(flow, (0.0, T), warm.y[:, -1], method=section.METHOD,
+                        rtol=1e-9, atol=1e-11, t_eval=np.linspace(0, T, 4000))
+        ax.plot(sol.y[0], sol.y[1], color=th["series"][k], linewidth=1.8,
+                zorder=3, label="%s, $T = %.2f$" % (label, T))
+    for e in ed:
+        for xv in (e, -e):
+            ax.axvline(xv, color=th["ink2"], linewidth=1.0,
+                       linestyle=(0, (5, 3)), zorder=4)
+    style(ax, th, "$x$", "$\\dot{x}$", "No forcing: the free cycles")
+    legend(ax, th, loc="upper left")
+
+    fig.suptitle("Fitted at one drive strength, tested across the grid",
+                 color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "regime-three")
+
+
 # --------------------------------------------------- the strange attractor
 #: Drive at which forced Van der Pol is chaotic, and the staircase fitted to
 #: it. The same settings the comparison in ``README.md`` uses.
@@ -1788,5 +1869,6 @@ if __name__ == "__main__":
         fig_level_floor(th, name)
         fig_normalised(th, name)
         fig_chaos_phase(th, name)
+        fig_regime_three(th, name)
         fig_strange_attractor(th, name)
         fig_vanderpol_compare(th, name)

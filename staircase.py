@@ -812,6 +812,110 @@ def normalise(workers=None):
     return systems, scan
 
 
+# --------------------------------------------------- the regime map
+#: The control section's drive grid, refined: ratios of the drive frequency
+#: to Van der Pol's free cycle frequency, and absolute drive amplitudes
+#: with an unforced row.
+MAP_R = tuple(np.round(np.arange(0.5, 8.001, 0.1), 2))
+MAP_A = (0.0, 0.5, 1.0, 2.0, 5.0, 10.0)
+
+
+def _regime_point(args):
+    """Worker for :func:`regime_map` (module level so it can be pickled)."""
+    import section
+    lv, ed, om, amp, n_skip = args
+    lab, q, w, lam = section.classify(field(lv, ed, amp, om), 2.0*np.pi/om,
+                                      [2.0, 0.0], n_skip)
+    return lab, (q if q is not None else 0), w, (0.0 if lam is None else lam)
+
+
+def regime_map(levels, edges, oms, amps, n_skip=CMP_NSKIP, workers=None):
+    """Classify a staircase's driven response over a grid of ``(om, amp)``.
+
+    The same measurement `vanderpol.regime_map` makes, with absolute drive
+    frequencies so the two can share an axis. Returns
+    ``(labels, q, w, lam)``, each of shape ``(len(amps), len(oms))``.
+    """
+    import multiprocessing as mp
+    args = [(levels, edges, om, a, n_skip) for a in amps for om in oms]
+    with mp.Pool(workers or mp.cpu_count()) as pool:
+        out = pool.map(_regime_point, args, chunksize=1)
+    sh = (len(amps), len(oms))
+    return (np.array([o[0] for o in out], dtype=object).reshape(sh),
+            np.array([o[1] for o in out]).reshape(sh),
+            np.array([o[2] for o in out]).reshape(sh),
+            np.array([o[3] for o in out]).reshape(sh))
+
+
+def _confirm_point(args):
+    """Worker for :func:`confirm_map`."""
+    import section
+    flow_kind, om, amp, n_skip = args
+    if flow_kind == "vdp":
+        import vanderpol
+        flow = vanderpol.field(CMP_MU, amp, om)
+        _, y0 = vanderpol.cycle(CMP_MU)
+        y0 = list(y0)
+    else:
+        flow = field(flow_kind[0], flow_kind[1], amp, om)
+        y0 = [2.0, 0.0]
+    ok, lams = section.confirm_chaos(flow, 2.0*np.pi/om, y0, n_skip)
+    return ok, lams
+
+
+def confirm_map(flow_kind, oms, amps, lab, lam, n_skip=CMP_NSKIP, workers=None):
+    """Re-test every chaotic cell of a regime map with `section.confirm_chaos`.
+
+    ``flow_kind`` is ``"vdp"`` or ``(levels, edges)``. Returns a boolean
+    array the shape of the map, true where a chaotic verdict survived.
+    """
+    import multiprocessing as mp
+    cells = [(i, j) for i in range(len(amps)) for j in range(len(oms))
+             if lab[i, j] == "chaos"]
+    args = [(flow_kind, oms[j], amps[i], n_skip) for i, j in cells]
+    with mp.Pool(workers or mp.cpu_count()) as pool:
+        out = pool.map(_confirm_point, args, chunksize=1)
+    keep = np.zeros(lab.shape, dtype=bool)
+    for (i, j), (ok, _) in zip(cells, out):
+        keep[i, j] = ok
+    return keep
+
+
+def regime_compare(workers=None, log=print):
+    """The fitted three level model and Van der Pol over the whole drive grid.
+
+    Absolute drive frequencies ``MAP_R`` times Van der Pol's free cycle
+    frequency, amplitudes ``MAP_A`` including no drive at all. Every chaotic
+    verdict is re-tested. Returns a dict with both raw maps and the
+    confirmation masks; ``figures.fig_regime_three`` draws it.
+    """
+    import time
+    import vanderpol
+    wl = vanderpol.w_lc(CMP_MU)
+    oms = tuple(float(r*wl) for r in MAP_R)
+    out = dict(oms=oms, ratios=MAP_R, amps=MAP_A, w_lc=wl)
+    lv, ed = THREE_FITTED
+    t0 = time.time()
+    out["three"] = regime_map(lv, ed, oms, MAP_A, workers=workers)
+    log("three level map: %d cells, %.0fs, chaotic %d"
+        % (len(oms)*len(MAP_A), time.time() - t0,
+           int(np.sum(out["three"][0] == "chaos"))))
+    t0 = time.time()
+    out["vdp"] = vanderpol.regime_map(CMP_MU, np.array(MAP_R), np.array(MAP_A),
+                                      workers=workers)
+    log("Van der Pol map: %.0fs, chaotic %d"
+        % (time.time() - t0, int(np.sum(out["vdp"][0] == "chaos"))))
+    for tag, kind in (("three", (lv, ed)), ("vdp", "vdp")):
+        t0 = time.time()
+        lab, q, w, lam = out[tag]
+        out[tag + "_ok"] = confirm_map(kind, oms, MAP_A, lab, lam,
+                                       workers=workers)
+        log("%s: %d of %d chaotic cells confirmed, %.0fs"
+            % (tag, int(out[tag + "_ok"].sum()), int(np.sum(lab == "chaos")),
+               time.time() - t0))
+    return out
+
+
 def _print_scan(scan):
     for tag in scan:
         rows = scan[tag]
@@ -843,6 +947,10 @@ if __name__ == "__main__":
         sys.exit(0)
     if len(sys.argv) > 1 and sys.argv[1] == "normalise":
         normalise()
+        sys.exit(0)
+    if len(sys.argv) > 1 and sys.argv[1] == "regime":
+        import pickle
+        pickle.dump(regime_compare(), open("regime.pkl", "wb"))
         sys.exit(0)
     if len(sys.argv) > 1 and sys.argv[1] == "fit":
         for lv, ed in (two_level_matched(7.25), uniform_matched(3)[:2]):
