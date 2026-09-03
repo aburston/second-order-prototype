@@ -1,4 +1,4 @@
-"""Generate the phase plane figures used in README.md.
+"""Generate the figures used in README.md, VANDERPOL.md and MAPS.md.
 
 Run ``python3 figures.py`` to write every image into ``figures/``. Nothing
 is cached, so a run always reflects the current parameters; regenerate
@@ -1461,7 +1461,7 @@ def fig_level_floor(th, name, scan=None):
     ``fig_staircase_vdp``. Two levels is the original piecewise constant
     Van der Pol, and it has two chaotic bands of its own — at the
     transitions its own locks make, which sit far from Van der Pol's
-    because its free cycle is faster. The README's narrow window is drawn
+    because its free cycle is faster. The earlier narrow window is drawn
     on top, to show why the earlier single-frequency test saw a lock.
 
     Args:
@@ -1628,7 +1628,7 @@ def fig_regime_three(th, name, data=None):
     no forcing at all — the two free limit cycles in the phase plane, with
     the three level model's zone edges.
 
-    This is the test the candidate paragraph in ``README.md`` asked for:
+    This is the test the candidate paragraph in ``VANDERPOL.md`` asked for:
     matched at one drive strength, does the model track Van der Pol across
     the rest of the grid?
 
@@ -1710,7 +1710,7 @@ def fig_regime_three(th, name, data=None):
 
 # --------------------------------------------------- the strange attractor
 #: Drive at which forced Van der Pol is chaotic, and the staircase fitted to
-#: it. The same settings the comparison in ``README.md`` uses.
+#: it. The same settings the comparison in ``VANDERPOL.md`` uses.
 ATT_MU, ATT_XMAX, ATT_A, ATT_OM = 5.0, 3.0, 5.0, 2.466
 ATT_KEEP, ATT_SKIP = 30000, 400
 

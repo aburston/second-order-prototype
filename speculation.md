@@ -168,20 +168,14 @@ somewhere else:
 - a third state — an actuator lag, a compliant mount, a thermal drift;
 - coupling two prototypes together.
 
-**Speculative, and the natural next step.** Forcing is the cheapest of the
-three and the closest to the field case, where a machine runs at a drive
-frequency. A forced piecewise-linear oscillator entrains over a range of
-drive frequencies and amplitudes — the Arnold tongues — and the classical
-route to chaos is tongue overlap. What sets tongue width is precisely what
-is already computed exactly here: the unforced cycle's frequency, and how
-strongly it attracts, which is $`\mu`$. So the existing results are the
-inputs to that analysis rather than a detour from it.
-
-The rule of thumb that would come out, if it works: **drive frequency
-relative to the natural cycle frequency, and drive amplitude relative to
-the boundary parameter** are the two axes on which locking, quasi-periodic
-and chaotic behaviour separate. That chart is the deliverable the target
-needs, and it is one forcing term away.
+**Done, in `VANDERPOL.md`.** Forcing was added, and the two axes it
+predicted — drive frequency relative to the cycle frequency, drive
+amplitude relative to the boundary — are the regime map's axes. At
+moderate damping ratios the two level prototypes only entrain; at heavy
+outer damping they go chaotic in bands at the transitions between locks;
+and a three level model fitted to those transitions reproduces Van der
+Pol's regime map, chaos included, across the tested grid. The parameter
+guide there says what to set.
 
 ## What would have to be true, and what probably is not
 
@@ -191,10 +185,11 @@ Worth stating plainly, since the ambition invites over-claiming.
   The prototypes are a caricature in the same way a first order plus dead
   time model is for PID — useful because it is crude, not despite it.
 - **Piecewise-constant damping is not physical.** Real nonlinearity is
-  smooth. The piecewise version is chosen for exact solvability. Whether
-  the fitted parameters mean anything mechanically, or are only descriptive,
-  is untested. A comparison against a genuine Van der Pol would settle how
-  much the sharp switch distorts things.
+  smooth. The piecewise version is chosen for exact solvability. The
+  comparison against Van der Pol is done, in `VANDERPOL.md`: three levels
+  chosen for the driven response reproduce it, but the levels are then a
+  shape, not a sampling of the law, so whether fitted parameters mean
+  anything mechanically is still untested.
 - **Identification assumes a visible limit cycle and a measurable
   transient.** A system sitting quietly on its cycle gives the period and
   amplitude but not $`\mu`$; getting that needs a disturbance and a
@@ -206,16 +201,16 @@ Worth stating plainly, since the ambition invites over-claiming.
 
 ## Suggested order of work
 
-1. **Forcing.** Add a drive term to the symmetric models and map the
-   locking regions against drive frequency and amplitude. This is where
-   chaos first becomes possible and where the target chart lives.
+1. ~~**Forcing.**~~ Done: `VANDERPOL.md`, forcing and control chapters.
 2. **Identifiability.** Check whether $`(\zeta_{+}, \zeta_{-})`$ is
    recoverable from harmonics plus settling rate, and how that degrades
-   with noise.
-3. **Smooth comparison.** Fit the piecewise prototypes to Van der Pol data
-   and see what the fitted parameters do.
-4. **Only then, the chart.** A single figure with the parameter plane, the
-   existence boundaries, and the forced behaviour regions marked.
+   with noise. The free-cycle half is done above; the driven half — fitting
+   the plateau edges from a noisy driven response — is not.
+3. ~~**Smooth comparison.**~~ Done: `VANDERPOL.md`, the normalisation and
+   regime map chapters. The fitted parameters are a shape for the driven
+   response, not a sampling of the law.
+4. **The chart.** Still to do. `VANDERPOL.md`'s parameter guide is the
+   table form of it; the figure is not drawn.
 
 ## Where to look next: other disciplines that have solved parts of this
 
