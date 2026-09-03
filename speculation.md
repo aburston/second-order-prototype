@@ -26,7 +26,7 @@ separation, which is the part that makes a chart plausible at all:
 | --- | --- | --- |
 | $`\omega_n`$ | the timescale, nothing else | shape, stability |
 | boundary $`v_0`$ or $`x_0`$ | the amplitude, exactly proportionally | period, stability, shape |
-| $`\zeta_{+}, \zeta_{-}$ | stability, period, orbit shape | — |
+| $`\zeta_{+}, \zeta_{-}`$ | stability, period, orbit shape | — |
 
 So amplitude and frequency are independently adjustable, and only two
 numbers govern behaviour. **Established:** the existence boundaries are
