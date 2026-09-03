@@ -477,6 +477,51 @@ def level_floor(level_counts=FLOOR_LEVELS, workers=None):
     return narrow, wide, cn, cw
 
 
+def floor_crosschecks(mu=CMP_MU, xmax=CMP_XMAX, amp=CMP_AMP):
+    """Three independent checks on the coarse staircases' chaotic cells.
+
+    The exact-Jacobian exponent from `maps.py`, which has no noise floor;
+    the same cells from several initial conditions, which is what tells a
+    coexisting lock from a fragile verdict; and the README's own deadzone
+    prototype at the corresponding drive. The two-level staircase is the
+    displacement-switched model, and the deadzone model is its
+    derivative: a drive ``A cos(Om t)`` on the staircase is ``(A/Om) sin``
+    on the deadzone, with the same damping ratios and ``v0 = x0``.
+    """
+    import maps
+    import section
+    import forced
+    print("exact-Jacobian Lyapunov exponent, per unit time")
+    for n, om in ((2, 1.890), (2, 3.000), (2, 2.500), (3, 2.585), (3, 2.300)):
+        lv, ed = vdp_staircase(mu, n, xmax)
+        lam = maps.forced_lyapunov(maps.staircase_model(lv, ed), [2.0, 0.0],
+                                   amp, om, n_skip=400, n=1500)
+        print("  %d levels  Om = %.3f  %+.4f" % (n, om, lam), flush=True)
+
+    print("two levels from several initial conditions")
+    lv, ed = vdp_staircase(mu, 2, xmax)
+    for om in (1.890, 3.000):
+        flow = field(lv, ed, amp, om)
+        for y0 in ([2.0, 0.0], [0.5, 0.0], [-1.0, 3.0], [1.7, -2.0]):
+            lab, q, w, lam = section.classify(flow, 2.0*np.pi/om, y0, CMP_NSKIP)
+            print("  Om = %.3f  y0 = %s  %s  w = %.4f" % (om, y0, lab, w),
+                  flush=True)
+
+    zm, zp = lv
+    v0 = float(ed[0])
+    print("the deadzone prototype, zp = %.3f zm = %.3f v0 = %.2f, drive A/Om"
+          % (zp, zm, v0))
+    for om in (1.890, 3.000, 2.500):
+        flow = forced.field(zp, zm, v0, amp/om, om)
+        print("  Om = %.3f  r = %.2f  a = %.2f"
+              % (om, om/forced.w_lc(zp, zm), amp/om/v0))
+        for y0 in ([2.0, 0.0], [0.0, 2.0], [0.5, 0.5], [-10.0, 0.0]):
+            lab, q, w, lam = section.classify(flow, 2.0*np.pi/om, y0, CMP_NSKIP)
+            print("    y0 = %s  %s  w = %.4f  lam = %s"
+                  % (y0, lab, w, "-" if lam is None else "%+.4f" % lam),
+                  flush=True)
+
+
 def _print_scan(scan):
     for tag in scan:
         rows = scan[tag]
@@ -503,6 +548,8 @@ if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "sweep":
         level_floor()
+        print()
+        floor_crosschecks()
         sys.exit(0)
     print("the two level case must reproduce displacement.py")
     a, b = check_reduces()
