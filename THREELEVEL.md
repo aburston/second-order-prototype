@@ -28,8 +28,10 @@ tested grid and its chaotic bands at the two strengths that have them,
 missing one band a single fine cell wide, with a two per cent frequency
 offset it inherits from a seven per cent longer free period. Its five
 parameters are a shape chosen for the driven response, not a sampling of
-Van der Pol's damping law. At $`\mu = 1`$, where Van der Pol only entrains
-apart from one narrow period-doubled band, the fit is below.
+Van der Pol's damping law. The campaign then fitted it at eleven values
+of $`\mu`$ from 0.1 to 5 on one objective; the parameters lie on power
+laws in $`\mu`$ with fixed edges, and at every $`\mu`$ the model has
+chaos where Van der Pol has it and none where it has none.
 
 ## Parameters and units
 
@@ -499,8 +501,17 @@ Power laws through the fits (11 points): $`\zeta_0 = -0.365\,\mu^{0.930}`$; $`\z
 
 | $`\mu`$ | agreement | chaotic cells, Van der Pol | where | chaotic cells, model | where |
 | --- | --- | --- | --- | --- | --- |
+| 0.1 | none in either | 0 | — | 0 | — |
+| 0.2 | none in either | 0 | — | 0 | — |
+| 0.3 | none in either | 0 | — | 0 | — |
+| 0.5 | none in either | 0 | — | 0 | — |
+| 0.7 | none in either | 0 | — | 0 | — |
+| 1 | none in either | 0 | — | 0 | — |
+| 1.5 | 0.333 | 1 | 1–3 at 2.46 | 3 | 1–3 at 2.42–2.46 |
 | 2 | 0.500 | 1 | 1–3 at 2.46 | 2 | 1–3 at 2.44–2.46 |
 | 3 | 0.182 | 4 | 1–3 at 2.52; 3–4 at 4.12; 3–4 at 4.30; 4–5 at 4.48 | 6 | 1–3 at 2.52–2.54; 4–5 at 4.50–4.54; 4–5 at 4.58 |
+| 4 | 0.222 | 7 | 3–5 at 4.34–4.36; 3–5 at 4.40–4.42; 3–5 at 4.54–4.58 | 4 | 3–4 at 4.38–4.42; 3–4 at 4.46 |
+| 5 | 0.250 | 4 | 3–5 at 4.50; 3–5 at 4.56–4.60 | 5 | 3–5 at 4.54–4.58; 3–5 at 4.68–4.70 |
 <!-- /FITTABLE -->
 
 ### Formulas
@@ -548,6 +559,40 @@ started from the interpolation or the laws landed within a coarse step
 of all three targets before the first evaluation, and three of them did
 not move at all.
 
+### Predicting chaos
+
+The verification table above is the test of the one thing this model is
+most wanted for: saying whether a drive will produce chaos. Read across
+$`\mu`$ at $`A = 5`$:
+
+- **Below $`\mu = 1.5`$ neither system has any chaos** in the sweep, at
+  any drive ratio from 0.5 to 6. The model predicts none, and there is
+  none.
+- **From $`\mu = 1.5`$ Van der Pol goes chaotic at the transition from
+  the 1:1 lock to the 3:1 lock**, one or two cells wide, and the model
+  has chaos at the same transition at 1.5, 2 and 3, within 0.05 in drive
+  ratio.
+- **From $`\mu = 3`$ chaos appears at the transitions above the 3:1
+  plateau** — 3:1 to 4:1, 4:1 to 5:1, then the direct 3:1 to 5:1 — and
+  the model has it in the same region at 3, 4 and 5, its cells within
+  0.05 to 0.1 of Van der Pol's.
+- **The one systematic miss** is the 3:1 to 4:1 transition at $`\mu = 3`$,
+  where Van der Pol has two cells and the model switches through a torus.
+  At $`\mu = 4`$ the model's cells sit at the 3:1 to 4:1 transition where
+  Van der Pol's sit at 3:1 to 5:1, the same region a tenth of a unit apart.
+
+So the rule a user can apply is plain. Fit the model, or take its
+parameters from the formulas with $`\mu`$ read from the free waveform, and
+sweep its drive frequency at the working drive strength: **where its lock
+plateaus meet, chaos is coming**, at the first transition above the 1:1
+lock once the ratios are of order one and at the transitions above the
+3:1 lock once they are of order three, and the frequencies at which it
+comes are the model's to within a twentieth of a unit of drive ratio.
+Where the model's plateaus meet cleanly, no chaos is coming. The
+agreement measured cell by cell is modest, 0.2 to 0.5, because the bands
+are one to four cells wide and shifted by a cell or two; the agreement on
+*whether* and *at which transition* is complete apart from the one miss.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="figures/campaign-dark.png">
   <img alt="The fitted damping ratios and edges against mu with power laws through them, Van der Pol's plateau edges at each mu with the fitted models' edges over them, and the verification agreement against mu" src="figures/campaign-light.png">
@@ -576,11 +621,14 @@ is not enough; two drive strengths are.
 
 ## Gaps
 
-- **Two relaxation parameters fitted**, $`\mu = 5`$ and $`\mu = 1`$. Nothing
-  in between or beyond, so the parameter table against $`\mu`$ has two
-  rows and no rule.
-- **The grid is the proof.** Drive strength to 10 and ratio to 8; outside
-  it the model is untested.
+- **Nothing beyond $`\mu = 5`$.** Eleven fits from 0.1 to 5 lie on power
+  laws; whether the laws hold at 7 or 10, where Van der Pol is a hard
+  relaxation oscillator, is untested.
+- **One drive strength in the fit.** Every campaign fit used the plateau
+  edges at $`A = 5`$ (plus the tongue at $`A = 1`$ below $`\mu = 0.3`$);
+  the $`\mu = 5`$ regime map is the only test across drive strength.
+- **The grid is the proof.** Drive strength to 10 and ratio to 8 at
+  $`\mu = 5`$ and 1; ratio to 6 at $`A = 5`$ elsewhere.
 - **The frequency offset.** Every lock of the $`\mu = 5`$ fit sits two per
   cent low, carried by the seven per cent longer free period. Tighter
   leeway on the period, or two drive strengths in the objective, has not

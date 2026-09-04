@@ -1790,8 +1790,14 @@ def fig_campaign(th, name, results=None):
     ver = sorted((float(k), v) for k, v in results["verify"].items())
     if ver:
         vm = np.array([m for m, _ in ver])
-        ax.semilogx(vm, [v["jaccard"] for _, v in ver], "o-", color=th["series"][0],
-                    linewidth=1.6, markersize=5, zorder=4, label="agreement (Jaccard)")
+        jac = np.array([v["jaccard"] for _, v in ver], float)
+        ok = np.isfinite(jac)
+        ax.semilogx(vm[ok], jac[ok], "o-", color=th["series"][0],
+                    linewidth=1.6, markersize=5, zorder=4,
+                    label="agreement on chaotic cells (Jaccard)")
+        ax.text(0.03, 0.55, "no chaos in either\nsystem below $\\mu = 1.5$",
+                transform=ax.transAxes, fontsize=8, color=th["ink2"],
+                ha="left", va="center")
         ax2 = ax.twinx()
         ax2.semilogx(vm, [len(v["vdp"]["chaotic"]) for _, v in ver], "s--",
                      color=th["series"][1], markersize=5, zorder=3,
