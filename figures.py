@@ -1822,6 +1822,57 @@ def fig_campaign(th, name, results=None):
     save(fig, name, "campaign")
 
 
+def fig_boundary(th, name, results=None):
+    """The chaos boundary in mu at drive amplitude 10.
+
+    One row per mu of the boundary sweep, Van der Pol above the model:
+    the lock plateaus as faint bars, every confirmed chaotic cell as a
+    marker. Reads ``results["boundary"]`` from ``campaign/results.json``.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+        results: the ``campaign/results.json`` dict, loaded if ``None``.
+    """
+    import json
+    if results is None:
+        results = json.load(open(os.path.join(os.path.dirname(OUT),
+                                              "campaign", "results.json")))
+    rows = sorted((float(k), v) for k, v in results.get("boundary", {}).items())
+    if not rows:
+        return
+    fig, ax = newfig(th, figsize=(9.0, 0.9 + 1.0*len(rows)))
+    off = 0.12
+    col = {"vdp": th["series"][1], "three": th["series"][2]}
+    mark = {"vdp": "s", "three": "^"}
+    lab = {"vdp": "Van der Pol", "three": "model from the laws"}
+    for i, (m, v) in enumerate(rows):
+        for tag, y in (("vdp", i + off), ("three", i - off)):
+            seen = set()
+            for l, lo, hi, n in v[tag]["runs"]:
+                if l.startswith("lock") and n >= 3:
+                    ax.plot([lo, hi], [y, y], color=th["ink2"], linewidth=5,
+                            alpha=0.22, solid_capstyle="butt", zorder=2)
+                    q = int(l[4:])
+                    if q in (1, 3, 5, 7) and q not in seen and hi - lo > 0.4:
+                        ax.text(0.5*(lo + hi), y, "%d:1" % q, fontsize=6.5,
+                                color=th["ink2"], ha="center", va="center", zorder=3)
+                        seen.add(q)
+            ch = v[tag]["chaotic"]
+            ax.plot(ch, [y]*len(ch), mark[tag], color=col[tag], markersize=5,
+                    linestyle="none", zorder=5, label=lab[tag] if i == 0 else None)
+    ax.set_xlim(rows[0][1]["r_lo"], rows[0][1]["r_hi"])
+    ax.set_ylim(-0.5, len(rows) - 0.5 + 0.6)
+    ax.set_yticks(range(len(rows)))
+    ax.set_yticklabels(["%g" % m for m, _ in rows])
+    style(ax, th, "drive ratio  $\\Omega/\\omega_{lc}$", "$\\mu$",
+          "Chaotic cells at $A = %g$, Van der Pol above the model at each $\\mu$"
+          % rows[0][1]["amp"])
+    legend(ax, th, loc="upper left", ncol=2)
+    fig.tight_layout()
+    save(fig, name, "boundary")
+
+
 # --------------------------------------------------- the strange attractor
 #: Drive at which forced Van der Pol is chaotic, and the staircase fitted to
 #: it. The same settings the comparison in ``VANDERPOL.md`` uses.
@@ -2076,6 +2127,7 @@ if __name__ == "__main__":
         fig_chaos_phase(th, name)
         fig_regime_three(th, name)
         fig_campaign(th, name)
+        fig_boundary(th, name)
         fig_scaling(th, name)
         fig_strange_attractor(th, name)
         fig_vanderpol_compare(th, name)

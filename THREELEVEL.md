@@ -33,7 +33,9 @@ of $`\mu`$ from 0.1 to 5 on one objective; the parameters lie on power
 laws in $`\mu`$ with fixed edges, at every $`\mu`$ the model has chaos
 where Van der Pol has it and none where it has none, and models built from
 the laws alone at $`\mu`$ never fitted reproduce Van der Pol's plateaus
-and chaotic transitions without any fitting.
+and chaotic transitions without any fitting. At twice the fitted drive
+strength the laws place the boundary in $`\mu`$ below which no drive
+frequency produces chaos, between 2 and 2.125, where Van der Pol has it.
 
 ## Parameters and units
 
@@ -478,6 +480,7 @@ Costs are wall clock on four cores.
    sweep at $`A = 10`$ between 2 and 4; a fit at $`\mu = 7`$ or 10 to see
    whether the power laws hold beyond the fitted range; tighter period
    leeway at $`\mu = 5`$ to remove the two per cent frequency offset.
+   The first three are done, in the sections below; the last is not.
 
 ### The fits
 
@@ -597,6 +600,9 @@ Where the model's plateaus meet cleanly, no chaos is coming. The
 agreement measured cell by cell is modest, 0.2 to 0.5, because the bands
 are one to four cells wide and shifted by a cell or two; the agreement on
 *whether* and *at which transition* is complete apart from the one miss.
+The same rule at twice the drive, with the boundary in $`\mu`$ below
+which there is no chaos at all, is tested in the chaos boundary section
+below.
 
 ### Beyond the fitted range, and across drive strength
 
@@ -663,6 +669,80 @@ ratio, with no fitting.
 </picture>
 
 *Left: the three ratios from every fit on log axes, with the power laws through them, and the two edges, which do not move. Middle: Van der Pol's 1:1 and 3:1 plateaus at $`A = 5`$ at each $`\mu`$, the targets, with the fitted models' plateau edges drawn over them. Right: each fitted model's sweep against Van der Pol's, agreement and chaotic cell counts, filled in as the verification runs.*
+
+### The chaos boundary in $`\mu`$ at $`A = 10`$
+
+The $`\mu = 5`$ regime map found a fifteen-cell chaotic band at
+$`A = 10`$ and the $`\mu = 2`$ map found none on its 0.1 grid. Where
+between them chaos at this drive strength first appears, and whether the
+model appears with it, was the roadmap's second deferred item. The
+sweep (`python3 campaign.py boundary`) runs both systems at $`A = 10`$
+across ratios 0.5 to 8 in steps of 0.02, every chaotic verdict confirmed,
+the model built from the power laws with no fit, at $`\mu = 2`$, 2.5, 3,
+3.5 and 4 and then by bisection in $`\mu`$ between the last value with no
+chaos in Van der Pol and the first with it, to an eighth.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/boundary-dark.png">
+  <img alt="Chaotic cells at drive amplitude 10 against drive ratio, one row per mu from 2 to 4, Van der Pol above the model built from the laws at each mu, with the lock plateaus drawn as bars" src="figures/boundary-light.png">
+</picture>
+
+*Each row is one $`\mu`$: Van der Pol above, the model from the laws below, lock plateaus of three cells or more as bars, every confirmed chaotic cell as a marker. Chaos opens at the end of the 3:1 plateau first, in both systems, and the transitions above the 5:1 plateau follow.*
+
+| $`\mu`$ | model from the laws | chaotic cells, Van der Pol | chaotic cells, model |
+| --- | --- | --- | --- |
+| 2 | $`(-0.69, 1.61, 7.4)`$ | none | one, 4.36, at the end of the 3:1 plateau |
+| 2.125 | $`(-0.73, 1.70, 7.9)`$ | one, 4.50, at the end of the 3:1 plateau | none |
+| 2.25 | $`(-0.77, 1.80, 8.5)`$ | five, 4.50–4.80, end of the 3:1 | two, 4.50 and 4.66, end of the 3:1 |
+| 2.5 | $`(-0.85, 1.99, 9.6)`$ | seven, 4.64–4.94 | five, 4.64–5.06 |
+| 3 | $`(-1.01, 2.37, 11.9)`$ | ten, 4.90–5.18 | seven, 4.94–5.28 |
+| 3.5 | $`(-1.17, 2.75, 14.2)`$ | seven, 5.16–5.30; one at 6.74, above the 5:1 | seven, 5.16–5.40; one at 6.80; two at 7.06–7.12, below the 7:1 |
+| 4 | $`(-1.32, 3.13, 16.6)`$ | four, 5.34–5.40; three at 6.80–6.88; three at 7.14–7.18 | eight, 5.38–5.52; six at 6.84–7.00; five at 7.22–7.30 |
+
+The lock plateaus that frame these cells sit on each other throughout:
+the end of the 3:1 plateau is within 0.04 in ratio between the two
+systems at every $`\mu`$ (4.32 on both at $`\mu = 2`$, 5.32 against 5.36
+at 4), the 5:1 plateau's ends within 0.12, the 7:1 plateau's start within
+0.1. Three transitions carry the chaos, and they open in order:
+
+- **The end of the 3:1 plateau**, where the 3:1 lock gives way through a
+  short 4:1 lock and tori to the 5:1 lock, is where chaos appears first.
+  In Van der Pol it is one cell at $`\mu = 2.125`$, five at 2.25, seven at
+  2.5, ten at 3, then seven and four as the band moves up with the
+  plateau's end. The model has chaos at this transition at every
+  $`\mu`$ from 2.25, its band starting where Van der Pol's does and
+  running up to 0.1 higher, and it has a single cell there at
+  $`\mu = 2`$, where Van der Pol has none, and none at 2.125, where Van der
+  Pol has one.
+- **Above the 5:1 plateau**, at its upper end, chaos appears between
+  $`\mu = 3`$ and 3.5 in both systems: one cell at 3.5 (6.74 against
+  6.80) and three against six at 4 (6.80–6.88 against 6.84–7.00).
+- **Just below the 7:1 plateau** chaos appears by $`\mu = 4`$ in Van der
+  Pol (7.14–7.18) and by 3.5 in the model (7.06 and 7.12, then 7.22–7.30
+  at 4), the model half a unit of $`\mu`$ early and a tenth of a unit of
+  ratio high. This is the transition that at $`\mu = 5`$ carries the
+  fifteen-cell band of the regime map proof.
+
+**The boundary.** The smallest $`\mu`$ at which a drive of amplitude 10
+makes Van der Pol chaotic anywhere in the ratio range lies between 2 and
+2.125, and the first chaos is a single cell at the end of the 3:1
+plateau. The model's boundary is the same to the resolution of the sweep:
+it has one cell at 2, none at 2.125 and two at 2.25, which is what a
+band one cell wide looks like when its position moves by a cell between
+rows. Neither system is chaotic anywhere at this drive for $`\mu \le 2`$
+apart from that one cell of the model's, and both are chaotic at the same
+transition from 2.25 up.
+
+So the chaos-prediction rule of the $`A = 5`$ sweeps holds at twice the
+drive. From $`\mu = 2.25`$ to 4 the model has chaos at every transition
+Van der Pol has it at and at no transition Van der Pol does not, the
+bands within a tenth of a unit of drive ratio of Van der Pol's and on the
+high side; the transitions open in the same order and within half a unit
+of $`\mu`$ of each other; and the boundary in $`\mu`$ is the same to an
+eighth. The one thing the model does not give is the band width: at
+$`\mu = 4`$ its first band is eight cells against four, at 3 seven
+against ten. Whether chaos comes, and at which drive frequency, it gives;
+how wide the window is, it does not.
 
 ## Moving it to another frequency range
 
@@ -820,7 +900,8 @@ is not enough; two drive strengths are.
   edges at $`A = 5`$ (plus the tongue at $`A = 1`$ below $`\mu = 0.3`$);
   the $`\mu = 5`$ regime map is the only test across drive strength.
 - **The grid is the proof.** Drive strength to 10 and ratio to 8 at
-  $`\mu = 5`$ and 1; ratio to 6 at $`A = 5`$ elsewhere.
+  $`\mu = 5`$, 2 and 1; ratio to 8 at $`A = 10`$ from $`\mu = 2`$ to 4;
+  ratio to 6 at $`A = 5`$ elsewhere.
 - **The frequency offset.** Every lock of the $`\mu = 5`$ fit sits two per
   cent low, carried by the seven per cent longer free period. Tighter
   leeway on the period, or two drive strengths in the objective, has not
@@ -878,6 +959,9 @@ regime` runs the $`\mu = 5`$ regime map and the transition sweeps (about
 an hour); `python3 staircase.py fit1` and `regime1` do the same at
 $`\mu = 1`$. The fitted parameters are stored as constants in
 `staircase.py` so the tables here do not depend on re-running the
-optimiser. `python3 scaling.py` checks the frequency scaling rule at two
-physical scales, under a minute, and `python3 scaling.py table` prints its
-worked examples. `python3 figures.py` regenerates every figure.
+optimiser. `python3 campaign.py` runs the campaign stage by stage (survey,
+fit, verify, check, boundary), each result committed to
+`campaign/results.json` as it lands. `python3 scaling.py` checks the
+frequency scaling rule at two physical scales, under a minute, and
+`python3 scaling.py table` prints its worked examples. `python3 figures.py`
+regenerates every figure.
