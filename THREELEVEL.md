@@ -476,6 +476,37 @@ campaign runs.
 | 3 | $`-1.074`$ | 2.353 | 10.72 | 1.131 | 2.018 | 2.047 (+1.2%) | 9.252 (+4.4%) | 2.49 vs 2.49 | 2.52–4.11 vs 2.53–4.11 | 30 |
 <!-- /FITTABLE -->
 
+### Formulas, provisional
+
+Four points — the campaign's fits at $`\mu = 2`$ and 3 and the earlier fits
+at 1 and 5 — already lie on power laws to within six per cent:
+
+```math
+\zeta_{0} \approx -0.36\,\mu^{0.98}, \qquad
+\zeta_{1} \approx 0.85\,\mu^{0.93}, \qquad
+\zeta_{2} \approx 3.7\,\mu^{0.90}, \qquad
+a \approx 1.13, \quad b \approx 2.01
+```
+
+The three ratios are proportional to $`\mu`$ to within their exponents'
+distance from one, which is how Van der Pol's own law scales — the whole
+of $`\zeta(x) = -\mu(1 - x^2)/2`$ is linear in $`\mu`$ — and the edges do
+not move at all, standing three per cent apart across the range. The
+shape is steeper than a sampling of the law: with these edges the law's
+zone means are $`-0.29\mu`$, $`0.76\mu`$ and $`2.7\mu`$, so the fitted
+core is 1.3 times the law's, the band 1.1 times and the outer 1.4 times.
+That is the same statement the $`\mu = 5`$ fit made on its own — the
+levels are a shape chosen for the driven response — now seen to be a
+fixed shape scaled by $`\mu`$.
+
+Two consequences, if the remaining fits hold to it. A user with a Van der
+Pol class oscillator needs one number beyond the timescale and the
+amplitude: the relaxation parameter, read from the free waveform's
+departure from a sinusoid, and the three ratios follow. And the small
+$`\mu`$ end, where the fits are weakly determined, can simply take the
+formula. The campaign's own power laws through its fits replace these
+figures below as the fits accumulate.
+
 <!-- CAMPAIGN_FITS -->
 
 ## What to measure, and which parameter it sets
