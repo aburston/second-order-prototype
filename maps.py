@@ -610,7 +610,60 @@ def _zone_ahead(model, y, phase, amp, om, dt=1e-7):
     return model.zone_of(np.array([float(x), y[1]]))
 
 
-def strobe_step(model, y, phase, amp, om, max_events=20000):
+#: How often the stroboscopic step has had to recover a crossing its scan
+#: stepped over, and how often it dropped an excursion below resolution.
+STROBE_REPAIRS = {"recovered": 0, "dropped": 0}
+
+
+def _missed_crossing(zeta, y, centre, phase, amp, om, walls, tmax,
+                     ngrid=4000, tmin=1e-10):
+    """Locate a crossing the windowed scan stepped over.
+
+    Called only when an arc ends outside the zone it was computed in, so
+    some wall's residual has the wrong sign at ``tmax``. Walks a fine grid
+    from the start of the arc and returns the earliest time at which any
+    wall's residual first takes its end sign, bracketed and refined where
+    the previous grid point has the opposite sign, and otherwise the grid
+    point before it -- which means the crossing lies within one grid step
+    of the start, and the excursion is below resolution.
+
+    Returns ``(t, g, level)``, or ``(None, None, None)``.
+    """
+    best = (None, None, None)
+    for g, lv in walls:
+        def resid(t, g=g, lv=lv):
+            x, v = forced_state_at(zeta, y, centre, phase, amp, om, t)
+            return (x if g[0] else v) - lv
+
+        r_end = float(resid(tmax))
+        r_0 = float(resid(1e-7))
+        if r_end == 0.0 or (abs(r_0) > 1e-9 and np.sign(r_0) == np.sign(r_end)):
+            continue
+        s_end = np.sign(r_end)
+        edges = (tmin, min(tmax, 0.05), tmax)
+        for a, b in zip(edges[:-1], edges[1:]):
+            if b <= a:
+                continue
+            grid = np.linspace(a, b, ngrid)
+            val = resid(grid)
+            wrong = (np.sign(val) == s_end) & (np.abs(val) > 1e-13)
+            if not wrong.any():
+                continue
+            k = int(np.argmax(wrong))
+            if k == 0:
+                t = a
+            elif np.sign(val[k - 1]) == -s_end:
+                t = brentq(resid, grid[k - 1], grid[k], xtol=1e-14,
+                           rtol=8.9e-16)
+            else:
+                t = grid[k - 1]
+            if best[0] is None or t < best[0]:
+                best = (float(t), g, lv)
+            break
+    return best
+
+
+def strobe_step(model, y, phase, amp, om, max_events=20000, record=None):
     """Advance exactly one drive period, and return the tangent Jacobian.
 
     The stroboscopic map samples once per drive period, so unlike the
@@ -622,6 +675,12 @@ def strobe_step(model, y, phase, amp, om, max_events=20000):
     The drive phase is exogenous: it is not perturbed, so the tangent space
     stays two dimensional and ``J`` is ``2x2``.
 
+    Pass a list as ``record`` to collect the step's itinerary as it is
+    discovered: one ``(zone, dwell, wall)`` entry per arc, in order, with
+    ``wall`` the level of the wall the arc ends on and ``None`` for the
+    final arc, which ends on the clock. ``strobe.py`` reads the difference
+    equation of the step off this chain.
+
     Returns ``(y_next, phase_next, J)``.
     """
     td = 2.0*np.pi/om
@@ -629,25 +688,70 @@ def strobe_step(model, y, phase, amp, om, max_events=20000):
     y = np.asarray(y, float).copy()
     ph = float(phase)
     j = np.eye(2)
+    prev_k, force_k, repaired, carry = None, None, False, 0.0
     for _ in range(max_events):
-        k = _zone_ahead(model, y, ph, amp, om)
+        if force_k is None:
+            k = _zone_ahead(model, y, ph, amp, om)
+        else:
+            k, force_k = force_k, None
         zeta, centre = model.zones[k]
         # Only the walls bounding the current zone are reachable without
         # first crossing one of them, so testing the rest is wasted work.
         # Scanning all of them made the 65 level staircase roughly an order
         # of magnitude slower than the 17 level one for no change in answer.
+        walls = model.adjacent_walls(y + 1e-11*np.array([y[1], 0.0]))
         best_t, best_g, best_l = np.nan, None, None
-        for g, lv in model.adjacent_walls(y + 1e-11*np.array([y[1], 0.0])):
+        for g, lv in walls:
             t = forced_crossing(zeta, y, centre, ph, amp, om, g, lv, left)
             if np.isfinite(t) and (not np.isfinite(best_t) or t < best_t):
                 best_t, best_g, best_l = t, g, lv
         if not np.isfinite(best_t):
             x, v = forced_state_at(zeta, y, centre, ph, amp, om, left)
-            j = phi(zeta, left) @ j
-            return np.array([float(x), float(v)]), ph + om*left, j
+            end = np.array([float(x), float(v)])
+            if model.zone_of(end) != k:
+                # The arc was computed in zone k but ends outside it, so a
+                # crossing was missed. This is what a grazing does: the
+                # entry through a wall is found, the exit a few 1e-5 later
+                # is below the scan's resolution, and the step then coasts
+                # the rest of the period in the wrong zone -- an error of
+                # order one that looked like a completed step. Found by
+                # measuring the map across a cell edge in ``strobe.py``.
+                # Recover the crossing if it can be resolved; otherwise the
+                # excursion never happened, and the arc restarts in the
+                # zone the trajectory came from.
+                t_x, g_x, l_x = _missed_crossing(zeta, y, centre, ph, amp,
+                                                 om, walls, left)
+                if t_x is not None and t_x > 1e-8:
+                    STROBE_REPAIRS["recovered"] += 1
+                    best_t, best_g, best_l = t_x, g_x, l_x
+                elif prev_k is not None and not repaired:
+                    STROBE_REPAIRS["dropped"] += 1
+                    z0, c0 = model.zones[prev_k]
+                    drive = np.array([0.0, amp*np.cos(ph)])
+                    s = saltation(field(zeta, y, centre) + drive,
+                                  field(z0, y, c0) + drive, best_g_prev)
+                    if np.all(np.isfinite(s)):
+                        j = s @ j
+                    if record is not None:
+                        carry = record.pop()[1]
+                    force_k, repaired = prev_k, True
+                    continue
+                else:
+                    raise RuntimeError(
+                        "strobe_step: an arc computed in zone %d ends in "
+                        "zone %d with no crossing found" % (
+                            k, model.zone_of(end)))
+            if not np.isfinite(best_t):
+                j = phi(zeta, left) @ j
+                if record is not None:
+                    record.append((k, float(left) + carry, None))
+                return end, ph + om*left, j
         x, v = forced_state_at(zeta, y, centre, ph, amp, om, best_t)
         y_new = np.array([float(x), float(v)])
         j = phi(zeta, best_t) @ j
+        if record is not None:
+            record.append((k, float(best_t) + carry, float(best_l)))
+            carry = 0.0
         f_m = field(zeta, y_new, centre) + np.array([0.0, amp*np.cos(
             ph + om*best_t)])
         k2 = model.zone_of(y_new + 1e-11*f_m)
@@ -655,6 +759,7 @@ def strobe_step(model, y, phase, amp, om, max_events=20000):
         f_p = field(z2, y_new, c2) + np.array([0.0, amp*np.cos(
             ph + om*best_t)])
         j = saltation(f_m, f_p, best_g) @ j
+        prev_k, best_g_prev, repaired = k, best_g, False
         y, ph, left = y_new, ph + om*best_t, left - best_t
     # Running out of events must fail loudly. Returning the state reached so
     # far looks like a completed step and is not one: with 65 levels an

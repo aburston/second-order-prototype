@@ -801,3 +801,10 @@ stand.
 What does not survive is the ambition — that chaining them yields a
 predictive difference equation for the prototypes. It does not, and no
 amount of care with the pieces repairs that.
+
+**Revisited.** `STROBOSCOPIC.md` takes the three level prototype alone and
+changes the section: the whole phase plane, sampled once per drive
+period. On that section the zone sequence is a function of the starting
+point, the plane tiles into a few dozen cells, the map is $`C^1`$ across a
+grazing, and the difference equation exists — with a measured account of
+what it is and is not good for, checked against Van der Pol.
