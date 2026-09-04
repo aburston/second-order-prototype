@@ -1,5 +1,36 @@
 {
  "fits": {
+  "0.5": {
+   "T": 6.393,
+   "edges": [
+    1.255,
+    2.081
+   ],
+   "extra_targets": [],
+   "found": {
+    "lock11": 2.1187499291395717,
+    "lock30": 2.7187503494294383,
+    "lock31": 3.2187498534075814
+   },
+   "levels": [
+    -0.19,
+    0.444,
+    1.467
+   ],
+   "mu": 0.5,
+   "n_eval": 18,
+   "note": "recovered from the campaign log after the formatting crash; levels to three decimals",
+   "r": 2.1272,
+   "seconds": 1069.0,
+   "start": [
+    -0.1754769831604726,
+    0.4848846790299042,
+    1.7478851976584482,
+    1.154171982569852,
+    1.9133853948337398
+   ],
+   "start_how": "log interpolation between mu = 1 and 2"
+  },
   "2": {
    "T": 7.755624378166697,
    "edges": [
