@@ -6,6 +6,8 @@ repository and the one that carries the behaviour the other four cannot:
 hard excitation, and entrainment with chaos under a periodic drive, placed
 where a smooth relaxation oscillator has it. `staircase.py` carries the
 model, `maps.py` its exact map, and `figures.py` its figures.
+`DATASHEET.md` is the one page summary: what it does, where it is valid,
+and how to set it for each scenario, with the proofs left here.
 
 The aim is the same utility the linear second order prototype has. That
 prototype has two parameters, $`\omega_n`$ and $`\zeta`$, each read off a
