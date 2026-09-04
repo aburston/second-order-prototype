@@ -389,32 +389,7 @@ the plateau edges have.
 
 *The nearly harmonic mode: the same drive grid and classifier as at $`\mu = 5`$. Two tongues and tori, on both; the model's extra narrow locks are the thin blue bars at integer ratios. Right: the free cycles, now nearly circular and nearly coincident.*
 
-## Parameters against the relaxation parameter
-
-Two rows, which is a table and not yet a rule. Both fits are at
-$`\omega_n = 1`$ with Van der Pol's amplitude 2; the columns are the five
-parameters and the measurable quantities each mode has.
-
-| $`\mu`$ | $`\zeta_{0}`$ | $`\zeta_{1}`$ | $`\zeta_{2}`$ | $`a`$ | $`b`$ | free $`T`$ | plateau edges at $`A = 5`$ | chaos |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | $`-0.36`$ | 0.87 | 3.57 | 1.16 | 1.98 | 6.67 | lock 1 ends 2.26, lock 3 starts 2.51 | one period-doubled band at $`A = 1`$, ratio 0.56–0.57, against Van der Pol's at 0.48–0.50 |
-| 5 | $`-1.74`$ | 3.84 | 15.0 | 1.08 | 1.98 | 12.44 | lock 3 ends 2.43, lock 5 starts 2.50 (in $`\Omega`$) | bands at the lock transitions from $`A = 5`$ up |
-
-What moves with $`\mu`$ is plain to read. The outer edge $`b`$ stays at
-2, the core edge $`a`$ barely moves, and the three ratios scale together
-by a factor near five between $`\mu = 1`$ and $`\mu = 5`$ — the core from
-$`-0.36`$ to $`-1.74`$, the band from 0.87 to 3.84, the outer from 3.6 to
-15 — with the outer level growing fastest. Van der Pol's own law scales all
-of $`\zeta(x)`$ by $`\mu`$ exactly, so the fitted ratios track the law's
-scale while their *shape* does not track its shape: at $`\mu = 5`$ the
-fitted core is $`-1.74`$ where the law is $`-2.5`$ at the origin. What the
-two rows say about behaviour is the useful part: with ratios below about
-1 the model entrains and does not go chaotic; with the outer ratio above
-about 10 and the core below about $`-1`$ it goes chaotic at the transitions
-between its locks. Where the boundary between those lies is not known;
-one fit between them would place it.
-
-## The campaign: the whole range from $`\mu = 0.1`$ to 5
+## Parameters against the relaxation parameter: the campaign from $`\mu = 0.1`$ to 5
 
 `campaign.py` maps the model against Van der Pol across the range, with
 one objective for every $`\mu`$ and every result appended to
@@ -523,38 +498,57 @@ campaign runs.
 Power laws through the fits (11 points): $`\zeta_0 = -0.365\,\mu^{0.930}`$; $`\zeta_1 = +0.824\,\mu^{0.963}`$; $`\zeta_2 = +3.290\,\mu^{1.170}`$; edges $`a = 1.202 \pm 0.044`$, $`b = 2.132 \pm 0.082`$.
 <!-- /FITTABLE -->
 
-### Formulas, provisional
+### Formulas
 
-Four points — the campaign's fits at $`\mu = 2`$ and 3 and the earlier fits
-at 1 and 5 — already lie on power laws to within six per cent:
+Power laws through all eleven fits, $`\mu`$ from 0.1 to 5:
 
 ```math
-\zeta_{0} \approx -0.36\,\mu^{0.98}, \qquad
-\zeta_{1} \approx 0.85\,\mu^{0.93}, \qquad
-\zeta_{2} \approx 3.7\,\mu^{0.90}, \qquad
-a \approx 1.13, \quad b \approx 2.01
+\zeta_{0} = -0.365\,\mu^{0.93}, \qquad
+\zeta_{1} = 0.824\,\mu^{0.96}, \qquad
+\zeta_{2} = 3.29\,\mu^{1.17}, \qquad
+a = 1.20 \pm 0.05, \quad b = 2.13 \pm 0.09
 ```
 
-The three ratios are proportional to $`\mu`$ to within their exponents'
-distance from one, which is how Van der Pol's own law scales — the whole
-of $`\zeta(x) = -\mu(1 - x^2)/2`$ is linear in $`\mu`$ — and the edges do
-not move at all, standing three per cent apart across the range. The
-shape is steeper than a sampling of the law: with these edges the law's
-zone means are $`-0.29\mu`$, $`0.76\mu`$ and $`2.7\mu`$, so the fitted
-core is 1.3 times the law's, the band 1.1 times and the outer 1.4 times.
-That is the same statement the $`\mu = 5`$ fit made on its own — the
-levels are a shape chosen for the driven response — now seen to be a
-fixed shape scaled by $`\mu`$.
+The core and band ratios are proportional to $`\mu`$ to within their
+exponents' distance from one, which is how Van der Pol's own law scales:
+the whole of $`\zeta(x) = -\mu(1 - x^2)/2`$ is linear in $`\mu`$. The
+edges do not move; their spread across the eleven fits is four per cent.
+The shape is steeper than a sampling of the law — with these edges the
+law's zone means are $`-0.28\mu`$, $`0.76\mu`$ and $`2.7\mu`$, so the
+fitted core is 1.3 times the law's, the band 1.1 times, the outer 1.2 to
+1.5 times — and it is one shape scaled by $`\mu`$, which is the single
+most useful thing the campaign found.
 
-Two consequences, if the remaining fits hold to it. A user with a Van der
-Pol class oscillator needs one number beyond the timescale and the
-amplitude: the relaxation parameter, read from the free waveform's
-departure from a sinusoid, and the three ratios follow. And the small
-$`\mu`$ end, where the fits are weakly determined, can simply take the
-formula. The campaign's own power laws through its fits replace these
-figures below as the fits accumulate.
+**The outer level is weakly determined, and it does not matter.** The
+two fits at $`\mu = 5`$, made on different targets, put $`\zeta_{2}`$ at
+15 and at 22 with the plateau edges matched equally well, and the outer
+exponent of 1.17 is carried by exactly that looseness. The driven orbit
+at $`A = 5`$ peaks near 2.1 with the outer edge at 2.13, so the outer zone
+is barely visited and the fit cannot see it; the earlier normalisation
+work found the same thing by moving the outer ratio from 6 to 20 and
+watching nothing change. For a user this means the outer level can be
+set from the formula and left alone.
 
-<!-- CAMPAIGN_FITS -->
+**Where the formula is the fit.** At $`\mu = 0.1`$ the fit did not move
+from the formula's prediction in eighteen evaluations, and at 0.2 and 0.3
+it moved by less than the spread between fits. Below about $`\mu = 0.5`$
+the driven targets — the 1:1 plateau's end at $`A = 5`$ and the tongue at
+$`A = 1`$ — barely depend on the shape, so the data cannot place it and
+the formula does. That is also the regime where the two level prototype
+was already behaviourally Van der Pol.
+
+**How the starts behaved**, which is the evidence for the formulas being
+more than a curve through the points: from $`\mu = 1.5`$ on, every fit
+started from the interpolation or the laws landed within a coarse step
+of all three targets before the first evaluation, and three of them did
+not move at all.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/campaign-dark.png">
+  <img alt="The fitted damping ratios and edges against mu with power laws through them, Van der Pol's plateau edges at each mu with the fitted models' edges over them, and the verification agreement against mu" src="figures/campaign-light.png">
+</picture>
+
+*Left: the three ratios from every fit on log axes, with the power laws through them, and the two edges, which do not move. Middle: Van der Pol's 1:1 and 3:1 plateaus at $`A = 5`$ at each $`\mu`$, the targets, with the fitted models' plateau edges drawn over them. Right: each fitted model's sweep against Van der Pol's, agreement and chaotic cell counts, filled in as the verification runs.*
 
 ## What to measure, and which parameter it sets
 
