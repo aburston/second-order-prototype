@@ -7,6 +7,7 @@ Run ``python3 campaign.py all`` (hours) or one stage at a time::
     python3 campaign.py verify     # sweep each fitted model beside Van der Pol
     python3 campaign.py formula    # power laws through the fitted parameters
     python3 campaign.py check      # models from the laws alone at mu never fitted
+    python3 campaign.py boundary [mu ...]   # the chaos boundary in mu at A = 10
 
 Every result is appended to ``campaign/results.json`` as it completes and
 committed, so the campaign can be stopped and resumed and the document
@@ -259,6 +260,57 @@ def formula_check(res, mus=(2.5, 3.5), r_lo=0.5, r_hi=6.0, step=0.02):
         save(res, "Campaign: formula-only check at mu = %g" % mu)
 
 
+# --------------------------------------------- the chaos boundary at A = 10
+def _sweep_pair(mu, model, amp, r_lo, r_hi, step):
+    """Sweep Van der Pol and ``model`` at one ``mu`` and drive amplitude,
+    every chaotic verdict confirmed. Returns ``{tag: {runs, chaotic}}``
+    with ratios relative to Van der Pol's free frequency."""
+    import section
+    wl = vanderpol.w_lc(mu)
+    lv, ed = model
+    oms = tuple(np.round(np.arange(r_lo, r_hi + 1e-9, step)*wl, 6))
+    scan = staircase.system_scan(oms, {"vdp": None, "three": model}, mu=mu, amp=amp)
+    out = {}
+    for tag in ("vdp", "three"):
+        rows = []
+        for om, lab, lam in scan[tag]:
+            if lab == "chaos":
+                flow = (vanderpol.field(mu, amp, om) if tag == "vdp"
+                        else staircase.field(lv, ed, amp, om))
+                y0 = list(vanderpol.cycle(mu)[1]) if tag == "vdp" else [2.0, 0.0]
+                ok, _ = section.confirm_chaos(flow, 2*np.pi/om, y0, staircase.CMP_NSKIP)
+                lab = "chaos" if ok else "torus"
+            rows.append((round(om/wl, 3), lab, lam))
+        out[tag] = dict(runs=[(l, float(lo), float(hi), int(n)) for l, lo, hi, n in staircase.runs(rows)],
+                        chaotic=[float(r) for r, l, _ in rows if l == "chaos"])
+    return out
+
+
+def boundary(res, mus=(2.0, 2.5, 3.0, 3.5, 4.0), amp=10.0, r_lo=0.5, r_hi=8.0, step=0.02):
+    """Locate the chaos boundary in mu at drive amplitude 10.
+
+    The mu = 5 regime map found a chaotic band at A = 10 that the mu = 2
+    map did not; this sweeps both systems across the whole ratio range at
+    A = 10 for each ``mu``, the model built from the power laws alone, and
+    records where chaos appears on each. Coarse mu first; refine by calling
+    again with the mu values between."""
+    law = res["formula"]
+    res.setdefault("boundary", {})
+    for mu in mus:
+        key = "%g" % mu
+        if key in res["boundary"]:
+            continue
+        t0 = time.time()
+        lv, ed = predict(law, mu)
+        out = _sweep_pair(mu, (lv, ed), amp, r_lo, r_hi, step)
+        res["boundary"][key] = dict(mu=mu, amp=amp, step=step, r_lo=r_lo, r_hi=r_hi,
+                                    levels=[float(z) for z in lv], edges=[float(e) for e in ed],
+                                    vdp=out["vdp"], three=out["three"], seconds=time.time() - t0)
+        log("boundary mu=%g A=%g: vdp chaotic %s; three chaotic %s (%.0fs)"
+            % (mu, amp, out["vdp"]["chaotic"], out["three"]["chaotic"], time.time() - t0))
+        save(res, "Chaos boundary sweep at A = %g, mu = %g" % (amp, mu))
+
+
 def report(res):
     print("%6s %8s %8s %8s %6s %6s %8s %8s %10s %10s %10s %10s" % (
         "mu", "zeta0", "zeta1", "zeta2", "a", "b", "r", "T", "lock1 st", "lock1 end", "lock3 st", "lock3 end"))
@@ -289,5 +341,8 @@ if __name__ == "__main__":
         print(law)
     if what in ("check", "all"):
         formula_check(res)
+    if what == "boundary":
+        mus = tuple(float(m) for m in sys.argv[2:]) or (2.0, 2.5, 3.0, 3.5, 4.0)
+        boundary(res, mus=mus)
     if what in ("report", "all"):
         report(res)
