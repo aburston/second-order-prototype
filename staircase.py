@@ -1088,7 +1088,7 @@ def campaign_targets(mu, amp=CMP_AMP, r_lo=0.3, r_hi=6.0, step=0.1, workers=None
 
 def fit_plateaus(mu, levels, edges, targets, wl, leeway=0.2, maxfev=30,
                  amp=CMP_AMP, step=0.1, workers=None, log=print, free=None,
-                 r_lo=0.3):
+                 r_lo=0.3, extra=()):
     """Fit a three level model to Van der Pol's plateau edges at ``mu``.
 
     ``targets`` is ``{lock: (start, end)}`` in ratio units from
@@ -1096,8 +1096,12 @@ def fit_plateaus(mu, levels, edges, targets, wl, leeway=0.2, maxfev=30,
     coarse steps, of the model's lock 1 end, lock 1 start where the tongue's
     lower edge is inside the window, and lock 3 start and end from those, plus the leeway penalty on the free cycle against ``free`` (Van
     der Pol's amplitude and period at ``mu``). The coarse window runs from
-    ratio 0.6 to half a unit past the highest target. Returns
-    ``(levels, edges, edges_found, r, T, n_eval)`` at the best point seen.
+    ratio ``r_lo`` to half a unit past the highest target. ``extra`` adds
+    targets at other drive amplitudes, as ``(amp, {lock: (start, end)})``
+    pairs, each costing one more sweep per evaluation; the small ``mu`` fits
+    use the 1:1 tongue at ``A = 1`` this way, since they have no 3:1 plateau
+    at ``A = 5``. Returns ``(levels, edges, edges_found, r, T, n_eval)`` at
+    the best point seen.
     """
     from scipy.optimize import minimize
     import vanderpol
@@ -1115,6 +1119,15 @@ def fit_plateaus(mu, levels, edges, targets, wl, leeway=0.2, maxfev=30,
         wanted.append(("lock3", 1, targets["lock3"][1]))
     r_hi = max(t for _, _, t in wanted) + 0.5
     oms = tuple(np.round(np.arange(r_lo, r_hi + 1e-9, step)*wl, 6))
+    extras = []
+    for xamp, xt in extra:
+        xw = []
+        for lock, (st, en) in xt.items():
+            if st > r_lo + step:
+                xw.append((lock, 0, st))
+            xw.append((lock, 1, en))
+        xr = max(t for _, _, t in xw) + 0.5
+        extras.append((xamp, xw, tuple(np.round(np.arange(r_lo, xr + 1e-9, step)*wl, 6))))
     n = len(levels)
     pos = [z > 0 for z in levels[1:]]
 
@@ -1150,6 +1163,16 @@ def fit_plateaus(mu, levels, edges, targets, wl, leeway=0.2, maxfev=30,
                 continue
             found[(lock, side)] = got[side]/wl
             val += ((got[side]/wl - t)/step)**2
+        for xamp, xw, xoms in extras:
+            xres, _ = plateau_edges((lv, ed), CAMPAIGN_LOCKS, xoms, amp=xamp,
+                                    mu=mu, workers=workers)
+            for lock, side, t in xw:
+                got = xres.get(lock)
+                if got is None:
+                    val += 25.0
+                    continue
+                found[(lock + "@%g" % xamp, side)] = got[side]/wl
+                val += ((got[side]/wl - t)/step)**2
         log("  J=%8.3f  levels %s edges %s  r %.3f T %.3f  %s"
             % (val, tuple(round(z, 3) for z in lv), tuple(round(e, 3) for e in ed),
                r, T, " ".join("%s%d=%.3f" % (k[0][4:], k[1], v) for k, v in found.items())))

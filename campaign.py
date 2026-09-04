@@ -144,15 +144,26 @@ def fit(res, mus=PRIORITY, maxfev=30):
             res["fits"][key] = dict(mu=mu, skipped="no plateau")
             save(res, "Campaign: no plateau to fit at mu = %g" % mu)
             continue
+        extra = []
+        if targets["lock3"] is None:
+            # no 3:1 plateau at A = 5: add the 1:1 tongue's two edges at A = 1
+            if "lock1_A1" not in tg:
+                xt, _, _ = staircase.campaign_targets(mu, amp=1.0, r_hi=2.5)
+                tg["lock1_A1"] = None if xt["lock1"] is None else [float(v) for v in xt["lock1"]]
+                log("fit mu=%g: 1:1 tongue at A = 1 is %s" % (mu, tg["lock1_A1"]))
+            if tg["lock1_A1"]:
+                extra.append((1.0, {"lock1": tuple(tg["lock1_A1"])}))
         (lv0, ed0), how = start_for(res, mu)
         log("fit mu=%g from %s: levels %s edges %s" % (mu, how, lv0, ed0))
         t0 = time.time()
         lv, ed, found, r, T, n = staircase.fit_plateaus(
             mu, lv0, ed0, targets, tg["w_lc"], maxfev=maxfev, amp=AMP,
-            log=lambda m: print(m, flush=True), free=(tg["R"], tg["T"]))
+            log=lambda m: print(m, flush=True), free=(tg["R"], tg["T"]),
+            extra=extra)
         res["fits"][key] = dict(mu=mu, levels=[float(z) for z in lv],
                                 edges=[float(e) for e in ed],
                                 found={"%s%d" % (k[0], k[1]): float(v) for k, v in found.items()},
+                                extra_targets=[(a, {k: list(v) for k, v in d.items()}) for a, d in extra],
                                 r=float(r), T=float(T), n_eval=int(n),
                                 start=[float(v) for v in list(lv0) + list(ed0)],
                                 start_how=how, seconds=time.time() - t0)
