@@ -462,6 +462,42 @@ little to do.
 The 1:1 tongue's lower edge is below the window's start at 0.3 at every
 $`\mu`$ at this drive, so it is never a target.
 
+### The roadmap
+
+What is run in what order, and why, given what the earlier work taught.
+Costs are wall clock on four cores.
+
+1. **Survey first, half a minute per $`\mu`$.** Van der Pol's plateau
+   edges at all eleven $`\mu`$ before any fitting, because the shape of
+   the targets decides everything after: which $`\mu`$ have a 3:1 plateau
+   at all, and where the transitions the chaos lives in are. Done above.
+2. **Fit from the middle outward, twenty minutes per $`\mu`$.** The two
+   earlier fits at $`\mu = 1`$ and 5 bracket the range, so $`\mu = 2`$ and
+   3 are interpolations and land within a coarse step before the first
+   evaluation; then 0.5, 1.5 and 4; then 0.3, 0.7, 0.2 and 0.1, the small
+   end, where the objective is weakest. Eighteen evaluations each, cut
+   from thirty after the first two fits showed the interpolated start was
+   already the answer to within polish.
+3. **Fit formulas as soon as four points exist, and start from them.**
+   Power laws in $`\mu`$ through the fitted ratios, constant edges. With
+   four campaign fits the formulas replace interpolation as the starting
+   point, which is what makes the small $`\mu`$ fits cheap: their targets
+   barely constrain the shape, so the formula's prediction is most of the
+   answer.
+4. **Verify each fit with one sweep, five minutes per $`\mu`$**, at
+   $`A = 5`$ across the whole ratio range, chaotic cells confirmed. This
+   is where the chaos prediction is tested: at which $`\mu`$ chaos first
+   appears at this drive in Van der Pol, and whether the model has it
+   there.
+5. **Re-fit $`\mu = 1`$ and 5 on the uniform objective** last, so the
+   parameter table is one recipe throughout.
+6. **Deferred**, in order of value: regime maps across drive amplitude at
+   one or two more $`\mu`$ (an hour each; $`\mu = 2`$ first, where the
+   3:1 plateau is widest); the chaos boundary in $`\mu`$ located by a
+   sweep at $`A = 10`$ between 2 and 4; a fit at $`\mu = 7`$ or 10 to see
+   whether the power laws hold beyond the fitted range; tighter period
+   leeway at $`\mu = 5`$ to remove the two per cent frequency offset.
+
 ### The fits
 
 Each row is one fit: the five parameters, the free cycle it landed on
