@@ -130,7 +130,7 @@ def start_for(res, mu):
     return (lv, ed), "log interpolation between mu = %g and %g" % (a, b)
 
 
-def fit(res, mus=PRIORITY, maxfev=30):
+def fit(res, mus=PRIORITY, maxfev=18):
     for mu in mus:
         key = "%g" % mu
         if key in res["fits"]:
@@ -236,7 +236,7 @@ if __name__ == "__main__":
     if what in ("survey", "all"):
         survey(res)
     if what in ("fit", "all"):
-        fit(res)
+        fit(res, maxfev=18)
     if what in ("verify", "all"):
         verify(res)
     if what == "formula":
