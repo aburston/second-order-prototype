@@ -1075,7 +1075,7 @@ def plateau_edges(kind, locks, oms, amp=CMP_AMP, mu=CMP_MU, workers=None,
 CAMPAIGN_LOCKS = ("lock1", "lock3")
 
 
-def campaign_targets(mu, amp=CMP_AMP, r_lo=0.6, r_hi=6.0, step=0.1, workers=None):
+def campaign_targets(mu, amp=CMP_AMP, r_lo=0.3, r_hi=6.0, step=0.1, workers=None):
     """Van der Pol's plateau edges at ``mu``, in ratio units, for the fit."""
     import vanderpol
     wl = vanderpol.w_lc(mu)
@@ -1087,13 +1087,14 @@ def campaign_targets(mu, amp=CMP_AMP, r_lo=0.6, r_hi=6.0, step=0.1, workers=None
 
 
 def fit_plateaus(mu, levels, edges, targets, wl, leeway=0.2, maxfev=30,
-                 amp=CMP_AMP, step=0.1, workers=None, log=print, free=None):
+                 amp=CMP_AMP, step=0.1, workers=None, log=print, free=None,
+                 r_lo=0.3):
     """Fit a three level model to Van der Pol's plateau edges at ``mu``.
 
     ``targets`` is ``{lock: (start, end)}`` in ratio units from
     :func:`campaign_targets`; the objective is the squared distance, in
-    coarse steps, of the model's lock 1 end and lock 3 start and end from
-    those, plus the leeway penalty on the free cycle against ``free`` (Van
+    coarse steps, of the model's lock 1 end, lock 1 start where the tongue's
+    lower edge is inside the window, and lock 3 start and end from those, plus the leeway penalty on the free cycle against ``free`` (Van
     der Pol's amplitude and period at ``mu``). The coarse window runs from
     ratio 0.6 to half a unit past the highest target. Returns
     ``(levels, edges, edges_found, r, T, n_eval)`` at the best point seen.
@@ -1106,12 +1107,14 @@ def fit_plateaus(mu, levels, edges, targets, wl, leeway=0.2, maxfev=30,
     R_free, T_free = free
     wanted = []
     if targets.get("lock1"):
+        if targets["lock1"][0] > r_lo + step:      # the tongue's lower edge, if seen
+            wanted.append(("lock1", 0, targets["lock1"][0]))
         wanted.append(("lock1", 1, targets["lock1"][1]))
     if targets.get("lock3"):
         wanted.append(("lock3", 0, targets["lock3"][0]))
         wanted.append(("lock3", 1, targets["lock3"][1]))
     r_hi = max(t for _, _, t in wanted) + 0.5
-    oms = tuple(np.round(np.arange(0.6, r_hi + 1e-9, step)*wl, 6))
+    oms = tuple(np.round(np.arange(r_lo, r_hi + 1e-9, step)*wl, 6))
     n = len(levels)
     pos = [z > 0 for z in levels[1:]]
 

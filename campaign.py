@@ -204,15 +204,16 @@ def verify(res, mus=PRIORITY, r_lo=0.5, r_hi=6.0, step=0.02):
 
 
 def report(res):
-    print("%6s %8s %8s %8s %6s %6s %8s %8s %10s %10s %10s" % (
-        "mu", "zeta0", "zeta1", "zeta2", "a", "b", "r", "T", "lock1 end", "lock3 st", "lock3 end"))
+    print("%6s %8s %8s %8s %6s %6s %8s %8s %10s %10s %10s %10s" % (
+        "mu", "zeta0", "zeta1", "zeta2", "a", "b", "r", "T", "lock1 st", "lock1 end", "lock3 st", "lock3 end"))
     for k in sorted(res["fits"], key=float):
         f = res["fits"][k]
         if "levels" not in f:
             continue
         fd = f["found"]
-        print("%6s %8.3f %8.3f %8.3f %6.3f %6.3f %8.4f %8.3f %10s %10s %10s" % (
+        print("%6s %8.3f %8.3f %8.3f %6.3f %6.3f %8.4f %8.3f %10s %10s %10s %10s" % (
             k, *f["levels"], *f["edges"], f["r"], f["T"],
+            "%.3f" % fd["lock10"] if "lock10" in fd else "-",
             "%.3f" % fd["lock11"] if "lock11" in fd else "-",
             "%.3f" % fd["lock30"] if "lock30" in fd else "-",
             "%.3f" % fd["lock31"] if "lock31" in fd else "-"))

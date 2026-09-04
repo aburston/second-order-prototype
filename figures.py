@@ -1710,6 +1710,112 @@ def fig_regime_three(th, name, data=None):
     save(fig, name, stem)
 
 
+def fig_campaign(th, name, results=None):
+    """The three level model's parameters against Van der Pol's mu.
+
+    Left: the three damping ratios from every campaign fit, with the power
+    laws through them; the two edges below. Middle: where Van der Pol's
+    plateau edges sit at each mu, the targets the fits were made on, with
+    the fitted models' edges over them. Right: the agreement of each fitted
+    model's sweep with Van der Pol's, and the chaotic cell counts.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+        results: the ``campaign/results.json`` dict, loaded if ``None``.
+    """
+    import json
+    if results is None:
+        results = json.load(open(os.path.join(os.path.dirname(OUT),
+                                              "campaign", "results.json")))
+    fits = sorted((float(k), v) for k, v in results["fits"].items()
+                  if "levels" in v)
+    tg = sorted((float(k), v) for k, v in results["targets"].items())
+    law = results.get("formula")
+    fig, axes = newfig(th, 1, 3, figsize=(15.0, 4.8))
+
+    ax = axes[0]
+    mus = np.array([m for m, _ in fits])
+    lv = np.array([v["levels"] for _, v in fits])
+    ed = np.array([v["edges"] for _, v in fits])
+    mm = np.logspace(-1, np.log10(5), 100)
+    for k, (lab, col) in enumerate((("$\\zeta_0$ (core, negative)", th["series"][0]),
+                                    ("$\\zeta_1$ (band)", th["series"][1]),
+                                    ("$\\zeta_2$ (outer)", th["series"][2]))):
+        ax.loglog(mus, np.abs(lv[:, k]), "o", color=col, markersize=5, zorder=4,
+                  label=lab)
+        if law:
+            l = law["levels"][k]
+            ax.loglog(mm, l["c"]*mm**l["p"], color=col, linewidth=1.2,
+                      linestyle=(0, (5, 3)), zorder=3,
+                      label="$%.2f\\,\\mu^{%.2f}$" % (l["sign"]*l["c"], l["p"]))
+    ax.loglog(mus, ed[:, 0], "s", color=th["ink2"], markersize=4, zorder=4,
+              label="edge $a$")
+    ax.loglog(mus, ed[:, 1], "^", color=th["ink2"], markersize=4, zorder=4,
+              label="edge $b$")
+    style(ax, th, "$\\mu$", "magnitude", "Fitted parameters against $\\mu$")
+    legend(ax, th, loc="upper left", ncol=2)
+
+    ax = axes[1]
+    for m, v in tg:
+        for lock, col in (("lock1", th["series"][0]), ("lock3", th["series"][1])):
+            if v.get(lock):
+                ax.plot([m, m], v[lock], color=col, linewidth=6, alpha=0.35,
+                        solid_capstyle="butt", zorder=2)
+    for m, v in fits:
+        fd = v["found"]
+        if "lock11" in fd:
+            ax.plot(m, fd["lock11"], "_", color=th["series"][0], markersize=12,
+                    markeredgewidth=2, zorder=4)
+        if "lock30" in fd and "lock31" in fd:
+            ax.plot([m, m], [fd["lock30"], fd["lock31"]], color=th["series"][1],
+                    linewidth=1.6, zorder=4)
+            ax.plot([m, m], [fd["lock30"], fd["lock31"]], "_", color=th["series"][1],
+                    markersize=12, markeredgewidth=2, zorder=4)
+    ax.set_xscale("log")
+    handles = [matplotlib.patches.Patch(facecolor=th["series"][0], alpha=0.35,
+                                        label="Van der Pol 1:1 plateau"),
+               matplotlib.patches.Patch(facecolor=th["series"][1], alpha=0.35,
+                                        label="Van der Pol 3:1 plateau"),
+               matplotlib.lines.Line2D([], [], color=th["ink2"], marker="_",
+                                       markersize=12, markeredgewidth=2,
+                                       linestyle="none", label="fitted model's edges")]
+    ax.legend(handles=handles, fontsize=8, labelcolor=th["ink2"], frameon=True,
+              facecolor=th["surface"], edgecolor="none", framealpha=0.92,
+              loc="upper left").set_zorder(9)
+    style(ax, th, "$\\mu$", "drive ratio  $\\Omega/\\omega_{lc}$",
+          "The targets, and where the fits landed ($A = 5$)")
+
+    ax = axes[2]
+    ver = sorted((float(k), v) for k, v in results["verify"].items())
+    if ver:
+        vm = np.array([m for m, _ in ver])
+        ax.semilogx(vm, [v["jaccard"] for _, v in ver], "o-", color=th["series"][0],
+                    linewidth=1.6, markersize=5, zorder=4, label="agreement (Jaccard)")
+        ax2 = ax.twinx()
+        ax2.semilogx(vm, [len(v["vdp"]["chaotic"]) for _, v in ver], "s--",
+                     color=th["series"][1], markersize=5, zorder=3,
+                     label="chaotic cells, Van der Pol")
+        ax2.semilogx(vm, [len(v["three"]["chaotic"]) for _, v in ver], "^--",
+                     color=th["series"][2], markersize=5, zorder=3,
+                     label="chaotic cells, model")
+        ax2.tick_params(colors=th["ink2"], labelsize=8)
+        ax2.set_ylabel("chaotic cells in the sweep", color=th["ink2"], fontsize=9)
+        for sp in ("top",):
+            ax2.spines[sp].set_visible(False)
+        h1, l1 = ax.get_legend_handles_labels()
+        h2, l2 = ax2.get_legend_handles_labels()
+        ax.legend(h1 + h2, l1 + l2, fontsize=8, labelcolor=th["ink2"], frameon=True,
+                  facecolor=th["surface"], edgecolor="none", framealpha=0.92,
+                  loc="upper left").set_zorder(9)
+    ax.set_ylim(0, 1.05)
+    style(ax, th, "$\\mu$", "agreement", "Verification sweeps at $A = 5$")
+    fig.suptitle("The three level prototype across Van der Pol's range",
+                 color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "campaign")
+
+
 # --------------------------------------------------- the strange attractor
 #: Drive at which forced Van der Pol is chaotic, and the staircase fitted to
 #: it. The same settings the comparison in ``VANDERPOL.md`` uses.
@@ -1883,5 +1989,6 @@ if __name__ == "__main__":
         fig_normalised(th, name)
         fig_chaos_phase(th, name)
         fig_regime_three(th, name)
+        fig_campaign(th, name)
         fig_strange_attractor(th, name)
         fig_vanderpol_compare(th, name)
