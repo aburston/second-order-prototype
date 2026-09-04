@@ -55,11 +55,13 @@ Six numbers, of which one is a timescale and one an amplitude scale:
 
 Only the three ratios and the edge ratio $`a/b`$ carry behaviour. Every
 result below is in units with $`\omega_n = 1`$ and $`b`$ of order 2, and
-scales to a physical system by multiplying times by $`1/\omega_n`$ and
-displacements by the measured amplitude over the model's. A drive enters
-through two dimensionless numbers, the ratio $`r = \Omega/\omega_{lc}`$ of
-drive frequency to free cycle frequency and the strength
-$`a = A/(\omega_n b)`$; with them the forced model has four parameters.
+scales to a physical system by multiplying times by $`1/\omega_n`$,
+displacements by the measured amplitude over the model's, and the drive
+acceleration by both — the rule, its proof and its check are the scaling
+section near the end. A drive enters through two dimensionless numbers,
+the ratio $`r = \Omega/\omega_{lc}`$ of drive frequency to free cycle
+frequency and the strength $`a = A/(\omega_n^2 b)`$; with them the forced
+model has four parameters.
 
 ## Definition
 
@@ -662,6 +664,134 @@ ratio, with no fitting.
 
 *Left: the three ratios from every fit on log axes, with the power laws through them, and the two edges, which do not move. Middle: Van der Pol's 1:1 and 3:1 plateaus at $`A = 5`$ at each $`\mu`$, the targets, with the fitted models' plateau edges drawn over them. Right: each fitted model's sweep against Van der Pol's, agreement and chaotic cell counts, filled in as the verification runs.*
 
+## Moving it to another frequency range
+
+Every number in this document is for the reference model, $`\omega_n = 1`$
+and edges of order 2, whose free cycle runs at a twelfth of a hertz. A
+physical system rings at tens of hertz or kilohertz and moves millimetres
+or micrometres, and the question is what to change so that it behaves as
+the reference does — the same locks at the same drive ratios, the same
+chaotic bands, the same basin boundary. The answer is a similarity
+transformation with two numbers in it. `scaling.py` carries the rule and
+checks it.
+
+Choose $`\omega_n`$, the natural frequency wanted, and $`\lambda`$, the
+amplitude scale: how much displacement one model unit is. Then keep the
+three ratios and change four things:
+
+```math
+\zeta_{k} \to \zeta_{k}, \qquad
+(a, b) \to (\lambda a,\ \lambda b), \qquad
+\Omega \to \omega_n\Omega, \qquad
+A \to \lambda\,\omega_n^2 A
+```
+
+Under this, $`y(t) = \lambda\,x(\omega_n t)`$ solves the scaled equation
+exactly whenever $`x(t)`$ solves the reference one, because
+$`\dot{y} = \lambda\omega_n\dot{x}`$ and
+$`\ddot{y} = \lambda\omega_n^2\ddot{x}`$, so
+
+```math
+\ddot{y} + 2\zeta(y/\lambda)\,\omega_n\dot{y} + \omega_n^2 y
+= \lambda\omega_n^2\left[\ddot{x} + 2\zeta(x)\,\dot{x} + x\right]
+= \lambda\omega_n^2 A\cos(\Omega\,\omega_n t)
+```
+
+and $`\zeta(y/\lambda)`$ is the reference staircase because the edges moved
+with $`y`$. The scaled model is the reference model with its clock run
+$`\omega_n`$ times faster and its ruler $`\lambda`$ times coarser, and
+nothing else. What that does to each kind of quantity:
+
+| quantity | multiply by | for the $`\mu = 5`$ fit |
+| --- | --- | --- |
+| any time: period, settling, transient | $`1/\omega_n`$ | free period $`12.44/\omega_n`$ |
+| any frequency: the free cycle's, the drive's, a plateau edge in rad/s | $`\omega_n`$ | free cycle at $`0.505\,\omega_n`$ |
+| any displacement: edges, amplitudes, the basin boundary | $`\lambda`$ | free amplitude $`2.00\lambda`$ |
+| any velocity | $`\lambda\omega_n`$ | |
+| any acceleration, the drive amplitude $`A`$ included | $`\lambda\omega_n^2`$ | |
+| the ratios $`\zeta_{k}`$, the edge ratio $`a/b`$, $`\mu`$ | 1 | |
+| the drive ratio $`r = \Omega/\omega_{lc}`$ and strength $`A/(\omega_n^2 b)`$ | 1 | the chaotic bands stay where they are in $`r`$; $`A = 5`$ is strength 2.52 |
+| lock orders, plateau edges in $`r`$, map multipliers, Floquet multipliers, chaotic verdicts | 1 | |
+| a Lyapunov exponent, or any rate | $`\omega_n`$ | |
+
+In the physical form $`m\ddot{x} + c(x)\dot{x} + kx = F\cos\Omega t`$ the
+same rule reads $`\omega_n = \sqrt{k/m}`$, $`c_{k} = 2\zeta_{k}\,m\,\omega_n`$
+and $`F = mA`$. So the damping *coefficients* of the switched dashpot are
+what move with frequency, in proportion to $`\omega_n`$, and the stiffness
+with $`\omega_n^2`$; the ratios stay. A model moved from 50 Hz to 100 Hz
+keeps its three $`\zeta`$ and doubles its three $`c`$.
+
+Two things are easy to get wrong:
+
+- **The drive scales with $`\omega_n^2`$, not $`\omega_n`$.** Doubling the
+  frequency at the same amplitude needs four times the drive acceleration
+  to sit at the same point of the regime map, which is what makes the
+  dimensionless strength $`A/(\omega_n^2 b)`$ and not $`A/(\omega_n b)`$.
+  An earlier version of the units paragraph above had the latter, which is
+  only right at $`\omega_n = 1`$.
+- **$`\omega_n`$ is not the free cycle frequency.** The model's free period
+  is $`(T\omega_n)_{\text{model}}/\omega_n`$, with $`T\omega_n = 12.44`$ for
+  the $`\mu = 5`$ fit and $`6.70`$ for the campaign's $`\mu = 1`$ fit — the
+  free $`T`$ column of the fit table. A system whose free oscillation is
+  measured at $`f`$ hertz needs $`\omega_n = (T\omega_n)_{\text{model}}\,f`$,
+  which for a relaxation oscillator is well above $`2\pi f`$. That is the
+  first row of the measurement table below.
+
+For a Van der Pol class oscillator in physical units,
+$`\ddot{x} - \varepsilon\,(1 - x^2/X^2)\,\dot{x} + \omega_n^2 x = 0`$, the
+same substitution with $`\lambda = X`$ gives $`\mu = \varepsilon/\omega_n`$,
+so the campaign formulas apply with that $`\mu`$ and the edges
+$`(1.20 X,\ 2.13 X)`$: $`X`$ is the displacement at which the damping
+changes sign, about half the free amplitude. `scaling.py` checks this too,
+by integrating the physical equation at 50 Hz and recovering Van der
+Pol's period and amplitude at $`\mu = 5`$.
+
+**Worked examples**, the $`\mu = 5`$ fit driven in its chaotic band at
+$`\Omega = 2.47`$, $`A = 5`$ (`python3 scaling.py table`):
+
+| | reference | 50 Hz, 1 mm per unit | 1 kHz, 1 µm per unit |
+| --- | --- | --- | --- |
+| $`\omega_n`$ | 1 rad/s | 314.2 rad/s | 6283 rad/s |
+| edges $`a, b`$ | 1.075, 1.981 | 1.075 mm, 1.981 mm | 1.075 µm, 1.981 µm |
+| free amplitude | 1.996 | 1.996 mm | 1.996 µm |
+| free period | 12.44 s | 39.6 ms (25.3 Hz) | 1.98 ms (505 Hz) |
+| drive frequency $`\Omega`$ | 2.47 rad/s | 776 rad/s (123.5 Hz) | 15 519 rad/s (2.47 kHz) |
+| drive acceleration $`A`$ | 5 | 493 m/s² | 197 m/s² |
+| drive strength $`A/(\omega_n^2 b)`$ | 2.524 | 2.524 | 2.524 |
+| outer damping per unit mass $`2\zeta_{2}\omega_n`$ | 30.1 s⁻¹ | 9 454 s⁻¹ | 189 000 s⁻¹ |
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/scaling-dark.png">
+  <img alt="The free response of the three level model at three frequency ranges, each integrated in its own units, and the same three traces collapsed onto reduced axes where they coincide" src="figures/scaling-light.png">
+</picture>
+
+*Left: the free response of the $`\mu = 5`$ fit from 25% above its cycle, as the reference model, as a 50 Hz oscillator in millimetres and as a 1 kHz oscillator in micrometres, each integrated from its own scaled equation. Right: the same three traces on $`\omega_n t`$ and $`x/\lambda`$. They coincide.*
+
+**What was checked**, at both physical scales, by integrating the scaled
+model in its own units and comparing with the reference rather than by
+trusting the substitution. Rescaled trajectories agree with the reference
+to a part in $`10^{7}`$ of the amplitude over five cycles, unforced and
+under the drive, and to about a part in $`10^{6}`$ over sixty time units
+inside the chaotic band. The scaled model's free amplitude divided by
+$`\lambda`$ and its period times $`\omega_n`$ match the exact reference
+cycle to better than a part in $`10^{9}`$. Driven at scaled frequencies, the
+classifier gives the scaled model the reference's verdicts cell for cell
+across the 3:1 plateau, both chaotic bands, the 4:1 lock and the 5:1
+plateau, with each chaotic exponent divided by $`\omega_n`$ inside the
+spread the estimate has on the reference model itself, 0.09 to 0.12 across
+transient and run lengths against 0.08 to 0.11 scaled. And the drive
+strength $`A/(\omega_n^2 b)`$ is 2.5237 at all three scales while
+$`A/(\omega_n b)`$ runs from 2.5 to 15 857.
+
+One practical consequence. The classifier in `section.py` has absolute
+floors — an integration tolerance of $`10^{-11}`$ in $`x`$ and a Lyapunov
+threshold per unit time — set for the reference units, so `scaling.py`
+divides the scaled exponent by $`\omega_n`$ before testing it, and the
+tolerances it integrates with are relative to $`\lambda`$. The easier
+course, and the point of the rule, is to do every analysis in reference
+units and scale the results: fit, sweep and classify at $`\omega_n = 1`$,
+then multiply by the table.
+
 ## What to measure, and which parameter it sets
 
 The linear prototype's recipe is a period for $`\omega_n`$ and a decrement
@@ -748,4 +878,6 @@ regime` runs the $`\mu = 5`$ regime map and the transition sweeps (about
 an hour); `python3 staircase.py fit1` and `regime1` do the same at
 $`\mu = 1`$. The fitted parameters are stored as constants in
 `staircase.py` so the tables here do not depend on re-running the
-optimiser. `python3 figures.py` regenerates every figure.
+optimiser. `python3 scaling.py` checks the frequency scaling rule at two
+physical scales, under a minute, and `python3 scaling.py table` prints its
+worked examples. `python3 figures.py` regenerates every figure.
