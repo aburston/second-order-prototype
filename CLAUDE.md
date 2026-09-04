@@ -13,7 +13,8 @@ The README stops at the four switched prototypes. `VANDERPOL.md` carries
 everything beyond them — forcing, chaos, Van der Pol as the target and the
 road to a model that reproduces it — and `THREELEVEL.md` is that model,
 the three level prototype, with its parameters, what to measure to set
-them, its proof and its gaps. `MAPS.md` turns every prototype into a
+them, its proof, the rule for moving it to another frequency range
+(`scaling.py`) and its gaps. `MAPS.md` turns every prototype into a
 discrete map. Each document's numbers come from a named script.
 
 Read the README before extending it — each section builds on the previous

@@ -1162,7 +1162,9 @@ the edges for a displacement switch — sets the amplitude exactly
 proportionally and touches nothing else, so a measured amplitude scales it.
 The damping ratios are dimensionless and carry all the behaviour. A drive
 enters through two numbers, $`r = \Omega/\omega_{lc}`$ and
-$`a = A/(\omega_n x_0)`$, with $`\omega_{lc}`$ the free cycle frequency.
+$`a = A/(\omega_n^2 x_0)`$ for a displacement switch, $`A/(\omega_n v_0)`$ for
+a velocity switch, with $`\omega_{lc}`$ the free cycle frequency; the
+scaling section of `THREELEVEL.md` gives the full rule.
 
 | behaviour wanted | model | parameters | how to set them | what it will not do |
 | --- | --- | --- | --- | --- |

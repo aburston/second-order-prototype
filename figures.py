@@ -2025,6 +2025,86 @@ def fig_strange_attractor(th, name):
     save(fig, name, "strange-attractor")
 
 
+def fig_scaling(th, name):
+    """Draw the three level model at three frequency ranges, then collapse them.
+
+    Left, three panels: the free response of the mu = 5 fit from an initial
+    displacement 25% above its cycle, as the reference model in its own
+    units, as a 50 Hz oscillator with a millimetre per model unit, and as a
+    1 kHz oscillator with a micrometre per model unit. Each is integrated
+    in its own units from the scaled equation, not produced by rescaling
+    the reference.
+
+    Right: the same three traces on the reduced axes ``wn t`` and
+    ``x / lam``. They coincide, which is the scaling rule of
+    ``THREELEVEL.md`` and the content of ``scaling.py``'s check: the
+    damping ratios and the edge ratio carry the behaviour, and ``wn`` and
+    ``lam`` only set the clock and the ruler.
+
+    Args:
+        th: theme dict from ``THEMES``.
+        name: theme key, used as the output filename suffix.
+    """
+    import scaling
+    cases = (("reference: $\\omega_n = 1$, $\\lambda = 1$", 1.0, 1.0,
+              1.0, 1.0, "$t$", "$x$"),
+             ("50 Hz, 1 mm per unit", 2.0*np.pi*50.0, 1.0e-3,
+              1.0e3, 1.0e3, "$t$ [ms]", "$x$ [mm]"),
+             ("1 kHz, 1 $\\mu$m per unit", 2.0*np.pi*1000.0, 1.0e-6,
+              1.0e3, 1.0e6, "$t$ [ms]", "$x$ [$\\mu$m]"))
+    R, T = staircase.free_cycle(*staircase.THREE_FITTED)
+    t_end = 3.0*T
+    tau = np.linspace(0.0, t_end, 3000)
+
+    fig = plt.figure(figsize=(11.8, 5.0))
+    fig.patch.set_facecolor(th["surface"])
+    gs = fig.add_gridspec(3, 2, width_ratios=[1.0, 1.15], hspace=0.65,
+                          wspace=0.22)
+    left = [fig.add_subplot(gs[k, 0]) for k in range(3)]
+    right = fig.add_subplot(gs[:, 1])
+    styles = ((2.8, "-"), (1.7, (0, (6, 3))), (1.2, (0, (1.5, 2.2))))
+
+    for k, (lbl, wn, lam, tf, xf, xl, yl) in enumerate(cases):
+        lv, ed = scaling.scale_model(*staircase.THREE_FITTED, wn, lam)
+        f = scaling.field(lv, ed, wn)
+        sol = solve_ivp(f, (0.0, t_end/wn), [2.5*lam, 0.0], method="LSODA",
+                        rtol=1e-10, atol=[1e-13*lam, 1e-13*lam*wn],
+                        t_eval=tau/wn)
+        lw, ls = styles[k]
+        left[k].plot(sol.t*tf, sol.y[0]*xf, color=th["series"][k],
+                     linewidth=1.4, zorder=4)
+        for e, s in ((ed[1], "$b$"), (-ed[1], "$-b$")):
+            left[k].axhline(e*xf, color=th["ink2"], linewidth=0.8,
+                            linestyle=(0, (5, 3)), zorder=3)
+        left[k].text(0.99, ed[1]*xf, "$b$", transform=left[k].get_yaxis_transform(),
+                     fontsize=8, color=th["ink2"], va="bottom", ha="right",
+                     zorder=6)
+        left[k].set_xlim(0.0, t_end*tf/wn)
+        style(left[k], th, xl, yl)
+        left[k].set_title(lbl, color=th["ink"], fontsize=9, pad=4, loc="left")
+        right.plot(tau, sol.y[0]/lam, color=th["series"][k], linewidth=lw,
+                   linestyle=ls, zorder=4 + k, label=lbl)
+
+    for e in (staircase.THREE_FITTED[1][1], -staircase.THREE_FITTED[1][1]):
+        right.axhline(e, color=th["ink2"], linewidth=0.9,
+                      linestyle=(0, (5, 3)), zorder=3)
+    right.text(0.62, staircase.THREE_FITTED[1][1], "$b$",
+               transform=right.get_yaxis_transform(), fontsize=8,
+               color=th["ink2"], va="bottom", ha="left", zorder=6)
+    right.axvline(T, color=th["axis"], linewidth=0.9, zorder=2)
+    right.text(T, -2.55, " one free period, $\\omega_n T = %.2f$" % T,
+               fontsize=8, color=th["ink2"], ha="left", va="bottom", zorder=6)
+    right.set_xlim(0.0, t_end)
+    right.set_ylim(-2.7, 3.2)
+    style(right, th, "$\\omega_n t$", "$x / \\lambda$",
+          "The same trace on reduced axes: the three coincide")
+    legend(right, th, loc="upper right")
+    fig.suptitle("Scaling the three level model to another frequency range: "
+                 "$\\zeta$ and $a/b$ fixed, $\\omega_n$ sets the clock, "
+                 "$\\lambda$ the ruler", color=th["ink"], fontsize=11)
+    save(fig, name, "scaling")
+
+
 if __name__ == "__main__":
     for name, th in THEMES.items():
         print(f"{name}:")
@@ -2048,5 +2128,6 @@ if __name__ == "__main__":
         fig_regime_three(th, name)
         fig_campaign(th, name)
         fig_boundary(th, name)
+        fig_scaling(th, name)
         fig_strange_attractor(th, name)
         fig_vanderpol_compare(th, name)
