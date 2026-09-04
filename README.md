@@ -7,8 +7,10 @@ introducing a switching boundary in the phase plane.
 `EXAMPLES.md` fits physical systems to each prototype — Maxwell's governor
 and a transistor LC oscillator — with the numbers produced by `examples.py`.
 `MAPS.md` turns the prototypes into discrete maps. `VANDERPOL.md` carries
-everything beyond the four prototypes: forcing, chaos, Van der Pol as the
-target, and the model that reproduces it.
+everything beyond the four prototypes: forcing, chaos, and Van der Pol as
+the target. `THREELEVEL.md` is the fifth prototype, the three level model
+that reproduces Van der Pol's driven behaviour, with its parameters, what
+to measure to set them, and where it holds.
 
 `GLOSSARY.md` explains every unfamiliar term used anywhere in this
 repository, at first-year undergraduate level, with references.
@@ -1092,6 +1094,7 @@ fifth prototype with a second threshold, what a periodic drive does to the
 cycles, Van der Pol as the smooth control, and the three level model that
 reproduces Van der Pol's driven response including its chaos — is in
 `VANDERPOL.md`, together with a guide to what to set the parameters to for
-each behaviour and a list of what is still missing. `MAPS.md` turns every
+each behaviour and a list of what is still missing; the three level model
+itself, with its parameters, measurements and proof, is `THREELEVEL.md`. `MAPS.md` turns every
 prototype into a discrete map with an exact Jacobian, and `EXAMPLES.md`
 fits physical systems to them.
