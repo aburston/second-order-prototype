@@ -414,6 +414,56 @@ about 10 and the core below about $`-1`$ it goes chaotic at the transitions
 between its locks. Where the boundary between those lies is not known;
 one fit between them would place it.
 
+## The campaign: the whole range from $`\mu = 0.1`$ to 5
+
+`campaign.py` maps the model against Van der Pol across the range, with
+one objective for every $`\mu`$ and every result appended to
+`campaign/results.json` as it lands. The objective is the plateau
+structure at $`A = 5`$ — where the 1:1 plateau ends and where the 3:1
+plateau starts and ends — because both plateaus exist in every mode from
+$`\mu = 0.3`$ up, and the free cycle is held within 20%. Fits run from the
+middle of the range outward, each started from the interpolation of the
+fits already made and, once four exist, from the power laws through them.
+
+### Where the targets sit
+
+The survey comes first and is cheap, half a minute per $`\mu`$, and it
+already shows the shape of what has to be reproduced. Van der Pol's
+plateau edges at $`A = 5`$, in units of the drive ratio:
+
+| $`\mu`$ | free $`T`$ | 1:1 plateau ends | 3:1 plateau |
+| --- | --- | --- | --- |
+| 0.1 | 6.287 | 2.04 | none |
+| 0.2 | 6.299 | 2.09 | none |
+| 0.3 | 6.318 | 2.11 | 2.87–3.12 |
+| 0.5 | 6.381 | 2.13 | 2.77–3.21 |
+| 0.7 | 6.473 | 2.16 | 2.68–3.28 |
+| 1 | 6.663 | 2.21 | 2.56–3.41 |
+| 1.5 | 7.096 | 2.29 | 2.47–3.61 |
+| 2 | 7.630 | 2.38 | 2.47–3.79 |
+| 3 | 8.859 | 2.49 | 2.53–4.11 |
+| 4 | 10.204 | 2.59 | 2.59–4.33 |
+| 5 | 11.612 | 2.68 | 2.68–4.48 |
+
+Three things to read off it. The 1:1 plateau's end rises smoothly and
+slowly, about a third of a unit over the whole range. The 3:1 plateau
+appears at $`\mu = 0.3`$ as a band a quarter of a unit wide and widens
+steadily from there, almost all of the widening at its upper end, which
+climbs from 3.1 to 4.5; its lower end first drops, to 2.47 near
+$`\mu = 2`$, then rises to meet the 1:1 plateau at $`\mu = 4`$, from where
+the transition between the two locks is direct — that is the transition
+whose chaotic band the $`\mu = 5`$ regime map found at $`A = 10`$. And
+below $`\mu = 0.3`$ there is no 3:1 plateau at this drive, so the fit
+there has one target and is underdetermined; that is the regime where
+`VANDERPOL.md`'s control chapter found the two level prototype
+behaviourally identical to Van der Pol, and a three level shape has
+little to do.
+
+The 1:1 tongue's lower edge is below the window's start at 0.3 at every
+$`\mu`$ at this drive, so it is never a target.
+
+<!-- CAMPAIGN_FITS -->
+
 ## What to measure, and which parameter it sets
 
 The linear prototype's recipe is a period for $`\omega_n`$ and a decrement
