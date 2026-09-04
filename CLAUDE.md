@@ -95,8 +95,31 @@ curl -sS -H "User-Agent: Mozilla/5.0" \
 
 Count `js-inline-math` and `js-display-math` elements in the result and
 compare against the expressions in the file. Any expression missing an
-element is not rendering; any element containing `&lt;`, `&gt;` or `&amp;`
-will show entity text to the reader. Both should be zero.
+element is not rendering.
+
+**`&amp;` in a display block is not a fault.** `curl` returns the HTML
+*source*, where a literal `&` is correctly served escaped as `&amp;`; the
+browser's parser turns it back into `&` before MathJax ever sees it. Every
+`aligned`, `bmatrix`, `cases` and `array` block uses `&` for alignment, so
+a check that flags `&amp;` flags all seventeen of them — nine in
+`README.md`, two each in `THREELEVEL.md`, `MAPS.md` and `VANDERPOL.md`, one
+each in `DATASHEET.md` and `EXAMPLES.md` — and all seventeen are fine.
+Verified by loading all six served pages in Chromium and reading the DOM
+text of every `math-renderer` element: seventeen carry a real `&`, none
+carries `amp;`, `&lt;` or `&gt;`. **Do not rewrite a `cases` block to avoid
+the ampersand** — that was nearly done once on the strength of this check.
+
+Rule 3 above is about **inline** maths and stands on its own evidence;
+nothing here retests it.
+
+MathJax's own bundle does not load through the session proxy, so a session
+can check what MathJax is *handed*, not what it draws. To read that DOM:
+`pip install playwright` (browsers are already at `/opt/pw-browsers`, so
+never run `playwright install`), then drive
+`/opt/pw-browsers/chromium-*/chrome-linux/chrome` through it with
+`--ignore-certificate-errors-spki-list=` set to the SPKI hashes of the two
+certificates in `/root/.ccr/agent-proxy-ca.crt`. That trusts the session's
+own proxy CA and nothing else; never disable TLS verification instead.
 
 ## Figures
 
