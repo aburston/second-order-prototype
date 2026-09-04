@@ -1006,6 +1006,167 @@ def regime_transitions(windows=TRANSITION_WINDOWS, workers=None):
     return res
 
 
+# ------------------------------------------------- the campaign over mu
+def _plateau_label(args):
+    """Worker for :func:`plateau_edges`: one label, on either system."""
+    kind, om, amp, mu = args
+    if kind == "vdp":
+        import vanderpol
+        return om, forced_label(vanderpol.field(mu, amp, om), om,
+                                y0=list(vanderpol.cycle(mu)[1]))[0]
+    return om, forced_label(field(kind[0], kind[1], amp, om), om)[0]
+
+
+def plateau_edges(kind, locks, oms, amp=CMP_AMP, mu=CMP_MU, workers=None,
+                  n_bisect=3):
+    """Locate the longest plateau of each lock in ``locks`` on one system.
+
+    ``kind`` is ``"vdp"`` or ``(levels, edges)``. One coarse sweep over
+    ``oms`` (absolute drive frequencies), then ``n_bisect`` bisections on
+    each end of each plateau, so an edge is located to ``step / 2^n``.
+    A plateau shorter than two coarse cells, or absent, is reported as
+    ``None``. Returns ``({lock: (start, end) or None}, labels)``.
+    """
+    import multiprocessing as mp
+    oms = list(oms)
+    with mp.Pool(workers or mp.cpu_count()) as pool:
+        out = pool.map(_plateau_label, [(kind, om, amp, mu) for om in oms],
+                       chunksize=1)
+    labels = [lab for _, lab in sorted(out, key=lambda o: o[0])]
+
+    def label(om):
+        return _plateau_label((kind, om, amp, mu))[1]
+
+    def bisect(inside, outside, lock):
+        for _ in range(n_bisect):
+            mid = 0.5*(inside + outside)
+            if label(mid) == lock:
+                inside = mid
+            else:
+                outside = mid
+        return 0.5*(inside + outside)
+
+    res = {}
+    for lock in locks:
+        best = (0, None, None)
+        i = 0
+        while i < len(labels):
+            if labels[i] == lock:
+                j = i
+                while j + 1 < len(labels) and labels[j + 1] == lock:
+                    j += 1
+                if j - i + 1 > best[0]:
+                    best = (j - i + 1, i, j)
+                i = j + 1
+            else:
+                i += 1
+        n, i, j = best
+        if n < 2:
+            res[lock] = None
+            continue
+        start = oms[0] if i == 0 else bisect(oms[i], oms[i - 1], lock)
+        end = oms[-1] if j == len(oms) - 1 else bisect(oms[j], oms[j + 1], lock)
+        res[lock] = (start, end)
+    return res, labels
+
+
+#: The campaign's uniform targets: where the 1:1 plateau ends and where the
+#: 3:1 plateau starts and ends, at ``A = 5``.
+CAMPAIGN_LOCKS = ("lock1", "lock3")
+
+
+def campaign_targets(mu, amp=CMP_AMP, r_lo=0.6, r_hi=6.0, step=0.1, workers=None):
+    """Van der Pol's plateau edges at ``mu``, in ratio units, for the fit."""
+    import vanderpol
+    wl = vanderpol.w_lc(mu)
+    oms = tuple(np.round(np.arange(r_lo, r_hi + 1e-9, step)*wl, 6))
+    res, labels = plateau_edges("vdp", CAMPAIGN_LOCKS, oms, amp=amp, mu=mu,
+                                workers=workers)
+    out = {k: (None if v is None else (v[0]/wl, v[1]/wl)) for k, v in res.items()}
+    return out, labels, wl
+
+
+def fit_plateaus(mu, levels, edges, targets, wl, leeway=0.2, maxfev=30,
+                 amp=CMP_AMP, step=0.1, workers=None, log=print, free=None):
+    """Fit a three level model to Van der Pol's plateau edges at ``mu``.
+
+    ``targets`` is ``{lock: (start, end)}`` in ratio units from
+    :func:`campaign_targets`; the objective is the squared distance, in
+    coarse steps, of the model's lock 1 end and lock 3 start and end from
+    those, plus the leeway penalty on the free cycle against ``free`` (Van
+    der Pol's amplitude and period at ``mu``). The coarse window runs from
+    ratio 0.6 to half a unit past the highest target. Returns
+    ``(levels, edges, edges_found, r, T, n_eval)`` at the best point seen.
+    """
+    from scipy.optimize import minimize
+    import vanderpol
+    if free is None:
+        T = vanderpol.cycle(mu)[0]
+        free = (vanderpol.amplitude(mu), T)
+    R_free, T_free = free
+    wanted = []
+    if targets.get("lock1"):
+        wanted.append(("lock1", 1, targets["lock1"][1]))
+    if targets.get("lock3"):
+        wanted.append(("lock3", 0, targets["lock3"][0]))
+        wanted.append(("lock3", 1, targets["lock3"][1]))
+    r_hi = max(t for _, _, t in wanted) + 0.5
+    oms = tuple(np.round(np.arange(0.6, r_hi + 1e-9, step)*wl, 6))
+    n = len(levels)
+    pos = [z > 0 for z in levels[1:]]
+
+    def unpack(p):
+        lv = [p[0]]
+        for k, ispos in enumerate(pos):
+            lv.append(float(np.exp(p[1 + k])) if ispos else float(p[1 + k]))
+        return tuple(lv), tuple(float(np.exp(v)) for v in p[n:])
+
+    p0 = [levels[0]] + [np.log(z) if ispos else z
+                        for z, ispos in zip(levels[1:], pos)]
+    p0 += [np.log(e) for e in edges]
+    best = {"J": np.inf, "n": 0}
+
+    def J(p):
+        best["n"] += 1
+        lv, ed = unpack(p)
+        if any(ed[k] >= ed[k + 1] for k in range(len(ed) - 1)) or lv[0] >= 0:
+            return 1e4
+        try:
+            r, T = free_cycle_num(lv, ed)
+        except Exception:
+            return 1e4
+        dr, dT = abs(r/R_free - 1.0), abs(T/T_free - 1.0)
+        pen = 1e3*(max(0.0, dr - leeway)**2 + max(0.0, dT - leeway)**2)
+        res, _ = plateau_edges((lv, ed), CAMPAIGN_LOCKS, oms, amp=amp, mu=mu,
+                               workers=workers)
+        val, found = pen, {}
+        for lock, side, t in wanted:
+            got = res.get(lock)
+            if got is None:
+                val += 25.0            # five coarse steps for a missing plateau
+                continue
+            found[(lock, side)] = got[side]/wl
+            val += ((got[side]/wl - t)/step)**2
+        log("  J=%8.3f  levels %s edges %s  r %.3f T %.3f  %s"
+            % (val, tuple(round(z, 3) for z in lv), tuple(round(e, 3) for e in ed),
+               r, T, " ".join("%s%d=%.3f" % (k[0][4:], k[1], v) for k, v in found.items())))
+        if val < best["J"]:
+            best.update(J=val, lv=lv, ed=ed, found=found, r=r, T=T)
+        return val
+
+    steps = [0.3] + [0.25]*(n - 1) + [0.12]*len(edges)
+    simplex = [np.array(p0, float)]
+    for k, st in enumerate(steps):
+        q = np.array(p0, float)
+        q[k] += st
+        simplex.append(q)
+    minimize(J, np.array(p0, float), method="Nelder-Mead",
+             options=dict(initial_simplex=np.array(simplex), maxfev=maxfev,
+                          xatol=1e-3, fatol=0.05))
+    return (best["lv"], best["ed"], best["found"], best["r"], best["T"],
+            best["n"])
+
+
 def _print_scan(scan):
     for tag in scan:
         rows = scan[tag]
