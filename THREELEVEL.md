@@ -462,6 +462,19 @@ little to do.
 The 1:1 tongue's lower edge is below the window's start at 0.3 at every
 $`\mu`$ at this drive, so it is never a target.
 
+### The fits
+
+Each row is one fit: the five parameters, the free cycle it landed on
+against Van der Pol's, and its plateau edges against the targets, all at
+$`A = 5`$. The table is regenerated from `campaign/results.json` as the
+campaign runs.
+
+<!-- FITTABLE -->
+| $`\mu`$ | $`\zeta_0`$ | $`\zeta_1`$ | $`\zeta_2`$ | $`a`$ | $`b`$ | free $`r`$ | free $`T`$ | 1:1 ends, model vs target | 3:1 plateau, model vs target | evaluations |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2 | $`-0.730`$ | 1.544 | 7.30 | 1.165 | 2.054 | 2.091 (+3.5%) | 7.756 (+1.6%) | 2.37 vs 2.38 | 2.47–3.78 vs 2.47–3.79 | 30 |
+<!-- /FITTABLE -->
+
 <!-- CAMPAIGN_FITS -->
 
 ## What to measure, and which parameter it sets
