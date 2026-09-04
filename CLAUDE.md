@@ -14,8 +14,10 @@ everything beyond them — forcing, chaos, Van der Pol as the target and the
 road to a model that reproduces it — and `THREELEVEL.md` is that model,
 the three level prototype, with its parameters, what to measure to set
 them, its proof, the rule for moving it to another frequency range
-(`scaling.py`) and its gaps. `MAPS.md` turns every prototype into a
-discrete map. Each document's numbers come from a named script.
+(`scaling.py`) and its gaps. `DATASHEET.md` is that model's engineering
+data sheet — applications, validity envelope with warnings, characteristics
+and tuning procedures, no proofs; keep it consistent with `THREELEVEL.md`
+when either changes. `MAPS.md` turns every prototype into a discrete map. Each document's numbers come from a named script.
 
 Read the README before extending it — each section builds on the previous
 one and reuses its notation ($x_1 = x$, $x_2 = \dot{x}$, $\zeta_{\pm}$,
