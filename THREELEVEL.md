@@ -496,6 +496,7 @@ campaign runs.
 | 3 | $`-1.074`$ | 2.353 | 10.72 | 1.131 | 2.018 | 2.047 (+1.2%) | 9.252 (+4.4%) | 2.49 vs 2.49 | 2.52–4.11 vs 2.53–4.11 | 30 |
 | 4 | $`-1.319`$ | 3.020 | 16.59 | 1.161 | 2.109 | 2.118 (+4.7%) | 10.469 (+2.6%) | 2.62 vs 2.59 | 2.62–4.37 vs 2.59–4.33 | 18 |
 | 5 | $`-1.563`$ | 4.025 | 22.42 | 1.189 | 2.179 | 2.094 (+3.6%) | 11.961 (+3.0%) | 2.71 vs 2.68 | 2.71–4.52 vs 2.68–4.48 | 18 |
+| 8 | $`-2.475`$ | 6.136 | 39.13 | 1.178 | 2.303 | 2.119 (+5.1%) | 16.686 (+4.0%) | 2.79 vs 2.81 | 2.79–4.71 vs 2.81–4.74 | 18 |
 
 Power laws through the fits (11 points): $`\zeta_0 = -0.365\,\mu^{0.930}`$; $`\zeta_1 = +0.824\,\mu^{0.963}`$; $`\zeta_2 = +3.290\,\mu^{1.170}`$; edges $`a = 1.202 \pm 0.044`$, $`b = 2.132 \pm 0.082`$.
 
@@ -593,6 +594,38 @@ agreement measured cell by cell is modest, 0.2 to 0.5, because the bands
 are one to four cells wide and shifted by a cell or two; the agreement on
 *whether* and *at which transition* is complete apart from the one miss.
 
+### Beyond the fitted range, and across drive strength
+
+Two of the deferred items were run once the campaign had finished.
+
+**$`\mu = 8`$, started from the laws.** Van der Pol there is a hard
+relaxation oscillator, free period 16.0, its 1:1 and 3:1 plateaus meeting
+directly at 2.81 with the 3:1 running to 4.74. The laws, fitted on 0.1 to
+5, predict $`\zeta = (-2.52, 6.10, 37.4)`$ with the usual edges; eighteen
+evaluations of the fit moved that to $`(-2.48, 6.14, 39.1)`$, edges
+$`(1.18, 2.30)`$, plateau edges at 2.79 and 4.71 against 2.81 and 4.74,
+free amplitude 5% high and period 4% long. The laws hold at 8; the row is
+in the table above, marked as outside the range the laws were fitted on
+and not used in them.
+
+**$`\mu = 2`$ across drive strength.** The regime map of the campaign's
+$`\mu = 2`$ fit beside Van der Pol over the same grid as the $`\mu = 5`$ and
+1 proofs, drive amplitudes 0 to 10 and ratios to 8:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/regime-three-mu2-dark.png">
+  <img alt="Regime maps over drive ratio and amplitude for the three level model fitted at mu = 2 and for Van der Pol at mu = 2, with the unforced row marked, and the two free limit cycles in the phase plane" src="figures/regime-three-mu2-light.png">
+</picture>
+
+*The campaign's $`\mu = 2`$ fit across the drive grid. The lock plateaus sit on Van der Pol's at every drive strength; the model has narrow high order locks where Van der Pol has tori, as at $`\mu = 1`$ and 5. Neither system shows chaos on this 0.1 grid, which steps over the one-cell band both have at the 1:1 to 3:1 transition at $`A = 5`$.*
+
+Plateau for plateau: at $`A = 5`$ the 1:1 lock ends at 2.3 and the 3:1
+runs 2.5 to 3.7 on both; at $`A = 10`$ the 1:1 ends at 3.1 against 3.2
+and the 3:1 runs 3.2–4.3 against 3.3–4.3; the 4:1 and 5:1 locks are at
+the same cells at every drive strength that has them. The model fitted
+at one drive strength holds across the grid at $`\mu = 2`$ as it did at
+5 and at 1.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="figures/campaign-dark.png">
   <img alt="The fitted damping ratios and edges against mu with power laws through them, Van der Pol's plateau edges at each mu with the fitted models' edges over them, and the verification agreement against mu" src="figures/campaign-light.png">
@@ -621,9 +654,9 @@ is not enough; two drive strengths are.
 
 ## Gaps
 
-- **Nothing beyond $`\mu = 5`$.** Eleven fits from 0.1 to 5 lie on power
-  laws; whether the laws hold at 7 or 10, where Van der Pol is a hard
-  relaxation oscillator, is untested.
+- **Beyond $`\mu = 8`$ nothing is known.** The laws fitted on 0.1 to 5
+  hold at 8 to within 5% on the ratios; at 10 and above they are
+  untested.
 - **One drive strength in the fit.** Every campaign fit used the plateau
   edges at $`A = 5`$ (plus the tongue at $`A = 1`$ below $`\mu = 0.3`$);
   the $`\mu = 5`$ regime map is the only test across drive strength.
