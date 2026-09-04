@@ -30,8 +30,10 @@ offset it inherits from a seven per cent longer free period. Its five
 parameters are a shape chosen for the driven response, not a sampling of
 Van der Pol's damping law. The campaign then fitted it at eleven values
 of $`\mu`$ from 0.1 to 5 on one objective; the parameters lie on power
-laws in $`\mu`$ with fixed edges, and at every $`\mu`$ the model has
-chaos where Van der Pol has it and none where it has none.
+laws in $`\mu`$ with fixed edges, at every $`\mu`$ the model has chaos
+where Van der Pol has it and none where it has none, and models built from
+the laws alone at $`\mu`$ never fitted reproduce Van der Pol's plateaus
+and chaotic transitions without any fitting.
 
 ## Parameters and units
 
@@ -626,6 +628,33 @@ the same cells at every drive strength that has them. The model fitted
 at one drive strength holds across the grid at $`\mu = 2`$ as it did at
 5 and at 1.
 
+### The formulas alone, at $`\mu`$ never fitted
+
+The test of the formulas as a tool: build the model from the laws at
+$`\mu = 2.5`$ and 3.5, values never fitted, run no fit at all, and sweep
+it beside Van der Pol at $`A = 5`$ (`python3 campaign.py check`).
+
+| $`\mu`$ | model from the laws | 1:1 ends, model vs Van der Pol | 3:1 plateau, model vs Van der Pol | chaotic cells, Van der Pol | chaotic cells, model |
+| --- | --- | --- | --- | --- | --- |
+| 2.5 | $`(-0.85, 1.99, 9.6)`$, edges (1.20, 2.13) | 2.43 vs 2.44 | 2.52–3.96 vs 2.51–3.96 | 1–3 at 2.48–2.50 | 1–3 at 2.46 and 2.50–2.52 |
+| 3.5 | $`(-1.17, 2.75, 14.2)`$, edges (1.20, 2.13) | 2.52 vs 2.54 | 2.56–4.22 vs 2.54–4.22 | 3–4 at 4.24–4.34; 4–5 at 4.48–4.58 | 1–3 at 2.52–2.54; 3–4 at 4.24 and 4.30; 4–5 at 4.60–4.62 |
+
+With no fitting at all the plateau edges land within 0.02 of Van der
+Pol's, the 4:1 and 5:1 locks above them sit at the same cells, and the
+chaotic transitions are the same ones: at 2.5 the single band at the 1:1
+to 3:1 transition, at 3.5 both bands above the 3:1 plateau, each within
+0.05 in drive ratio. The one difference at 3.5 is a band at the 1:1 to
+3:1 transition that the model has and Van der Pol does not — the
+transition that is chaotic in Van der Pol from $`\mu = 1.5`$ to 3 and has
+just closed by 3.5, which the model closes a little later.
+
+This is the utility the document was written for. For a Van der Pol
+class oscillator a user measures the timescale, the amplitude and the
+relaxation parameter, takes the three ratios from the formulas, and has a
+model whose driven response — its locks, their edges, and where between
+them chaos comes — is Van der Pol's to a twentieth of a unit of drive
+ratio, with no fitting.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="figures/campaign-dark.png">
   <img alt="The fitted damping ratios and edges against mu with power laws through them, Van der Pol's plateau edges at each mu with the fitted models' edges over them, and the verification agreement against mu" src="figures/campaign-light.png">
@@ -674,9 +703,10 @@ is not enough; two drive strengths are.
   free cycles and basin boundary and nothing else.
 - **Multistability is unmapped.** Where chaos coexists with a lock, which
   is found depends on the starting state; no basins have been computed.
-- **No rule from law to levels.** A known smooth damping law becomes three
-  levels only by running the fit; there is no formula, and the fitted
-  levels are not samples of the law.
+- **The formulas are Van der Pol's.** For a Van der Pol class oscillator
+  the laws give the levels from $`\mu`$; for any other smooth damping law
+  there is still no rule, only the fit, and the fitted levels are not
+  samples of the law.
 - **No theory for why three suffice.** Empirical, over one grid per fit.
 
 ## Prior art

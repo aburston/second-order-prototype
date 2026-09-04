@@ -6,6 +6,7 @@ Run ``python3 campaign.py all`` (hours) or one stage at a time::
     python3 campaign.py fit        # fit the model at each mu, in priority order
     python3 campaign.py verify     # sweep each fitted model beside Van der Pol
     python3 campaign.py formula    # power laws through the fitted parameters
+    python3 campaign.py check      # models from the laws alone at mu never fitted
 
 Every result is appended to ``campaign/results.json`` as it completes and
 committed, so the campaign can be stopped and resumed and the document
@@ -214,6 +215,50 @@ def verify(res, mus=PRIORITY, r_lo=0.5, r_hi=6.0, step=0.02):
         save(res, "Campaign verification at mu = %g" % mu)
 
 
+# ----------------------------------------------------- formula-only check
+def formula_check(res, mus=(2.5, 3.5), r_lo=0.5, r_hi=6.0, step=0.02):
+    """Sweep models built from the laws alone, at mu values never fitted."""
+    import section
+    law = res["formula"]
+    res.setdefault("formula_only", {})
+    for mu in mus:
+        key = "%g" % mu
+        if key in res["formula_only"]:
+            continue
+        t0 = time.time()
+        lv, ed = predict(law, mu)
+        wl = vanderpol.w_lc(mu)
+        tg, _, _ = staircase.campaign_targets(mu, amp=AMP)
+        pe, _ = staircase.plateau_edges((lv, ed), staircase.CAMPAIGN_LOCKS,
+                                        tuple(np.round(np.arange(0.3, 6.001, 0.1)*wl, 6)),
+                                        amp=AMP, mu=mu)
+        clean = lambda v: None if v is None else [float(v[0]), float(v[1])]
+        pe = {k: (None if v is None else [float(v[0]/wl), float(v[1]/wl)]) for k, v in pe.items()}
+        oms = tuple(np.round(np.arange(r_lo, r_hi + 1e-9, step)*wl, 6))
+        scan = staircase.system_scan(oms, {"vdp": None, "three": (lv, ed)}, mu=mu, amp=AMP)
+        out = {}
+        for tag in ("vdp", "three"):
+            rows = []
+            for om, lab, lam in scan[tag]:
+                if lab == "chaos":
+                    flow = (vanderpol.field(mu, AMP, om) if tag == "vdp"
+                            else staircase.field(lv, ed, AMP, om))
+                    y0 = list(vanderpol.cycle(mu)[1]) if tag == "vdp" else [2.0, 0.0]
+                    ok, _ = section.confirm_chaos(flow, 2*np.pi/om, y0, staircase.CMP_NSKIP)
+                    lab = "chaos" if ok else "torus"
+                rows.append((round(om/wl, 3), lab, lam))
+            out[tag] = dict(runs=[(l, float(lo), float(hi), int(n)) for l, lo, hi, n in staircase.runs(rows)],
+                            chaotic=[float(r) for r, l, _ in rows if l == "chaos"])
+        res["formula_only"][key] = dict(mu=mu, levels=[float(z) for z in lv], edges=[float(e) for e in ed],
+                                        targets={"lock1": clean(tg["lock1"]), "lock3": clean(tg["lock3"])},
+                                        plateau=pe, vdp=out["vdp"], three=out["three"],
+                                        seconds=time.time() - t0)
+        log("formula-only mu=%g: model %s %s; plateaus %s vs targets %s; chaotic vdp %s three %s"
+            % (mu, tuple(round(z, 3) for z in lv), tuple(round(e, 3) for e in ed), pe,
+               {"lock1": tg["lock1"], "lock3": tg["lock3"]}, out["vdp"]["chaotic"], out["three"]["chaotic"]))
+        save(res, "Campaign: formula-only check at mu = %g" % mu)
+
+
 def report(res):
     print("%6s %8s %8s %8s %6s %6s %8s %8s %10s %10s %10s %10s" % (
         "mu", "zeta0", "zeta1", "zeta2", "a", "b", "r", "T", "lock1 st", "lock1 end", "lock3 st", "lock3 end"))
@@ -242,5 +287,7 @@ if __name__ == "__main__":
     if what == "formula":
         law = power_laws(res)
         print(law)
+    if what in ("check", "all"):
+        formula_check(res)
     if what in ("report", "all"):
         report(res)
