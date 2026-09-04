@@ -28,8 +28,12 @@ tested grid and its chaotic bands at the two strengths that have them,
 missing one band a single fine cell wide, with a two per cent frequency
 offset it inherits from a seven per cent longer free period. Its five
 parameters are a shape chosen for the driven response, not a sampling of
-Van der Pol's damping law. At $`\mu = 1`$, where Van der Pol only entrains
-apart from one narrow period-doubled band, the fit is below.
+Van der Pol's damping law. The campaign then fitted it at eleven values
+of $`\mu`$ from 0.1 to 5 on one objective; the parameters lie on power
+laws in $`\mu`$ with fixed edges, at every $`\mu`$ the model has chaos
+where Van der Pol has it and none where it has none, and models built from
+the laws alone at $`\mu`$ never fitted reproduce Van der Pol's plateaus
+and chaotic transitions without any fitting.
 
 ## Parameters and units
 
@@ -389,30 +393,274 @@ the plateau edges have.
 
 *The nearly harmonic mode: the same drive grid and classifier as at $`\mu = 5`$. Two tongues and tori, on both; the model's extra narrow locks are the thin blue bars at integer ratios. Right: the free cycles, now nearly circular and nearly coincident.*
 
-## Parameters against the relaxation parameter
+## Parameters against the relaxation parameter: the campaign from $`\mu = 0.1`$ to 5
 
-Two rows, which is a table and not yet a rule. Both fits are at
-$`\omega_n = 1`$ with Van der Pol's amplitude 2; the columns are the five
-parameters and the measurable quantities each mode has.
+`campaign.py` maps the model against Van der Pol across the range, with
+one objective for every $`\mu`$ and every result appended to
+`campaign/results.json` as it lands. The objective is the plateau
+structure at $`A = 5`$ — where the 1:1 plateau ends and where the 3:1
+plateau starts and ends — because both plateaus exist in every mode from
+$`\mu = 0.3`$ up, and the free cycle is held within 20%. Fits run from the
+middle of the range outward, each started from the interpolation of the
+fits already made and, once four exist, from the power laws through them.
 
-| $`\mu`$ | $`\zeta_{0}`$ | $`\zeta_{1}`$ | $`\zeta_{2}`$ | $`a`$ | $`b`$ | free $`T`$ | plateau edges at $`A = 5`$ | chaos |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | $`-0.36`$ | 0.87 | 3.57 | 1.16 | 1.98 | 6.67 | lock 1 ends 2.26, lock 3 starts 2.51 | one period-doubled band at $`A = 1`$, ratio 0.56–0.57, against Van der Pol's at 0.48–0.50 |
-| 5 | $`-1.74`$ | 3.84 | 15.0 | 1.08 | 1.98 | 12.44 | lock 3 ends 2.43, lock 5 starts 2.50 (in $`\Omega`$) | bands at the lock transitions from $`A = 5`$ up |
+### Where the targets sit
 
-What moves with $`\mu`$ is plain to read. The outer edge $`b`$ stays at
-2, the core edge $`a`$ barely moves, and the three ratios scale together
-by a factor near five between $`\mu = 1`$ and $`\mu = 5`$ — the core from
-$`-0.36`$ to $`-1.74`$, the band from 0.87 to 3.84, the outer from 3.6 to
-15 — with the outer level growing fastest. Van der Pol's own law scales all
-of $`\zeta(x)`$ by $`\mu`$ exactly, so the fitted ratios track the law's
-scale while their *shape* does not track its shape: at $`\mu = 5`$ the
-fitted core is $`-1.74`$ where the law is $`-2.5`$ at the origin. What the
-two rows say about behaviour is the useful part: with ratios below about
-1 the model entrains and does not go chaotic; with the outer ratio above
-about 10 and the core below about $`-1`$ it goes chaotic at the transitions
-between its locks. Where the boundary between those lies is not known;
-one fit between them would place it.
+The survey comes first and is cheap, half a minute per $`\mu`$, and it
+already shows the shape of what has to be reproduced. Van der Pol's
+plateau edges at $`A = 5`$, in units of the drive ratio:
+
+| $`\mu`$ | free $`T`$ | 1:1 plateau ends | 3:1 plateau |
+| --- | --- | --- | --- |
+| 0.1 | 6.287 | 2.04 | none |
+| 0.2 | 6.299 | 2.09 | none |
+| 0.3 | 6.318 | 2.11 | 2.87–3.12 |
+| 0.5 | 6.381 | 2.13 | 2.77–3.21 |
+| 0.7 | 6.473 | 2.16 | 2.68–3.28 |
+| 1 | 6.663 | 2.21 | 2.56–3.41 |
+| 1.5 | 7.096 | 2.29 | 2.47–3.61 |
+| 2 | 7.630 | 2.38 | 2.47–3.79 |
+| 3 | 8.859 | 2.49 | 2.53–4.11 |
+| 4 | 10.204 | 2.59 | 2.59–4.33 |
+| 5 | 11.612 | 2.68 | 2.68–4.48 |
+
+Three things to read off it. The 1:1 plateau's end rises smoothly and
+slowly, about a third of a unit over the whole range. The 3:1 plateau
+appears at $`\mu = 0.3`$ as a band a quarter of a unit wide and widens
+steadily from there, almost all of the widening at its upper end, which
+climbs from 3.1 to 4.5; its lower end first drops, to 2.47 near
+$`\mu = 2`$, then rises to meet the 1:1 plateau at $`\mu = 4`$, from where
+the transition between the two locks is direct — that is the transition
+whose chaotic band the $`\mu = 5`$ regime map found at $`A = 10`$. And
+below $`\mu = 0.3`$ there is no 3:1 plateau at this drive, so the fit
+there has one target and is underdetermined; that is the regime where
+`VANDERPOL.md`'s control chapter found the two level prototype
+behaviourally identical to Van der Pol, and a three level shape has
+little to do.
+
+The 1:1 tongue's lower edge is below the window's start at 0.3 at every
+$`\mu`$ at this drive, so it is never a target.
+
+### The roadmap
+
+What is run in what order, and why, given what the earlier work taught.
+Costs are wall clock on four cores.
+
+1. **Survey first, half a minute per $`\mu`$.** Van der Pol's plateau
+   edges at all eleven $`\mu`$ before any fitting, because the shape of
+   the targets decides everything after: which $`\mu`$ have a 3:1 plateau
+   at all, and where the transitions the chaos lives in are. Done above.
+2. **Fit from the middle outward, twenty minutes per $`\mu`$.** The two
+   earlier fits at $`\mu = 1`$ and 5 bracket the range, so $`\mu = 2`$ and
+   3 are interpolations and land within a coarse step before the first
+   evaluation; then 0.5, 1.5 and 4; then 0.3, 0.7, 0.2 and 0.1, the small
+   end, where the objective is weakest. Eighteen evaluations each, cut
+   from thirty after the first two fits showed the interpolated start was
+   already the answer to within polish.
+3. **Fit formulas as soon as four points exist, and start from them.**
+   Power laws in $`\mu`$ through the fitted ratios, constant edges. With
+   four campaign fits the formulas replace interpolation as the starting
+   point, which is what makes the small $`\mu`$ fits cheap: their targets
+   barely constrain the shape, so the formula's prediction is most of the
+   answer.
+4. **Verify each fit with one sweep, five minutes per $`\mu`$**, at
+   $`A = 5`$ across the whole ratio range, chaotic cells confirmed. This
+   is where the chaos prediction is tested: at which $`\mu`$ chaos first
+   appears at this drive in Van der Pol, and whether the model has it
+   there.
+5. **Re-fit $`\mu = 1`$ and 5 on the uniform objective** last, so the
+   parameter table is one recipe throughout.
+6. **Deferred**, in order of value: regime maps across drive amplitude at
+   one or two more $`\mu`$ (an hour each; $`\mu = 2`$ first, where the
+   3:1 plateau is widest); the chaos boundary in $`\mu`$ located by a
+   sweep at $`A = 10`$ between 2 and 4; a fit at $`\mu = 7`$ or 10 to see
+   whether the power laws hold beyond the fitted range; tighter period
+   leeway at $`\mu = 5`$ to remove the two per cent frequency offset.
+
+### The fits
+
+Each row is one fit: the five parameters, the free cycle it landed on
+against Van der Pol's, and its plateau edges against the targets, all at
+$`A = 5`$. The table is regenerated from `campaign/results.json` as the
+campaign runs.
+
+<!-- FITTABLE -->
+| $`\mu`$ | $`\zeta_0`$ | $`\zeta_1`$ | $`\zeta_2`$ | $`a`$ | $`b`$ | free $`r`$ | free $`T`$ | 1:1 ends, model vs target | 3:1 plateau, model vs target (or the second target) | evaluations |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 0.1 | $`-0.043`$ | 0.090 | 0.22 | 1.203 | 2.124 | 2.132 (+6.6%) | 6.288 (+0.0%) | 2.07 vs 2.04 | 1:1 at A = 1: 0.54–1.29 vs 0.56–1.29 | 18 |
+| 0.2 | $`-0.093`$ | 0.178 | 0.52 | 1.226 | 2.177 | 2.233 (+11.6%) | 6.305 (+0.1%) | 2.08 vs 2.09 | 1:1 at A = 1: 0.58–1.28 vs 0.56–1.29 | 18 |
+| 0.3 | $`-0.108`$ | 0.246 | 0.69 | 1.278 | 2.238 | 2.203 (+10.1%) | 6.316 (-0.0%) | 2.09 vs 2.11 | 2.86–3.12 vs 2.87–3.12 | 18 |
+| 0.5 | $`-0.190`$ | 0.444 | 1.47 | 1.255 | 2.081 | 2.127 (+6.2%) | 6.393 (+0.2%) | 2.12 vs 2.13 | 2.72–3.22 vs 2.77–3.21 | 18 |
+| 0.7 | $`-0.237`$ | 0.537 | 2.48 | 1.246 | 2.286 | 2.160 (+7.7%) | 6.440 (-0.5%) | 2.14 vs 2.16 | 2.69–3.27 vs 2.68–3.28 | 18 |
+| 1 | $`-0.362`$ | 0.924 | 3.37 | 1.209 | 2.159 | 2.030 (+1.1%) | 6.701 (+0.6%) | 2.22 vs 2.21 | 2.54–3.41 vs 2.56–3.41 | 18 |
+| 1.5 | $`-0.543`$ | 1.214 | 5.43 | 1.163 | 2.025 | 2.048 (+1.6%) | 7.138 (+0.6%) | 2.31 vs 2.29 | 2.47–3.61 vs 2.47–3.61 | 18 |
+| 2 | $`-0.730`$ | 1.544 | 7.30 | 1.165 | 2.054 | 2.091 (+3.5%) | 7.756 (+1.6%) | 2.37 vs 2.38 | 2.47–3.78 vs 2.47–3.79 | 30 |
+| 3 | $`-1.074`$ | 2.353 | 10.72 | 1.131 | 2.018 | 2.047 (+1.2%) | 9.252 (+4.4%) | 2.49 vs 2.49 | 2.52–4.11 vs 2.53–4.11 | 30 |
+| 4 | $`-1.319`$ | 3.020 | 16.59 | 1.161 | 2.109 | 2.118 (+4.7%) | 10.469 (+2.6%) | 2.62 vs 2.59 | 2.62–4.37 vs 2.59–4.33 | 18 |
+| 5 | $`-1.563`$ | 4.025 | 22.42 | 1.189 | 2.179 | 2.094 (+3.6%) | 11.961 (+3.0%) | 2.71 vs 2.68 | 2.71–4.52 vs 2.68–4.48 | 18 |
+| 8 | $`-2.475`$ | 6.136 | 39.13 | 1.178 | 2.303 | 2.119 (+5.1%) | 16.686 (+4.0%) | 2.79 vs 2.81 | 2.79–4.71 vs 2.81–4.74 | 18 |
+
+Power laws through the fits (11 points): $`\zeta_0 = -0.365\,\mu^{0.930}`$; $`\zeta_1 = +0.824\,\mu^{0.963}`$; $`\zeta_2 = +3.290\,\mu^{1.170}`$; edges $`a = 1.202 \pm 0.044`$, $`b = 2.132 \pm 0.082`$.
+
+| $`\mu`$ | agreement | chaotic cells, Van der Pol | where | chaotic cells, model | where |
+| --- | --- | --- | --- | --- | --- |
+| 0.1 | none in either | 0 | — | 0 | — |
+| 0.2 | none in either | 0 | — | 0 | — |
+| 0.3 | none in either | 0 | — | 0 | — |
+| 0.5 | none in either | 0 | — | 0 | — |
+| 0.7 | none in either | 0 | — | 0 | — |
+| 1 | none in either | 0 | — | 0 | — |
+| 1.5 | 0.333 | 1 | 1–3 at 2.46 | 3 | 1–3 at 2.42–2.46 |
+| 2 | 0.500 | 1 | 1–3 at 2.46 | 2 | 1–3 at 2.44–2.46 |
+| 3 | 0.182 | 4 | 1–3 at 2.52; 3–4 at 4.12; 3–4 at 4.30; 4–5 at 4.48 | 6 | 1–3 at 2.52–2.54; 4–5 at 4.50–4.54; 4–5 at 4.58 |
+| 4 | 0.222 | 7 | 3–5 at 4.34–4.36; 3–5 at 4.40–4.42; 3–5 at 4.54–4.58 | 4 | 3–4 at 4.38–4.42; 3–4 at 4.46 |
+| 5 | 0.250 | 4 | 3–5 at 4.50; 3–5 at 4.56–4.60 | 5 | 3–5 at 4.54–4.58; 3–5 at 4.68–4.70 |
+<!-- /FITTABLE -->
+
+### Formulas
+
+Power laws through all eleven fits, $`\mu`$ from 0.1 to 5:
+
+```math
+\zeta_{0} = -0.365\,\mu^{0.93}, \qquad
+\zeta_{1} = 0.824\,\mu^{0.96}, \qquad
+\zeta_{2} = 3.29\,\mu^{1.17}, \qquad
+a = 1.20 \pm 0.05, \quad b = 2.13 \pm 0.09
+```
+
+The core and band ratios are proportional to $`\mu`$ to within their
+exponents' distance from one, which is how Van der Pol's own law scales:
+the whole of $`\zeta(x) = -\mu(1 - x^2)/2`$ is linear in $`\mu`$. The
+edges do not move; their spread across the eleven fits is four per cent.
+The shape is steeper than a sampling of the law — with these edges the
+law's zone means are $`-0.28\mu`$, $`0.76\mu`$ and $`2.7\mu`$, so the
+fitted core is 1.3 times the law's, the band 1.1 times, the outer 1.2 to
+1.5 times — and it is one shape scaled by $`\mu`$, which is the single
+most useful thing the campaign found.
+
+**The outer level is weakly determined, and it does not matter.** The
+two fits at $`\mu = 5`$, made on different targets, put $`\zeta_{2}`$ at
+15 and at 22 with the plateau edges matched equally well, and the outer
+exponent of 1.17 is carried by exactly that looseness. The driven orbit
+at $`A = 5`$ peaks near 2.1 with the outer edge at 2.13, so the outer zone
+is barely visited and the fit cannot see it; the earlier normalisation
+work found the same thing by moving the outer ratio from 6 to 20 and
+watching nothing change. For a user this means the outer level can be
+set from the formula and left alone.
+
+**Where the formula is the fit.** At $`\mu = 0.1`$ the fit did not move
+from the formula's prediction in eighteen evaluations, and at 0.2 and 0.3
+it moved by less than the spread between fits. Below about $`\mu = 0.5`$
+the driven targets — the 1:1 plateau's end at $`A = 5`$ and the tongue at
+$`A = 1`$ — barely depend on the shape, so the data cannot place it and
+the formula does. That is also the regime where the two level prototype
+was already behaviourally Van der Pol.
+
+**How the starts behaved**, which is the evidence for the formulas being
+more than a curve through the points: from $`\mu = 1.5`$ on, every fit
+started from the interpolation or the laws landed within a coarse step
+of all three targets before the first evaluation, and three of them did
+not move at all.
+
+### Predicting chaos
+
+The verification table above is the test of the one thing this model is
+most wanted for: saying whether a drive will produce chaos. Read across
+$`\mu`$ at $`A = 5`$:
+
+- **Below $`\mu = 1.5`$ neither system has any chaos** in the sweep, at
+  any drive ratio from 0.5 to 6. The model predicts none, and there is
+  none.
+- **From $`\mu = 1.5`$ Van der Pol goes chaotic at the transition from
+  the 1:1 lock to the 3:1 lock**, one or two cells wide, and the model
+  has chaos at the same transition at 1.5, 2 and 3, within 0.05 in drive
+  ratio.
+- **From $`\mu = 3`$ chaos appears at the transitions above the 3:1
+  plateau** — 3:1 to 4:1, 4:1 to 5:1, then the direct 3:1 to 5:1 — and
+  the model has it in the same region at 3, 4 and 5, its cells within
+  0.05 to 0.1 of Van der Pol's.
+- **The one systematic miss** is the 3:1 to 4:1 transition at $`\mu = 3`$,
+  where Van der Pol has two cells and the model switches through a torus.
+  At $`\mu = 4`$ the model's cells sit at the 3:1 to 4:1 transition where
+  Van der Pol's sit at 3:1 to 5:1, the same region a tenth of a unit apart.
+
+So the rule a user can apply is plain. Fit the model, or take its
+parameters from the formulas with $`\mu`$ read from the free waveform, and
+sweep its drive frequency at the working drive strength: **where its lock
+plateaus meet, chaos is coming**, at the first transition above the 1:1
+lock once the ratios are of order one and at the transitions above the
+3:1 lock once they are of order three, and the frequencies at which it
+comes are the model's to within a twentieth of a unit of drive ratio.
+Where the model's plateaus meet cleanly, no chaos is coming. The
+agreement measured cell by cell is modest, 0.2 to 0.5, because the bands
+are one to four cells wide and shifted by a cell or two; the agreement on
+*whether* and *at which transition* is complete apart from the one miss.
+
+### Beyond the fitted range, and across drive strength
+
+Two of the deferred items were run once the campaign had finished.
+
+**$`\mu = 8`$, started from the laws.** Van der Pol there is a hard
+relaxation oscillator, free period 16.0, its 1:1 and 3:1 plateaus meeting
+directly at 2.81 with the 3:1 running to 4.74. The laws, fitted on 0.1 to
+5, predict $`\zeta = (-2.52, 6.10, 37.4)`$ with the usual edges; eighteen
+evaluations of the fit moved that to $`(-2.48, 6.14, 39.1)`$, edges
+$`(1.18, 2.30)`$, plateau edges at 2.79 and 4.71 against 2.81 and 4.74,
+free amplitude 5% high and period 4% long. The laws hold at 8; the row is
+in the table above, marked as outside the range the laws were fitted on
+and not used in them.
+
+**$`\mu = 2`$ across drive strength.** The regime map of the campaign's
+$`\mu = 2`$ fit beside Van der Pol over the same grid as the $`\mu = 5`$ and
+1 proofs, drive amplitudes 0 to 10 and ratios to 8:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/regime-three-mu2-dark.png">
+  <img alt="Regime maps over drive ratio and amplitude for the three level model fitted at mu = 2 and for Van der Pol at mu = 2, with the unforced row marked, and the two free limit cycles in the phase plane" src="figures/regime-three-mu2-light.png">
+</picture>
+
+*The campaign's $`\mu = 2`$ fit across the drive grid. The lock plateaus sit on Van der Pol's at every drive strength; the model has narrow high order locks where Van der Pol has tori, as at $`\mu = 1`$ and 5. Neither system shows chaos on this 0.1 grid, which steps over the one-cell band both have at the 1:1 to 3:1 transition at $`A = 5`$.*
+
+Plateau for plateau: at $`A = 5`$ the 1:1 lock ends at 2.3 and the 3:1
+runs 2.5 to 3.7 on both; at $`A = 10`$ the 1:1 ends at 3.1 against 3.2
+and the 3:1 runs 3.2–4.3 against 3.3–4.3; the 4:1 and 5:1 locks are at
+the same cells at every drive strength that has them. The model fitted
+at one drive strength holds across the grid at $`\mu = 2`$ as it did at
+5 and at 1.
+
+### The formulas alone, at $`\mu`$ never fitted
+
+The test of the formulas as a tool: build the model from the laws at
+$`\mu = 2.5`$ and 3.5, values never fitted, run no fit at all, and sweep
+it beside Van der Pol at $`A = 5`$ (`python3 campaign.py check`).
+
+| $`\mu`$ | model from the laws | 1:1 ends, model vs Van der Pol | 3:1 plateau, model vs Van der Pol | chaotic cells, Van der Pol | chaotic cells, model |
+| --- | --- | --- | --- | --- | --- |
+| 2.5 | $`(-0.85, 1.99, 9.6)`$, edges (1.20, 2.13) | 2.43 vs 2.44 | 2.52–3.96 vs 2.51–3.96 | 1–3 at 2.48–2.50 | 1–3 at 2.46 and 2.50–2.52 |
+| 3.5 | $`(-1.17, 2.75, 14.2)`$, edges (1.20, 2.13) | 2.52 vs 2.54 | 2.56–4.22 vs 2.54–4.22 | 3–4 at 4.24–4.34; 4–5 at 4.48–4.58 | 1–3 at 2.52–2.54; 3–4 at 4.24 and 4.30; 4–5 at 4.60–4.62 |
+
+With no fitting at all the plateau edges land within 0.02 of Van der
+Pol's, the 4:1 and 5:1 locks above them sit at the same cells, and the
+chaotic transitions are the same ones: at 2.5 the single band at the 1:1
+to 3:1 transition, at 3.5 both bands above the 3:1 plateau, each within
+0.05 in drive ratio. The one difference at 3.5 is a band at the 1:1 to
+3:1 transition that the model has and Van der Pol does not — the
+transition that is chaotic in Van der Pol from $`\mu = 1.5`$ to 3 and has
+just closed by 3.5, which the model closes a little later.
+
+This is the utility the document was written for. For a Van der Pol
+class oscillator a user measures the timescale, the amplitude and the
+relaxation parameter, takes the three ratios from the formulas, and has a
+model whose driven response — its locks, their edges, and where between
+them chaos comes — is Van der Pol's to a twentieth of a unit of drive
+ratio, with no fitting.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/campaign-dark.png">
+  <img alt="The fitted damping ratios and edges against mu with power laws through them, Van der Pol's plateau edges at each mu with the fitted models' edges over them, and the verification agreement against mu" src="figures/campaign-light.png">
+</picture>
+
+*Left: the three ratios from every fit on log axes, with the power laws through them, and the two edges, which do not move. Middle: Van der Pol's 1:1 and 3:1 plateaus at $`A = 5`$ at each $`\mu`$, the targets, with the fitted models' plateau edges drawn over them. Right: each fitted model's sweep against Van der Pol's, agreement and chaotic cell counts, filled in as the verification runs.*
 
 ## What to measure, and which parameter it sets
 
@@ -435,11 +683,14 @@ is not enough; two drive strengths are.
 
 ## Gaps
 
-- **Two relaxation parameters fitted**, $`\mu = 5`$ and $`\mu = 1`$. Nothing
-  in between or beyond, so the parameter table against $`\mu`$ has two
-  rows and no rule.
-- **The grid is the proof.** Drive strength to 10 and ratio to 8; outside
-  it the model is untested.
+- **Beyond $`\mu = 8`$ nothing is known.** The laws fitted on 0.1 to 5
+  hold at 8 to within 5% on the ratios; at 10 and above they are
+  untested.
+- **One drive strength in the fit.** Every campaign fit used the plateau
+  edges at $`A = 5`$ (plus the tongue at $`A = 1`$ below $`\mu = 0.3`$);
+  the $`\mu = 5`$ regime map is the only test across drive strength.
+- **The grid is the proof.** Drive strength to 10 and ratio to 8 at
+  $`\mu = 5`$ and 1; ratio to 6 at $`A = 5`$ elsewhere.
 - **The frequency offset.** Every lock of the $`\mu = 5`$ fit sits two per
   cent low, carried by the seven per cent longer free period. Tighter
   leeway on the period, or two drive strengths in the objective, has not
@@ -452,9 +703,10 @@ is not enough; two drive strengths are.
   free cycles and basin boundary and nothing else.
 - **Multistability is unmapped.** Where chaos coexists with a lock, which
   is found depends on the starting state; no basins have been computed.
-- **No rule from law to levels.** A known smooth damping law becomes three
-  levels only by running the fit; there is no formula, and the fitted
-  levels are not samples of the law.
+- **The formulas are Van der Pol's.** For a Van der Pol class oscillator
+  the laws give the levels from $`\mu`$; for any other smooth damping law
+  there is still no rule, only the fit, and the fitted levels are not
+  samples of the law.
 - **No theory for why three suffice.** Empirical, over one grid per fit.
 
 ## Prior art
