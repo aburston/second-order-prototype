@@ -175,7 +175,7 @@ def fit(res, mus=PRIORITY, maxfev=18):
             res["formula"] = law
             log("power laws: " + "  ".join("zeta%d = %+.3f mu^%.3f" % (k, l["sign"]*l["c"], l["p"])
                                             for k, l in enumerate(law["levels"]))
-                + "  edges %s" % tuple(round(e, 3) for e in law["edges"]))
+                + "  edges %s" % (tuple(round(e, 3) for e in law["edges"]),))
         save(res, "Campaign fit at mu = %g" % mu)
 
 
