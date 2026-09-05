@@ -584,11 +584,18 @@ the case where chaos is known to occur.
 ### Duffing oscillator
 
 $`\ddot{x} + \delta\dot{x} + \alpha x + \beta x^3 = \gamma\cos\omega t`$ — a
-nonlinear *stiffness* rather than nonlinear damping. Mentioned in
-`speculation.md` as the classic case these prototypes do **not** cover: its
-signature is that the resonant frequency shifts with amplitude.
+nonlinear *stiffness* rather than nonlinear damping. Its signature is that
+the resonant frequency shifts with amplitude. With $`\alpha \lt 0`$ it is
+the **double well**: a saddle at the origin between two stable wells,
+the model of a buckled beam, and under a drive one of the classic routes
+to chaos. `DUFFING.md` builds the piecewise version, with the cubic
+replaced by a band of negative stiffness between two linear wells, and
+uses the same double well for the pendulum seen from its inverted
+position.
 
-*Reference:* [Nayfeh & Mook], ch. 4; [Strogatz], ch. 12.
+*Reference:* [Nayfeh & Mook], ch. 4; [Strogatz], ch. 12; [Guckenheimer &
+Holmes], ch. 2 for the forced double well; [Baker & Gollub] for the
+driven pendulum.
 
 ### Maxwell's governor
 
@@ -701,6 +708,10 @@ measured signal to decide which prototype fits.
   Introduction for Scientists and Engineers*, 2nd ed., Princeton University
   Press, 2021. Freely available online; the friendliest starting point for
   the control-theory vocabulary.
+- **[Baker & Gollub]** G. L. Baker & J. P. Gollub, *Chaotic Dynamics: An
+  Introduction*, 2nd ed., Cambridge University Press, 1996. The driven
+  damped pendulum as the worked example, with the drive parameters
+  `DUFFING.md` borrows.
 - **[Benettin et al.]** G. Benettin, L. Galgani, A. Giorgilli &
   J.-M. Strelcyn, "Lyapunov characteristic exponents for smooth dynamical
   systems and for Hamiltonian systems; a method for computing all of them",

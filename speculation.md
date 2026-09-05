@@ -121,12 +121,13 @@ This is a better class test than the harmonic signature, because it is one
 robust frequency measurement rather than a ratio at the $`10^{-3}`$ level.
 Use it first; use the harmonics below only to choose *which* of the four.
 
-**Speculative.** The counterpart family, when it is wanted, is the obvious
-one: switch the **stiffness** at a displacement boundary instead of the
-damping — the bilinear or clearance oscillator. The same solvable-arcs
-machinery would apply, and it would give amplitude-dependent frequency by
-construction. That is a separate build, and none of the results here carry
-over to it.
+**Now built.** The counterpart family — switch the **stiffness** at a
+displacement boundary instead of the damping — is `DUFFING.md`: a band of
+negative stiffness between two linear wells, with the same solvable-arcs
+machinery and amplitude-dependent frequency by construction. None of the
+results here carry over to it, and it has one wrinkle of its own: the
+frequency stays flat until the orbit reaches the band, and only then
+falls.
 
 ## Model selection from an FFT
 
