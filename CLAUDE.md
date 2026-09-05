@@ -30,7 +30,15 @@ one that switches the **stiffness** rather than the damping: a saddle band
 between two wells, the piecewise Duffing, used for buckled beams and for
 the pendulum over the full circle with the hanging position treated as two
 wells; `duffing.py` is behind its numbers and its `figures/duffing-*`
-images. Each document's numbers come from a named script.
+images. `LOTKA.md` is the seventh prototype and the first whose states are
+two populations rather than a position and a velocity: Lotka-Volterra in
+log coordinates with the exponential replaced by a line and a floor (and
+optionally a third, steeper piece above a knee), a centre with an exact
+period, the prey's density dependence as damping, a
+hump in it as the README's offset boundary cycle, and the same equation as
+chemistry, epidemiology, laser physics and economics write it; `lotka.py`
+is behind its numbers and its `figures/lotka-*` images. Each document's
+numbers come from a named script.
 
 Read the README before extending it — each section builds on the previous
 one and reuses its notation ($x_1 = x$, $x_2 = \dot{x}$, $\zeta_{\pm}$,

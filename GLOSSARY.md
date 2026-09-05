@@ -597,6 +597,30 @@ position.
 Holmes], ch. 2 for the forced double well; [Baker & Gollub] for the
 driven pendulum.
 
+### Lotka-Volterra equations
+
+```math
+\dot{u} = \alpha u - \beta uv, \qquad \dot{v} = -\gamma v + \delta uv
+```
+
+The simplest model of a predator $`v`$ eating a prey $`u`$: prey grow at
+rate $`\alpha`$ when there are no predators, predators die at rate
+$`\gamma`$ when there is no prey, and each meeting converts prey into
+predators. Every orbit in the positive quadrant is closed, so the
+populations cycle for ever at an amplitude set only by where they
+started — a **centre**, and a famously fragile one, since any small
+change to the equations destroys it. Lotka found the pair in a
+hypothetical autocatalytic reaction before either author applied it to
+populations, and the same equations describe the endemic oscillation of
+an epidemic, the relaxation oscillation of a laser and Goodwin's
+business cycle. `LOTKA.md` builds the piecewise version in log
+coordinates, where the exponential becomes a line with a floor.
+
+*Reference:* [Lotka]; [Volterra]; [Murray], ch. 3; [Strogatz], ch. 6.
+For the other fields: [Anderson & May] for epidemics, [Siegman] for
+lasers, [Goodwin] for the growth cycle, [Rosenzweig] for the hump in the
+prey isocline.
+
 ### Maxwell's governor
 
 The flyball governor that regulates a steam engine's speed, analysed by
@@ -698,6 +722,9 @@ measured signal to decide which prototype fits.
 
 ## References
 
+- **[Anderson & May]** R. M. Anderson & R. M. May, *Infectious Diseases of
+  Humans: Dynamics and Control*, Oxford University Press, 1991. The SIR
+  model with births and its inter-epidemic period, ch. 6.
 - **[Andronov, Vitt & Khaikin]** A. A. Andronov, A. A. Vitt & S. E. Khaikin,
   *Theory of Oscillators*, Pergamon Press, 1966. The classic treatment of
   self-excited and relaxation oscillators, including piecewise models.
@@ -728,6 +755,9 @@ measured signal to decide which prototype fits.
 - **[Franklin, Powell & Emami-Naeini]** G. F. Franklin, J. D. Powell &
   A. Emami-Naeini, *Feedback Control of Dynamic Systems*, Pearson. For the
   s-plane and the z-plane.
+- **[Goodwin]** R. M. Goodwin, "A growth cycle", in C. H. Feinstein (ed.),
+  *Socialism, Capitalism and Economic Growth*, Cambridge University Press,
+  1967, 54–58. Employment and the wage share as predator and prey.
 - **[Guckenheimer & Holmes]** J. Guckenheimer & P. Holmes, *Nonlinear
   Oscillations, Dynamical Systems, and Bifurcations of Vector Fields*,
   Springer, 1983. Graduate level; the standard reference for Floquet theory
@@ -748,8 +778,15 @@ measured signal to decide which prototype fits.
   treatment of the saltation matrix.
 - **[Levinson]** N. Levinson, "A second order differential equation with
   singular solutions", *Annals of Mathematics* 50 (1949), 127–153.
+- **[Lotka]** A. J. Lotka, "Undamped oscillations derived from the law of
+  mass action", *Journal of the American Chemical Society* 42 (1920),
+  1595–1599; and *Elements of Physical Biology*, Williams & Wilkins, 1925.
+  The chemical mechanism first, the populations five years later.
 - **[Maxwell]** J. C. Maxwell, "On governors", *Proceedings of the Royal
   Society of London* 16 (1868), 270–283.
+- **[Murray]** J. D. Murray, *Mathematical Biology I: An Introduction*, 3rd
+  ed., Springer, 2002. Lotka-Volterra, logistic prey and the humped prey
+  isocline, ch. 3.
 - **[Nayfeh & Mook]** A. H. Nayfeh & D. T. Mook, *Nonlinear Oscillations*,
   Wiley, 1979. For averaging and the Duffing equation.
 - **[Ogata]** K. Ogata, *Modern Control Engineering*, Pearson. Second-order
@@ -765,6 +802,13 @@ measured signal to decide which prototype fits.
 - **[Press et al.]** W. H. Press, S. A. Teukolsky, W. T. Vetterling &
   B. P. Flannery, *Numerical Recipes*, 3rd ed., Cambridge University Press,
   2007. Root finding and the FFT.
+- **[Rosenzweig]** M. L. Rosenzweig, "Paradox of enrichment: destabilization
+  of exploitation ecosystems in ecological time", *Science* 171 (1971),
+  385–387. Why a humped prey isocline with the equilibrium on its rising
+  side gives a cycle.
+- **[Siegman]** A. E. Siegman, *Lasers*, University Science Books, 1986.
+  The class B rate equations and the relaxation oscillation frequency,
+  ch. 25.
 - **[Strogatz]** S. H. Strogatz, *Nonlinear Dynamics and Chaos*, 2nd ed.,
   CRC Press, 2015. **Start here.** Written for exactly this level, and covers
   most of sections 2, 4 and 5.
@@ -774,6 +818,9 @@ measured signal to decide which prototype fits.
   used for the chaotic case in this repository.
 - **[van der Pol]** B. van der Pol, "On relaxation-oscillations", *The London,
   Edinburgh and Dublin Philosophical Magazine* 2 (1926), 978–992.
+- **[Volterra]** V. Volterra, "Fluctuations in the abundance of a species
+  considered mathematically", *Nature* 118 (1926), 558–560. The Adriatic
+  fisheries, and the same equations from the other side.
 
 ### If you are reading one thing
 
