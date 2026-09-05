@@ -1100,4 +1100,9 @@ prototype into a discrete map with an exact Jacobian, and `EXAMPLES.md`
 fits physical systems to them. `DUFFING.md` leaves the damping alone and
 switches the stiffness instead — the piecewise Duffing prototype, with a
 saddle between two wells, for buckled beams and for the pendulum over the
-full circle.
+full circle. `LOTKA.md` leaves second order oscillators altogether for a
+predator and its prey: the Lotka-Volterra prototype, a centre whose exact
+period rises with amplitude, whose density dependence is the damping of the
+linear prototype and whose humped growth law is the offset boundary cycle
+above, with the same equation as chemistry, epidemiology, laser physics and
+economics write it.
