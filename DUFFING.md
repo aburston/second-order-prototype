@@ -39,7 +39,13 @@ from an energy map built on a closed form action. Fitted to Holmes'
 forced Duffing beam and to the driven pendulum of Baker and Gollub, the
 prototype's largest Lyapunov exponent is positive across the same band of
 drive strength as the smooth system's, with the onset within one scan
-step when the well depth is the matched quantity.
+step when the well depth is the matched quantity. A third stiffness level,
+a softer shoulder between the core of a well and the saddle band, removes
+the two level law's flat start: set from the pendulum's peak torque and
+well depth it holds the swing period within 5% at every amplitude and the
+rotation period within 1%, and fitted to Duffing's backbone it holds that
+within 2.6%. Driven, the three level pendulum agrees with the exact
+pendulum on whether each of 21 drive strengths is chaotic.
 
 ## Parameters and units
 
@@ -345,9 +351,9 @@ the well bottom towards the saddle:
 | 0.99 | 2.8532 | 2.8985 | 3.4292 |
 
 The slope matched fit is within 4% of Duffing from an amplitude of 0.5
-outward. The fix for the flat start, if a use needs it, is the one the
-three level prototype applied to damping: a third stiffness level between
-the well and the band. It is not built here.
+outward. The fix for the flat start is the one the three level prototype
+applied to damping, a third stiffness level between the well and the
+band, and it is built in its own section below.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="figures/duffing-period-dark.png">
@@ -383,6 +389,11 @@ match the slope. If the question is whether a given kick escapes a well,
 how many turns a spun pendulum makes, or where a drive starts producing
 chaos, match the depth: those are energy questions, and the drive results
 below bear this out.
+
+With the third level of the later section, two more measurements set
+the shoulder: the peak of the restoring force and the well depth, or,
+where those pull against the backbone as they do for Duffing, the period
+at two amplitudes beyond the flat start.
 
 For a strut the saddle rate can also be computed rather than measured:
 the growth rate of the straight configuration is set by how far the load
@@ -451,6 +462,211 @@ of times it passes over the top before capture, on a diverging scale with
 no full turn in neutral grey. The seam on the saddle line is the count
 itself: a start just short of the top that carries over it has made one
 more crossing than a start just past it.*
+
+## The third stiffness level
+
+The flat backbone comes from the well being linear all the way to the
+corner. Put a softer level between the core of the well and the saddle
+band and the softening starts earlier and in two stages instead of one.
+Measured from the well, $`u = x_e - \lvert x\rvert`$:
+
+```math
+\hat{g}(u) =
+\begin{cases}
+\omega_n^2\,u & 0 \lt u \lt a \quad\text{(core)} \\
+\omega_n^2\left[a + \sigma(u - a)\right] & a \lt u \lt b \quad\text{(shoulder)} \\
+\kappa\,\omega_n^2\,(x_e - u) & b \lt u \lt x_e \quad\text{(saddle band)}
+\end{cases}
+\qquad
+b = \frac{\kappa x_e - a + \sigma a}{\kappa + \sigma}
+```
+
+with $`0 \lt \sigma \lt 1`$ the shoulder's stiffness ratio and $`b`$ again
+fixed by continuity at the band edge. Two new parameters, $`a`$ and
+$`\sigma`$; at $`\sigma = 1`$ the shoulder is the core and the two level
+law returns, which is checked: the general period machinery, written for
+any list of linear pieces, reproduces the two level closed forms to
+$`10^{-14}`$ over ten orbits. The force in $`x`$ is
+$`g(x) = -\operatorname{sign}(x)\,\hat{g}(x_e - \lvert x\rvert)`$, and for the
+beam the outer side of each well keeps the core stiffness. Small
+oscillations are still the linear prototype: the backbone is flat to
+$`a`$, but $`a`$ is now a parameter rather than a consequence of $`\kappa`$.
+
+The period is the same piecewise sum as before with one more term. Each
+piece has $`V = V_c + \tfrac{1}{2}k(u - c)^2`$ about its own virtual centre
+$`c`$, so the transit across it is an arcsine, an arcsinh or an arccosh
+of the endpoints, and the pendulum swing is four times the sum from the
+well to the turning point, the beam's one well oscillation is
+$`\pi/\omega_n`$ plus twice that sum, and rotations and cross well orbits
+replace the turning point by the saddle. One numerical point: the piece
+containing the turning point is ended analytically, because the
+antiderivative has infinite slope there and a root found to $`10^{-12}`$
+would still cost $`10^{-6}`$ in the time. Against integration the closed
+forms agree to $`10^{-9}`$, swing and rotation, pendulum and beam.
+
+### Setting the shoulder: four measurements or the backbone
+
+With $`\omega_n`$ and $`\kappa`$ matching the slopes at the two equilibria,
+the two new numbers can be read from two more properties of the target's
+force law — its **peak** and its **well depth** — with nothing left to
+fit: the peak fixes $`b = x_e - g_{\max}/(\kappa\omega_n^2)`$, the depth
+then fixes $`a`$, and $`\sigma`$ follows from continuity. For the pendulum
+the peak torque is $`\omega_n^2`$ at 90° and the depth is
+$`2\omega_n^2`$, giving
+
+```math
+a = 0.7519\ (43.1°), \qquad b = 2.1416\ (122.7°), \qquad \sigma = 0.1785
+```
+
+so the three level pendulum matches the sine's slope at both equilibria,
+its peak, and its well depth, hence also the escape speed $`2\omega_n`$.
+Its swing period against the exact pendulum and the two level law:
+
+| amplitude | pendulum | two levels, $`\kappa = 1`$ | three levels |
+| --- | --- | --- | --- |
+| 45° | 1.0400 | 1.0000 | 1.0044 |
+| 60° | 1.0732 | 1.0000 | 1.0813 |
+| 75° | 1.1190 | 1.0000 | 1.1634 |
+| 90° | 1.1803 | 1.0000 | 1.2373 |
+| 105° | 1.2622 | 1.0747 | 1.3027 |
+| 120° | 1.3729 | 1.2049 | 1.3607 |
+| 135° | 1.5279 | 1.3840 | 1.4826 |
+| 150° | 1.7622 | 1.6409 | 1.7209 |
+| 165° | 2.1854 | 2.0820 | 2.1538 |
+| 175° | 2.8777 | 2.7813 | 2.8511 |
+
+The worst error over 5° to 175° falls from 15.8% to 4.8%, and the error
+now changes sign — slightly slow below 45°, fast around 90°, slow again
+beyond 120° — which is what a two stage approximation to a smooth curve
+should do. Fitting $`a`$ and $`\sigma`$ to the backbone directly, with
+the two slopes kept, finds $`a = 0.7658`$ (43.9°), $`\sigma = 0.1958`$ and
+a worst error of 3.7%: the four measurement construction is within one
+percent of the best this shape can do, so the peak and the depth are the
+right things to measure. Rotating, the third level closes the remaining
+gap:
+
+| bottom speed | pendulum | two levels, $`\kappa = 1`$ | three levels |
+| --- | --- | --- | --- |
+| 2.05 | 0.9087 | | 0.9002 |
+| 2.20 | 0.6719 | | 0.6675 |
+| 2.50 | 0.5081 | 0.5728 | 0.5062 |
+| 3.00 | 0.3840 | 0.4034 | 0.3832 |
+| 4.00 | 0.2683 | 0.2737 | 0.2680 |
+| 6.00 | 0.1716 | 0.1729 | 0.1715 |
+
+within 1% of the exact pendulum at every speed and within 0.4% from a
+bottom speed of $`2.5\omega_n`$ upward, against 13% for the two level
+slope matched law there. The two level law has no entry below
+$`2.22\omega_n`$ because its well is deeper than the pendulum's; the
+three level one rotates at every speed the pendulum does.
+
+**Duffing is different.** Its peak force, $`2/(3\sqrt{3}) = 0.385`$ at
+$`\alpha = \beta = 1`$, sits close to the saddle relative to its slopes,
+so matching peak and depth forces a very soft shoulder,
+$`a = 0.136`$, $`b = 0.615`$, $`\sigma = 0.118`$, and the period balloons:
+1.144 against Duffing's 1.057 at an inner amplitude of 0.3, a worst error
+of 10.6%, worse than the two level law. For Duffing the shoulder has to
+be fitted to the backbone. Keeping both slopes and minimising the worst
+relative error over inner amplitudes 0.05 to 0.95:
+
+```math
+a = 0.2103, \qquad b = 0.4400, \qquad \sigma = 0.3033
+```
+
+| inner amplitude | Duffing | two levels, $`\kappa = 1/2`$ | three levels | four point |
+| --- | --- | --- | --- | --- |
+| 0.2 | 1.0262 | 1.0000 | 1.0000 | 1.0544 |
+| 0.3 | 1.0573 | 1.0000 | 1.0370 | 1.1444 |
+| 0.4 | 1.1011 | 1.0344 | 1.0800 | 1.2174 |
+| 0.5 | 1.1605 | 1.1187 | 1.1368 | 1.2772 |
+| 0.6 | 1.2409 | 1.2250 | 1.2367 | 1.3271 |
+| 0.7 | 1.3529 | 1.3599 | 1.3690 | 1.4226 |
+| 0.8 | 1.5207 | 1.5466 | 1.5543 | 1.5967 |
+| 0.9 | 1.8217 | 1.8611 | 1.8682 | 1.9058 |
+
+The worst error falls from 6.7% to 2.6%. The fitted law has a peak of
+$`0.560`$ against Duffing's $`0.385`$ and a well depth of $`0.314`$
+against $`0.25`$: it buys the backbone by overstating the force, and a
+use that needs the escape energy right should match the depth with
+$`\kappa`$ instead, as the two level section did. The lesson is general:
+three levels can match the backbone or the energetics closely, and for a
+sine-like force both at once, but a force whose peak sits near the saddle
+makes the two pull apart.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/duffing-three-level-dark.png">
+  <img alt="Three level force laws for the pendulum and Duffing beside the smooth targets, with the swing period against amplitude for each" src="figures/duffing-three-level-light.png">
+</picture>
+
+*Top: the three level force law against the sine and against Duffing's
+cubic, with the two level law for comparison and the core and shoulder
+edges marked. Bottom: the backbones. The pendulum's third level is set
+from four measurements and needs no fitting; Duffing's shoulder is fitted
+to its backbone.*
+
+### The drive band survives the third level
+
+The test of the later section, repeated with the three level fits in
+place of the two level ones. For the pendulum family the third level
+turns a good match into a cell by cell one:
+
+| $`A`$ | pendulum | two levels, $`\kappa = 0.68`$ | three levels |
+| --- | --- | --- | --- |
+| 1.00 | $`-0.007`$ | $`-0.146`$ | $`-0.052`$ |
+| 1.05 | $`-0.092`$ | $`-0.004`$ | $`-0.019`$ |
+| 1.10 | $`+0.011`$ | $`+0.083`$ | $`+0.117`$ |
+| 1.15 | $`+0.105`$ | $`+0.013`$ | $`+0.152`$ |
+| 1.20 | $`+0.150`$ | $`+0.151`$ | $`+0.130`$ |
+| 1.25 | $`+0.108`$ | $`+0.167`$ | $`+0.068`$ |
+| 1.30 | $`-0.250`$ | $`+0.119`$ | $`-0.022`$ |
+| 1.35 | $`-0.250`$ | $`-0.106`$ | $`-0.128`$ |
+| 1.45 | $`-0.042`$ | $`+0.092`$ | $`-0.038`$ |
+| 1.50 | $`+0.124`$ | $`-0.005`$ | $`+0.097`$ |
+| 1.55 | $`-0.013`$ | $`+0.141`$ | $`-0.030`$ |
+| 1.60 | $`-0.133`$ | $`-0.026`$ | $`-0.048`$ |
+
+Over the whole scan from $`A = 0.60`$ to $`1.60`$ the three level pendulum
+has the same sign of exponent as the exact pendulum at all 21 cells: the
+chaotic band $`1.10`$ to $`1.25`$, the periodic window at $`1.30`$ to
+$`1.45`$, the isolated chaotic cell at $`1.50`$ and the periodic cells
+beyond it. The two level law disagreed at four of them. Since the third
+level was set from the sine's peak and depth, not from anything driven,
+this is a prediction rather than a fit.
+
+For the beam family the third level does not help, and the reason is
+the one the backbone section found:
+
+| $`A`$ | Duffing | two levels, $`\kappa = 1/3`$ | three levels |
+| --- | --- | --- | --- |
+| 0.28 | $`+0.121`$ | $`-0.125`$ | $`-0.125`$ |
+| 0.30 | $`+0.121`$ | $`+0.136`$ | $`-0.125`$ |
+| 0.32 | $`+0.083`$ | $`+0.108`$ | $`+0.114`$ |
+| 0.36 | $`+0.162`$ | $`-0.124`$ | $`-0.022`$ |
+| 0.38 | $`+0.168`$ | $`+0.154`$ | $`+0.139`$ |
+| 0.44 | $`+0.165`$ | $`+0.164`$ | $`+0.145`$ |
+| 0.46 | $`-0.125`$ | $`-0.124`$ | $`-0.106`$ |
+| 0.48 | $`-0.125`$ | $`+0.151`$ | $`+0.168`$ |
+
+Its onset moves to $`A = 0.32`$, a step later than the depth matched two
+level law and two later than Duffing, and it disagrees with Duffing in
+sign at five of the 21 cells against the two level law's four. The
+Duffing shoulder was fitted to the backbone at the cost of a well 25%
+too deep, and where chaos starts is an energy question: a drive has to
+lift the state over the saddle. The pendulum's third level matched the
+depth exactly and its drive band followed; Duffing's did not and its
+band did not. Whichever quantity the shoulder is set from is the one the
+driven behaviour inherits.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/duffing-three-drive-dark.png">
+  <img alt="Largest Lyapunov exponent against drive strength for the beam family and the pendulum family, smooth system beside the two level and three level laws" src="figures/duffing-three-drive-light.png">
+</picture>
+
+*The largest Lyapunov exponent across drive strength, one initial
+condition per cell. Right: the three level pendulum follows the exact
+pendulum through every band and window. Left: for the beam the third
+level, fitted to the backbone rather than the energetics, shifts the
+onset of chaos later rather than closer.*
 
 ## Under a drive
 
@@ -539,10 +755,11 @@ $`x`$ is an angle, so $`\lambda = 1`$ and only the clock scales.
 
 ## What is not established
 
-- **The flat backbone.** Below the corner the frequency does not move
-  with amplitude, where the pendulum's and Duffing's fall from the start.
-  A third stiffness level is the fix, on the pattern of the three level
-  prototype, and is not built.
+- **The backbone is still flat below $`a`$.** The third level moves the
+  flat start from the corner to the core edge and cuts the worst error to
+  a few percent; it does not remove it. More levels would stack the same
+  way, and the period machinery is written for any number, but only three
+  are set and checked here.
 - **No exact map.** Every arc has a closed form with damping too — the
   well arcs are `frequency.kernels`, the band arcs the same expressions
   with $`\kappa`$ reversing the sign of the stiffness — so the section
@@ -563,7 +780,7 @@ $`x`$ is an angle, so $`\lambda = 1`$ and only the clock scales.
 python3 duffing.py
 ```
 
-prints every table above and writes the five figures in both themes to
+prints every table above and writes the seven figures in both themes to
 `figures/duffing-*.png`. `python3 duffing.py checks` prints the tables
 only and `python3 duffing.py figures` writes the figures only; add
 `quick` to either for a coarse run in a few minutes, and `fresh` to
