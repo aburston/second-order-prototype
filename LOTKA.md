@@ -36,7 +36,11 @@ predator oscillator, with the damping ratio in closed form and the
 equilibrium globally attracting. A hump in the prey's growth law gives a
 limit cycle, and while that cycle stays within a factor $`e^{s_0}`$ of the
 equilibrium it *is* the README's offset boundary cycle — the same
-amplitude, period and multiplier to every digit printed.
+amplitude, period and multiplier to every digit printed. A third piece of
+the rate law, a steeper slope above a knee, brings the period within 4%
+of Lotka-Volterra's at every amplitude tested and the predator's lag
+onto it, at the price of a peak still a factor 1.4 high; fitted to the
+peak instead it closes that gap and gives up the period.
 
 ## Parameters and units
 
@@ -58,8 +62,11 @@ Five numbers, of which two are population scales and one is a timescale:
 | $`\gamma`$ | the same for the predator's growth in $`\ln u`$ | as above | 1/time |
 | $`s_0`$ | the floor: a population below $`e^{-s_0}`$ of its equilibrium value has no further effect on the other. The prey's greatest growth rate is $`\alpha s_0`$ and the predator's greatest death rate is $`\gamma s_0`$ | the prey's growth rate with no predators, divided by $`\alpha`$; $`s_0 = 1`$ matches Lotka-Volterra | — |
 | $`u^*, v^*`$ | the equilibrium populations | the time averages over a cycle | populations |
+| $`s_1, k`$ | optional third piece: above the knee $`s_1`$ the law rises with slope $`k \gt 1`$, so a population more than $`e^{s_1}`$ times its equilibrium acts on the other $`k`$ times as strongly per e-fold | the period beyond the corner, or the prey peak; see the third piece section | — |
 
-Only $`\alpha/\gamma`$ and $`s_0`$ carry the shape. Everything below is in
+Only $`\alpha/\gamma`$, $`s_0`$ and, if used, $`s_1`$ and $`k`$ carry the
+shape. The two piece law, $`k = 1`$, is the one every section uses unless
+it says otherwise. Everything below is in
 units with $`\alpha = \gamma = 1`$, so $`\omega_0 = 1`$ and the small
 amplitude period is $`T_0 = 2\pi`$, except where a line says otherwise;
 the scaling rule near the end moves the results to any rates.
@@ -394,6 +401,147 @@ the fit rather than a parameter: if the measured lag is shorter than a
 quarter of the small amplitude period, the prey's crash is faster than
 linear in $`\ln v`$ and the prototype will overstate the prey peak.
 
+## The third piece
+
+Everything the two piece law gets wrong is in one place: above the
+origin, where $`e^s - 1`$ is convex and $`\phi`$ is straight. The remedy
+on the pattern of the three level prototype is a third piece, a steeper
+slope $`k`$ above a knee $`s_1 \gt 0`$:
+
+```math
+\phi(s) =
+\begin{cases}
+-s_0 & s \lt -s_0 \\
+s & -s_0 \le s \le s_1 \\
+s_1 + k\,(s - s_1) & s \gt s_1
+\end{cases}
+```
+
+still continuous, still with $`\Phi`$ piecewise quadratic and $`H`$
+conserved. The two floors and the two knees now cut the plane into nine
+rectangles instead of four, in each of which the field is affine, and
+the same walk applies: where both slopes are nonzero the arc is an
+ellipse about a centre, traversed at the angular rate
+$`\omega_0\sqrt{a_\xi a_\eta}`$ with $`a`$ the slope of $`\phi`$ in force on
+each axis — $`k\,\omega_0`$ in the corner where both populations are
+above their knees — and where one slope is zero it is a parabola. `step`
+and `circuit` handle any such piecewise linear law; the two piece
+results above are the case $`k = 1`$.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/lotka-three-dark.png">
+  <img alt="The three piece law fitted two ways against the exponential, and the period, prey peak and predator lag it gives against Lotka-Volterra and the two piece law" src="figures/lotka-three-light.png">
+</picture>
+
+*Top left: the law with its knee, fitted to the period (solid) and to the
+prey peak (dashed). The other three panels: period, prey peak and
+predator lag against the prey trough for Lotka-Volterra, the two piece
+law and both three piece fits.*
+
+### One piece cannot buy both the peak and the period
+
+A steeper upper slope does two things. It stops the prey peak growing as
+fast, since $`\Phi`$ climbs faster above the knee and a given $`H`$ is
+reached at a smaller $`\xi_{max}`$. And it *shortens* every arc that
+passes above the knee, because those arcs turn at $`\sqrt{k}\,\omega_0`$ or
+$`k\,\omega_0`$ instead of $`\omega_0`$. The first is what the two piece law
+lacked; the second works against the floors, which lengthen the period.
+Lotka-Volterra's period rises with amplitude from the first, so the knee
+must not be allowed to win at small amplitude.
+
+Two fits follow, on the pattern of the piecewise Duffing prototype's
+slope and depth matched pairs, both with $`s_0 = 1`$:
+
+| fit | condition | $`s_1`$ | $`k`$ | the exponential's slope $`e^{s_1}`$ at the knee |
+| --- | --- | --- | --- | --- |
+| period matched | the period equals Lotka-Volterra's at prey troughs of $`e^{-3}`$ and $`e^{-8}`$ | 1.6065 | 8.370 | 4.99 |
+| peak matched | the prey peak equals Lotka-Volterra's at prey troughs of $`e^{-2}`$ and $`e^{-8}`$ | 0.4468 | 3.675 | 1.56 |
+
+Both are two equations in two unknowns, solved by `fit_period_piece`
+and `fit_third_piece`, and both are checked at the head of the section's
+output. Against Lotka-Volterra at the same prey trough:
+
+| prey trough | $`T/T_0`$, LV | period fit | peak fit | prey peak, LV | period fit | peak fit | lag$`/T_0`$, LV | period fit | peak fit |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| $`-0.5`$ | 1.018 | 1.000 | 0.958 | 0.429 | 0.500 | 0.494 | 0.207 | 0.250 | 0.229 |
+| $`-1.0`$ | 1.062 | 0.995 | 0.743 | 0.751 | 1.000 | 0.807 | 0.177 | 0.250 | 0.128 |
+| $`-1.5`$ | 1.124 | 1.137 | 0.820 | 1.003 | 1.414 | 1.036 | 0.156 | 0.250 | 0.108 |
+| $`-2.0`$ | 1.197 | 1.240 | 0.933 | 1.207 | 1.709 | 1.207 | 0.141 | 0.223 | 0.100 |
+| $`-3.0`$ | 1.364 | 1.364 | 1.157 | 1.519 | 1.985 | 1.475 | 0.119 | 0.140 | 0.093 |
+| $`-5.0`$ | 1.730 | 1.726 | 1.587 | 1.938 | 2.311 | 1.877 | 0.093 | 0.093 | 0.086 |
+| $`-8.0`$ | 2.286 | 2.286 | 2.200 | 2.336 | 2.648 | 2.336 | 0.073 | 0.075 | 0.082 |
+
+**The period matched fit** puts the knee at $`e^{1.6} \approx 5`$ times
+the equilibrium, above the floor's $`e^{-1}`$ on the other side, so the
+floors act first and the backbone keeps its shape: flat to the corner,
+then within 4% of Lotka-Volterra at every trough in the table where the
+two piece law was 26% long, and within 0.3% from $`e^{-3}`$ down. The
+predator's lag, fixed at a quarter period by the two piece law, now
+shrinks with amplitude and is on Lotka-Volterra's curve from a trough of
+$`e^{-5}`$. The large amplitude ratio $`T\alpha/\lvert\xi_{min}\rvert`$ at
+troughs of $`-10, -20, -40`$ is $`1.667, 1.396, 1.243`$ against
+Lotka-Volterra's $`1.664, 1.382, 1.219`$, where the two piece law gave
+$`2.10, 1.74, 1.50`$. The prey peak comes down from a factor $`4.7`$ high at
+$`e^{-8}`$ to a factor $`1.4`$, and is still the wrong shape: a square
+root with a smaller coefficient, not a logarithm.
+
+**The peak matched fit** puts the knee at $`e^{0.45} \approx 1.6`$ times the
+equilibrium and holds the prey peak within $`0.06`$ of Lotka-Volterra's
+from a trough of $`e^{-1.5}`$ down. The cost is the period: orbits that
+cross the knee before they reach a floor turn faster than the linear
+rate, and the period *falls* to $`0.74\,T_0`$ near a trough of $`e^{-1}`$
+before the floors pull it back up; it is still 22% short of
+Lotka-Volterra's at $`e^{-2}`$, 15% at $`e^{-3}`$ and 4% at $`e^{-8}`$. A predator-prey cycle whose period
+shortens with amplitude is not Lotka-Volterra's, so this fit is for the
+shape of the orbit, not its clock.
+
+Which to prefer follows from what is measured: fit the period if the
+cycle length and the phase lag are the data, fit the peak if the
+outbreak sizes are. What neither fit can do is both, and the reason is
+on the *other* side of the origin. Between $`-s_0`$ and $`0`$ the
+exponential is concave, with slope falling from $`1`$ to $`e^{-1}`$, and
+that softness is what lets Lotka-Volterra's period rise from the first
+while its peaks stay low; the two piece law has slope $`1`$ all the way
+to the floor and cannot reproduce it. A fourth piece, a gentler slope
+below the origin, is where the remaining error lives, and is not built.
+
+### The walk is exact with nine regions too
+
+The period matched fit against direct integration, $`\alpha = \gamma = 1`$:
+
+| prey trough | arcs in one period | walk | integrated | difference |
+| --- | --- | --- | --- | --- |
+| $`-0.5`$ | 1 | 6.283185307 | 6.283185307 | 0 |
+| $`-1.0`$ | 1 | 6.283185307 | 6.283185307 | 0 |
+| $`-1.5`$ | 4 | 7.141592654 | 7.141592654 | $`7\times10^{-11}`$ |
+| $`-2.0`$ | 9 | 7.789347712 | 7.789347712 | $`8\times10^{-11}`$ |
+| $`-3.0`$ | 9 | 8.568464002 | 8.568463993 | $`9\times10^{-9}`$ |
+| $`-5.0`$ | 9 | 10.842907002 | 10.842907002 | $`5\times10^{-10}`$ |
+| $`-8.0`$ | 9 | 14.362173320 | 14.362173316 | $`4\times10^{-9}`$ |
+
+and at $`\alpha = 2`$, $`\gamma = 1/2`$, $`s_0 = 0.7`$, $`s_1 = 0.3`$, $`k = 2.5`$:
+
+| prey trough | arcs in one period | walk | integrated | difference |
+| --- | --- | --- | --- | --- |
+| $`-0.9`$ | 7 | 5.449381185 | 5.449381184 | $`5\times10^{-11}`$ |
+| $`-3.0`$ | 9 | 7.511073574 | 7.511073574 | $`2\times10^{-10}`$ |
+| $`-6.0`$ | 9 | 10.693408827 | 10.693408828 | $`10^{-9}`$ |
+
+The agreement is to $`10^{-8}`$, a shade looser than the two piece law's
+$`10^{-10}`$ because the integrator is now crossing corners into arcs
+that turn eight times faster; $`H`$ drifts by $`10^{-10}`$ and
+$`9\times10^{-9}`$ over three periods of the orbits with troughs at
+$`e^{-1.5}`$ and $`e^{-5}`$. The orbit with its trough exactly at
+$`e^{-1}`$ is tangent to both floors, and the walk treats a tangency as
+no crossing, which the integrated $`2\pi`$ confirms.
+
+The remaining sections use the two piece law. The damping and the tent
+enter through the prey's own term and are unaffected in form; the exact
+correspondence with the README's offset cycle asks that the cycle stay
+inside the region where $`\phi`$ is the identity, which with a knee means
+below $`s_1`$ as well as above $`-s_0`$, and the period matched knee at
+$`1.6`$ leaves the cycle at $`\xi_1 = 0.3`$ well inside it.
+
 ## The same equation in other fields
 
 Lotka found the equations in a hypothetical chemical reaction five years
@@ -479,12 +627,14 @@ compared with each field's own equations from a large excursion:
 </picture>
 
 *The field's observable — the product $`Y`$, the number infected, the
-photon number — from its own equations and from the prototype, each
-started with the predator at $`e^{-3}`$ of its equilibrium, the laser at
-one photon. The prototype has the right period and damping and overshoots
-each peak, by the factor the prey peak comparison above predicts: $`Y`$
-peaks at $`9.4\,Y^*`$ against $`4.6`$, the epidemic at $`6.7\,I^*`$
-against $`3.9`$, the laser's first spike at $`45\,n^*`$ against $`10`$.*
+photon number — from its own equations and from the prototype with two
+pieces and with the period matched third piece, each started with the
+predator at $`e^{-3}`$ of its equilibrium, the laser at one photon. The
+two piece law has the right period and damping and overshoots each peak
+by the factor the prey peak comparison above predicts: $`Y`$ peaks at
+$`9.4\,Y^*`$ against $`4.6`$, the epidemic at $`6.7\,I^*`$ against
+$`3.9`$, the laser's first spike at $`45\,n^*`$ against $`10`$. The third
+piece brings those to $`7.3`$, $`6.1`$ and $`14`$: most of the way for the laser, whose photon number swings furthest past the knee, and little for the epidemic, whose infecteds barely reach it.*
 
 ## Density dependence is damping
 
@@ -695,17 +845,21 @@ flat.
 
 ## What is not established
 
-- **The upper half of the exponential.** Above the origin $`\phi`$ is
-  linear where $`e^s - 1`$ is convex, so the prey peak grows as the square
-  root of the trough rather than its logarithm, the period runs long past
-  the corner and the predator's lag does not shrink. A third piece of
-  $`\phi`$, a steeper slope above some $`s_1 \gt 0`$, is the fix on the
-  pattern of the three level prototype and is not built.
+- **The lower half of the exponential.** With the third piece the upper
+  half is served, and one fit gets the period and lag while the other
+  gets the peak. Getting both needs the softness of $`e^s - 1`$ between
+  $`-s_0`$ and the origin, where its slope falls from $`1`$ to $`e^{-1}`$ and
+  the law's stays at $`1`$; a fourth piece there is not built, and the
+  prey peak of the period matched fit is still a square root of the
+  trough rather than a logarithm.
 - **The flat backbone.** Below the corner the period does not move,
-  where Lotka-Volterra's rises from the first; the same third piece
-  would address it.
+  where Lotka-Volterra's rises from the first. The peak matched knee
+  makes it move the wrong way; the same fourth piece is the remedy.
 - **One floor for both populations.** $`s_0`$ is shared; separate floors
   are trivial in the code and not explored.
+- **The third piece stops at the conservative model.** The damping and
+  tent results are for the two piece law; the code accepts a knee with
+  either, and nothing is reported.
 - **The tent's large cycles.** The existence and uniqueness of the cycle
   once it touches the floors are observed over the parameters tested, not
   proved, and the new existence case in the last table is a single
@@ -727,9 +881,9 @@ flat.
 python3 lotka.py
 ```
 
-prints every table above and writes the six figures in both themes to
+prints every table above and writes the seven figures in both themes to
 `figures/lotka-*.png`. `python3 lotka.py checks` prints the tables only
 and `python3 lotka.py figures` writes the figures only. Nothing is
-cached; a full run takes about four minutes, most of it in the
-Lotka-Volterra integrations behind the period figure and in the return
-map iterations for the tent.
+cached; a full run takes about a quarter of an hour, most of it in the
+Lotka-Volterra integrations and the three piece lag integrations behind
+the period figures and in the return map iterations for the tent.
