@@ -7,3 +7,7 @@ figures/.attractor-*.npy
 
 # regenerable drive sweep behind CHAOS.md
 figures/.chaos-*.json
+
+# regenerable drive scans and basin grids behind DUFFING.md
+figures/.duffing-*.json
+figures/.duffing-*.npy

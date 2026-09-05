@@ -25,7 +25,12 @@ its numbers and figures. `CHAOS.md` takes the same three level prototype
 into Van der Pol's *nearly harmonic* mode, finds the chaotic band that mode
 has under a subharmonic drive, and shows it in time, in the phase plane and
 on the stroboscopic section beside Van der Pol's own, with `chaos.py` behind
-its numbers and figures. Each document's numbers come from a named script.
+its numbers and figures. `DUFFING.md` is the sixth prototype and the only
+one that switches the **stiffness** rather than the damping: a saddle band
+between two wells, the piecewise Duffing, used for buckled beams and for
+the pendulum over the full circle with the hanging position treated as two
+wells; `duffing.py` is behind its numbers and its `figures/duffing-*`
+images. Each document's numbers come from a named script.
 
 Read the README before extending it — each section builds on the previous
 one and reuses its notation ($x_1 = x$, $x_2 = \dot{x}$, $\zeta_{\pm}$,

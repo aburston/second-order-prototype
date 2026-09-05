@@ -26,7 +26,7 @@ Where a physical system has a smoother nonlinearity than the switch —
 the transistor's saturation — it is integrated separately as the
 reference the prototype is compared against, and the prototype is not
 bent to meet it. Systems whose nonlinearity is not a damping switch,
-the pendulum among them, are left for a prototype of their own.
+the pendulum among them, have a prototype of their own in `DUFFING.md`.
 
 ## The linear prototype: an LC tank, and Maxwell's governor linearised
 
@@ -403,8 +403,8 @@ linear with $`A_v \gt 3`$ and positive once it saturates.
   is the asymmetric model, bounded only for loop gain below two.
 - **What is left out.** The pendulum. At small angles it is only the
   linear prototype, and at large angles its nonlinearity is in the
-  restoring torque, which none of these prototypes switches. It will get
-  a prototype of its own.
+  restoring torque, which none of these prototypes switches. It has a
+  prototype of its own, the piecewise Duffing of `DUFFING.md`.
 
 ## Reproducing the numbers
 

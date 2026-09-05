@@ -1097,4 +1097,7 @@ reproduces Van der Pol's driven response including its chaos — is in
 each behaviour and a list of what is still missing; the three level model
 itself, with its parameters, measurements and proof, is `THREELEVEL.md`. `MAPS.md` turns every
 prototype into a discrete map with an exact Jacobian, and `EXAMPLES.md`
-fits physical systems to them.
+fits physical systems to them. `DUFFING.md` leaves the damping alone and
+switches the stiffness instead — the piecewise Duffing prototype, with a
+saddle between two wells, for buckled beams and for the pendulum over the
+full circle.
