@@ -387,10 +387,19 @@ from 0.40 to 0.80 at $`A = 1`$ with confirmation, the model has the same
 structure — a period doubled 2:1 lock, the 1:1 lock, a 2:2 lock, then 3:3,
 4:3 and 4:4 locks — and a confirmed chaotic band two cells wide at
 0.56–0.57, where Van der Pol's is three cells wide at 0.48–0.50. The
-subharmonic chaos of this mode is there, seven per cent higher in drive
-ratio, and the coarse grid stepped over it. So the model predicts that
-chaos appears in this mode, and where, to within the same kind of offset
-the plateau edges have.
+subharmonic chaos of this mode is there, higher in drive ratio, and the
+coarse grid stepped over it. So the model predicts that chaos appears in
+this mode, and where, to within the same kind of offset the plateau edges
+have.
+
+`CHAOS.md` re-measures this window at 0.001 with `chaos.py` and works the
+band in detail. The bands hold — the model's at 0.560–0.570, Van der Pol's
+region at 0.474–0.506 — and the offset between them is **15%**, not the
+seven per cent this section originally quoted, which was the free period
+offset of the $`\mu = 5`$ fit rather than a measurement of this one. On
+that grid the model's route into the chaos resolves into a clean period
+doubling cascade, locks 2, 4 and 8 in 0.550–0.557, where Van der Pol's
+window is broken up by periodic windows of order 11, 5, 4 and 2.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="figures/regime-three-mu1-dark.png">

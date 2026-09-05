@@ -4,3 +4,6 @@ __pycache__/
 
 # regenerable point clouds for the attractor figure
 figures/.attractor-*.npy
+
+# regenerable drive sweep behind CHAOS.md
+figures/.chaos-*.json
