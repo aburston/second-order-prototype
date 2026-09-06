@@ -878,6 +878,56 @@ def fig_phase(th, name):
     save(fig, name, "lotka-phase")
 
 
+FOUR = dict(s1=S1_4, k=K_4, s2=S2, m=M)
+
+
+def fig_phase_four(th, name):
+    """The phase plane figure again, with the four piece law in place of the two piece one."""
+    fig, axes = newfig(th, 1, 2, figsize=(10.4, 4.8))
+    c0, c1, c2 = th["series"]
+    for k, xm in enumerate(PHASE_TROUGHS):
+        _, x, y = orbit(H_from_trough(xm, **FOUR), **FOUR)
+        _, x2, y2 = orbit(H_from_trough(xm))
+        _, _, _, xl, yl = lv_run(xm)
+        lab_l = "Lotka-Volterra" if k == 0 else None
+        lab_2 = "two pieces" if k == 0 else None
+        lab_4 = "four pieces" if k == 0 else None
+        axes[0].plot(xl, yl, color=c0, linewidth=2.2, zorder=3, label=lab_l)
+        axes[0].plot(x2, y2, color=c1, linewidth=0.9, zorder=4, label=lab_2)
+        axes[0].plot(x, y, color=c2, linewidth=1.5, zorder=5, label=lab_4)
+        axes[1].plot(np.exp(xl), np.exp(yl), color=c0, linewidth=2.2, zorder=3, label=lab_l)
+        axes[1].plot(np.exp(x2), np.exp(y2), color=c1, linewidth=0.9, zorder=4, label=lab_2)
+        axes[1].plot(np.exp(x), np.exp(y), color=c2, linewidth=1.5, zorder=5, label=lab_4)
+        axes[0].annotate(f"$e^{{{xm:g}}}$", xy=(x.min(), 0.0), xytext=(-3, (6, -13, 6)[k]),
+                         textcoords="offset points", ha="right", fontsize=8, color=th["ink2"])
+    bs = breaks(S0, **FOUR)
+    for b in bs:
+        for fn in (axes[0].axvline, axes[0].axhline):
+            fn(b, color=th["ink2"], linewidth=0.9, linestyle=(0, (5, 3)), zorder=2)
+        for fn in (axes[1].axvline, axes[1].axhline):
+            fn(np.exp(b), color=th["ink2"], linewidth=0.9, linestyle=(0, (5, 3)), zorder=2)
+    for b, lab in zip(bs, ("floor", "soft", "knee")):
+        axes[0].annotate(lab, xy=(b, 2.55), xytext=(3, 0), textcoords="offset points",
+                         fontsize=7.5, color=th["ink2"])
+    axes[0].plot([0], [0], "o", color=th["ink"], markersize=5, zorder=6)
+    axes[1].plot([1], [1], "o", color=th["ink"], markersize=5, zorder=6)
+    axes[0].annotate("labels: prey trough $u_{min}/u^*$", xy=(0.03, 0.03), xycoords="axes fraction",
+                     fontsize=7.5, color=th["ink2"])
+    axes[0].set_xlim(-3.8, 2.7)
+    axes[0].set_ylim(-3.6, 2.7)
+    axes[1].set_xlim(0, 10)
+    axes[1].set_ylim(0, 10)
+    style(axes[0], th, "$\\xi = \\ln(u/u^*)$", "$\\eta = \\ln(v/v^*)$",
+          "Log coordinates: three breakpoints on each axis, sixteen regions")
+    style(axes[1], th, "prey  $u/u^*$", "predators  $v/v^*$", "The same orbits in populations")
+    legend(axes[0], th, loc="lower right")
+    legend(axes[1], th, loc="upper right")
+    fig.suptitle("Closed orbits at the same prey trough under the four piece law, "
+                 "$\\alpha = \\gamma = 1$", color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "lotka-phase-four")
+
+
 TIME_TROUGH = -4.0
 REGION_LABEL = {1: "predators scarce", 2: "prey scarce", 3: "both scarce"}
 
@@ -1451,6 +1501,7 @@ def figures_(out=None):
     for name, th in THEMES.items():
         fig_law(th, name)
         fig_phase(th, name)
+        fig_phase_four(th, name)
         fig_time(th, name)
         fig_period(th, name, out)
         fig_damped(th, name, out[f"cyc_{XI1_SMALL}"], out[f"cyc_{XI1_LARGE}"])

@@ -667,6 +667,19 @@ prey trough for Lotka-Volterra, the two piece law, the period matched
 three piece law (dashed) and the four piece law. Where the three piece
 law had to choose, the four piece law follows all three curves.*
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/lotka-phase-four-dark.png">
+  <img alt="Closed orbits of the four piece law, the two piece law and Lotka-Volterra at the same prey troughs, in log coordinates with the three breakpoints marked and in population coordinates" src="figures/lotka-phase-four-light.png">
+</picture>
+
+*The phase plane of the earlier section drawn again with the four piece
+law: orbits with prey troughs at $`e^{-0.5}`$, $`e^{-1.5}`$ and $`e^{-3}`$
+for Lotka-Volterra, the two piece law (thin) and the four piece law. The
+breakpoints on each axis are the floor at $`-2.54`$, the start of the soft
+slope at $`-0.445`$ and the knee at $`0.609`$. In log coordinates the four
+piece orbits sit on Lotka-Volterra's to the width of the line; in
+populations the two piece law's tall prey peaks are gone.*
+
 ## The same equation in other fields
 
 Lotka found the equations in a hypothetical chemical reaction five years
@@ -1005,7 +1018,7 @@ flat.
 python3 lotka.py
 ```
 
-prints every table above and writes the eight figures in both themes to
+prints every table above and writes the nine figures in both themes to
 `figures/lotka-*.png`. `python3 lotka.py checks` prints the tables only
 and `python3 lotka.py figures` writes the figures only. Nothing is
 cached; a full run takes about twenty minutes, most of it in the
