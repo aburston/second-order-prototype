@@ -759,7 +759,8 @@ period and damping and overshoots each peak by the factor the prey peak
 comparison above predicts: $`Y`$ peaks at $`9.4\,Y^*`$ against $`4.6`$,
 the epidemic at $`6.7\,I^*`$ against $`3.9`$, the laser's first spike at
 $`45\,n^*`$ against $`10`$. The period matched third piece brings those
-to $`7.3`$, $`6.1`$ and $`14`$, and the four piece law lower still.*
+to $`7.3`$, $`6.1`$ and $`14`$, and the four piece law to $`4.3`$, $`3.7`$ and $`10.6`$, each within 5% of
+the field's own equations.*
 
 ## Density dependence is damping
 
