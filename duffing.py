@@ -39,6 +39,11 @@ measurement:
 ``x0``      the half-width of the saddle band, which sets the amplitude
             scale and puts the wells at ``xe = (1 + kappa) x0``
 
+A third stiffness level, a softer shoulder between the core of a well and
+the saddle band, is the ``Stiffness`` class near the end: it removes the
+flat start of the two level backbone and contains the two level law as the
+case ``sigma = 1``.
+
 Two variants share the force law and differ only in whether ``x`` wraps:
 
 ``periodic=False``  the **beam**: a buckled Euler strut has two buckled
@@ -550,6 +555,10 @@ def forced_system(kind, amp):
         wn = np.sqrt(2.0)
         return (variational(HOLMES_DELTA/(2*wn), k, 1.0/(1 + k), False, amp, HOLMES_OM, wn),
                 HOLMES_OM, [1.0, 0.0])
+    if kind == "beam-three":
+        return three_level_duffing().variational(HOLMES_DELTA/(2*np.sqrt(2.0)), False, amp, HOLMES_OM), HOLMES_OM, [1.0, 0.0]
+    if kind == "pend-three":
+        return three_level_pendulum().variational(0.5/BG_Q, True, amp, BG_OM), BG_OM, [np.pi, 0.0]
     if kind == "pendulum":
         return pendulum_variational(0.5/BG_Q, amp, BG_OM), BG_OM, [np.pi, 0.0]
     if kind in ("pend-slope", "pend-depth"):
@@ -597,6 +606,207 @@ def strobe(kind, amp, n_skip=300, n=4000):
         if i >= n_skip:
             Y[i - n_skip] = y
     return Y
+
+
+# ----------------------------------------------------------- three levels
+class Stiffness:
+    """A piecewise linear stiffness with a third level between well and band.
+
+    Measured from the well, ``u = xe - |x|``, the restoring force is
+
+        ghat(u) = wn^2 u                      0 < u < a       the core
+                = wn^2 [a + sigma (u - a)]    a < u < b       the shoulder
+                = kappa wn^2 (xe - u)         b < u < xe      the saddle band
+
+    with ``b`` fixed by continuity at the band edge,
+    ``b = (kappa xe - a + sigma a) / (kappa + sigma)``. ``sigma = 1`` (or
+    ``a = b``) is the two level law of the rest of this module, so every
+    two level result is a special case and is checked as one. The force in
+    ``x`` is ``g(x) = -sign(x) ghat(xe - |x|)``, odd about the saddle, and
+    for the beam the outer side of each well (``u < 0``) keeps the core
+    stiffness.
+
+    The period machinery below is written for any list of linear pieces,
+    each ``V = Vc + k (u - c)^2 / 2`` on ``[u0, u1]``, so more levels would
+    stack the same way the three level prototype's damping levels do.
+    """
+
+    def __init__(self, kappa, xe, a=None, sigma=1.0, wn=WN):
+        self.kappa, self.xe, self.wn = kappa, xe, wn
+        if a is None or sigma == 1.0:
+            a, sigma = kappa*xe/(1.0 + kappa), 1.0
+        b = (kappa*xe - a + sigma*a)/(kappa + sigma)
+        if not 0.0 < a <= b < xe:
+            raise ValueError("levels out of order: a=%g b=%g xe=%g" % (a, b, xe))
+        self.a, self.b, self.sigma = a, b, sigma
+        w2 = wn*wn
+        Va = 0.5*w2*a*a
+        Vb = Va + w2*(a*(b - a) + 0.5*sigma*(b - a)**2)
+        self.depth = Vb + 0.5*kappa*w2*(xe - b)**2
+        self.peak = w2*(a + sigma*(b - a))
+        # (u0, u1, k, c, Vc): V = Vc + k (u - c)^2 / 2 on [u0, u1]
+        self.pieces = [(0.0, a, w2, 0.0, 0.0)]
+        if b > a:
+            c = a - a/sigma
+            self.pieces.append((a, b, sigma*w2, c, Va - 0.5*sigma*w2*(a - c)**2))
+        self.pieces.append((b, xe, -kappa*w2, xe, self.depth))
+
+    @property
+    def x0(self):
+        """Half-width of the saddle band, measured from the saddle."""
+        return self.xe - self.b
+
+    def ghat(self, u):
+        u = np.asarray(u, float)
+        out = self.wn**2*u
+        for u0, u1, k, c, _ in self.pieces:
+            out = np.where((u >= u0) & (u <= u1), k*(u - c), out)
+        return out
+
+    def Vhat(self, u):
+        u = np.asarray(u, float)
+        out = 0.5*self.wn**2*u*u
+        for u0, u1, k, c, Vc in self.pieces:
+            out = np.where((u >= u0) & (u <= u1), Vc + 0.5*k*(u - c)**2, out)
+        return out
+
+    def g(self, x, periodic=False):
+        """Restoring acceleration in ``x``, saddle at 0, wells at ``+-xe``."""
+        x = reduce(np.asarray(x, float), self.xe, periodic)
+        return -np.sign(x)*self.ghat(self.xe - np.abs(x))
+
+    def V(self, x, periodic=False):
+        """Potential with ``V(0) = 0`` at the saddle."""
+        x = reduce(np.asarray(x, float), self.xe, periodic)
+        return self.Vhat(self.xe - np.abs(x)) - self.depth
+
+    def field(self, zeta, periodic=False, amp=0.0, om=1.0):
+        def f(t, y):
+            return [y[1], -2.0*zeta*self.wn*y[1] - float(self.g(y[0], periodic))
+                    + amp*np.cos(om*t)]
+        return f
+
+    def variational(self, zeta, periodic=False, amp=0.0, om=1.0):
+        d = -2.0*zeta*self.wn
+
+        def f(t, z):
+            x = reduce(z[0], self.xe, periodic)
+            u = self.xe - abs(x)
+            k = self.wn**2
+            for u0, u1, kk, _, _ in self.pieces:
+                if u0 <= u <= u1:
+                    k = kk
+            gx = -np.sign(x)*float(self.ghat(u))
+            a, b, c, e = z[2], z[3], z[4], z[5]
+            return [z[1], d*z[1] - gx + amp*np.cos(om*t),
+                    c, e, -k*a + d*c, -k*b + d*e]
+        return f
+
+    # -- transit times, piece by piece, in closed form
+    def _segment(self, Ehat, u0, u1, k, c, Vc, to_turn=False):
+        """Transit time across one piece from ``u0`` to ``u1``.
+
+        With ``to_turn`` the piece ends at the turning point, whose value is
+        taken analytically: the antiderivative has infinite slope there, so
+        a root found to 1e-12 would still cost 1e-6 in the time.
+        """
+        p = 2.0*(Ehat - Vc)
+        if k > 0:
+            rk = np.sqrt(k)
+            F = lambda u: np.arcsin(np.clip(rk*(u - c)/np.sqrt(p), -1.0, 1.0))/rk
+            end = 0.5*np.pi/rk if to_turn else F(u1)
+        elif p > 0:
+            m = np.sqrt(-k)
+            F = lambda u: np.arcsinh(m*(u - c)/np.sqrt(p))/m
+            end = F(u1)
+        else:
+            m = np.sqrt(-k)
+            F = lambda u: np.sign(u - c)*np.arccosh(max(m*abs(u - c)/np.sqrt(-p), 1.0))/m
+            end = 0.0 if to_turn else F(u1)
+        return end - F(u0)
+
+    def turning(self, Ehat):
+        """Inner turning point, ``Vhat(u) = Ehat``, for ``0 < Ehat < depth``."""
+        return brentq(lambda u: float(self.Vhat(u)) - Ehat, 0.0, self.xe)
+
+    def inner(self, Ehat):
+        """Time from the well to the inner turning point, or to the saddle."""
+        ut = self.turning(Ehat) if Ehat < self.depth else self.xe
+        T = 0.0
+        for u0, u1, k, c, Vc in self.pieces:
+            if ut > u0:
+                T += self._segment(Ehat, u0, min(ut, u1), k, c, Vc,
+                                   to_turn=(Ehat < self.depth and ut <= u1))
+        return T
+
+    def period(self, E, periodic=False):
+        """Period of the undamped orbit at energy ``E`` (zero on the separatrix)."""
+        Ehat = E + self.depth
+        q = self.inner(Ehat)
+        if periodic:
+            return 4.0*q if E < 0 else 2.0*q
+        return np.pi/self.wn + 2.0*q if E < 0 else 2.0*np.pi/self.wn + 4.0*q
+
+
+def four_point(kappa, xe, peak, depth, wn=WN):
+    """The ``(a, sigma)`` that match a target's peak force and well depth.
+
+    With ``wn`` and ``kappa`` matching the slopes at the two equilibria,
+    the peak force fixes ``b = xe - peak / (kappa wn^2)`` and the well
+    depth then fixes ``a``; ``sigma`` follows from continuity. Four
+    measured numbers, four parameters, nothing left to fit.
+    """
+    w2 = wn*wn
+    b = xe - peak/(kappa*w2)
+    f = lambda a: w2*(0.5*a*a + 0.5*(b - a)*(a + peak/w2)) + 0.5*peak*(xe - b) - depth
+    a = brentq(f, 1e-9, b - 1e-9)
+    return a, (peak/w2 - a)/(b - a)
+
+
+def backbone_fit(target, amps_from_well, kappa, xe, periodic, wn=WN):
+    """The ``(a, sigma)`` minimising the worst relative period error.
+
+    ``target`` is the smooth system's period at each amplitude, measured
+    from the well towards the saddle. Nelder-Mead from a grid of starts;
+    the objective is cheap because every period is closed form.
+    """
+    from scipy.optimize import minimize
+
+    def cost(p):
+        a, sg = p
+        if not (0.01 < a < xe) or not (0.01 < sg < 1.0):
+            return 10.0
+        try:
+            S = Stiffness(kappa, xe, a, sg, wn)
+        except ValueError:
+            return 10.0
+        T = [S.period(float(S.Vhat(u)) - S.depth, periodic) for u in amps_from_well]
+        return float(np.max(np.abs(np.array(T)/target - 1.0)))
+
+    best = None
+    for a0 in (0.15, 0.3, 0.5):
+        for s0 in (0.2, 0.4, 0.7):
+            r = minimize(cost, [a0*xe, s0], method="Nelder-Mead",
+                         options=dict(xatol=1e-5, fatol=1e-6))
+            if best is None or r.fun < best.fun:
+                best = r
+    return best.x[0], best.x[1], best.fun
+
+
+#: The three level pendulum: sine's slopes, peak torque and well depth.
+A_PEND_THREE, SIGMA_PEND_THREE = four_point(1.0, np.pi, 1.0, 2.0)
+#: The three level Duffing beam: slopes kept, shoulder fitted to the backbone
+#: (``backbone_fit`` reproduces these; the four point construction fails
+#: for Duffing, see ``DUFFING.md``).
+A_DUFF_THREE, SIGMA_DUFF_THREE = 0.2103, 0.3033
+
+
+def three_level_pendulum():
+    return Stiffness(1.0, np.pi, A_PEND_THREE, SIGMA_PEND_THREE)
+
+
+def three_level_duffing():
+    return Stiffness(KAPPA_DUFF_SLOPE, 1.0, A_DUFF_THREE, SIGMA_DUFF_THREE, np.sqrt(2.0))
 
 
 # ---------------------------------------------------------------- figures
@@ -875,6 +1085,89 @@ def fig_forced(th, name, clouds):
     save(fig, name, "duffing-forced")
 
 
+def fig_three_level(th, name):
+    """The third level: force laws and backbones against the smooth targets."""
+    fig, axes = newfig(th, 2, 2, figsize=(9.6, 6.6))
+    c0, c1, c2 = th["series"]
+    P2, P3 = Stiffness(1.0, np.pi), three_level_pendulum()
+    D2, D3 = Stiffness(KAPPA_DUFF_SLOPE, 1.0, wn=np.sqrt(2.0)), three_level_duffing()
+
+    u = np.linspace(0, np.pi, 600)
+    axes[0, 0].plot(np.degrees(u), np.sin(u), color=c0, linewidth=2.2, label="pendulum  $\\sin\\theta$", zorder=3)
+    axes[0, 0].plot(np.degrees(u), P2.ghat(u), color=c1, linewidth=1.8, label="two levels, $\\kappa = 1$", zorder=4)
+    axes[0, 0].plot(np.degrees(u), P3.ghat(u), color=c2, linewidth=1.8, label="three levels", zorder=5)
+    for xs in (P3.a, P3.b):
+        axes[0, 0].axvline(np.degrees(xs), color=th["ink2"], linewidth=0.9, linestyle=(0, (4, 3)), zorder=2)
+    box = dict(boxstyle="round,pad=0.2", fc=th["surface"], ec="none")
+    axes[0, 0].annotate("$a$", xy=(np.degrees(P3.a), 1.45), ha="center", fontsize=9, color=th["ink2"], bbox=box)
+    axes[0, 0].annotate("$b$", xy=(np.degrees(P3.b), 1.45), ha="center", fontsize=9, color=th["ink2"], bbox=box)
+    axes[0, 0].set_ylim(0, 1.6)
+    style(axes[0, 0], th, "angle from the hanging position, degrees", "restoring torque / $\\omega_n^2$",
+          "Pendulum: core, shoulder, saddle band")
+    legend(axes[0, 0], th, loc="upper left")
+
+    u = np.linspace(0, 1.0, 600)
+    axes[0, 1].plot(u, (1 - u)*(1 - (1 - u)**2), color=c0, linewidth=2.2, label="Duffing  $x - x^3$", zorder=3)
+    axes[0, 1].plot(u, D2.ghat(u), color=c1, linewidth=1.8, label="two levels, $\\kappa = 1/2$", zorder=4)
+    axes[0, 1].plot(u, D3.ghat(u), color=c2, linewidth=1.8, label="three levels", zorder=5)
+    for xs in (D3.a, D3.b):
+        axes[0, 1].axvline(xs, color=th["ink2"], linewidth=0.9, linestyle=(0, (4, 3)), zorder=2)
+    axes[0, 1].annotate("$a$", xy=(D3.a, 0.72), ha="center", fontsize=9, color=th["ink2"], bbox=box)
+    axes[0, 1].annotate("$b$", xy=(D3.b, 0.72), ha="center", fontsize=9, color=th["ink2"], bbox=box)
+    axes[0, 1].set_ylim(0, 0.8)
+    style(axes[0, 1], th, "distance from the well towards the saddle", "restoring force",
+          "Duffing's well: the shoulder fitted to the backbone")
+    legend(axes[0, 1], th, loc="upper right")
+
+    A = np.radians(np.linspace(1, 179.5, 400))
+    axes[1, 0].plot(np.degrees(A), pendulum_period(A)/(2*np.pi), color=c0, linewidth=2.2,
+                    label="pendulum, exact", zorder=3)
+    for S, c, lab in ((P2, c1, "two levels, $\\kappa = 1$"), (P3, c2, "three levels")):
+        T = [S.period(float(S.Vhat(a)) - S.depth, True)/(2*np.pi) for a in A]
+        axes[1, 0].plot(np.degrees(A), T, color=c, linewidth=1.8, label=lab, zorder=4)
+    axes[1, 0].set_ylim(0.95, 2.6)
+    style(axes[1, 0], th, "swing amplitude, degrees", "$T / T_0$", "Pendulum backbone")
+    legend(axes[1, 0], th, loc="upper left")
+
+    amps = np.linspace(0.02, 0.985, 120)
+    wn = np.sqrt(2.0)
+    axes[1, 1].plot(amps, [duffing_well_period(a)/(2*np.pi/wn) for a in amps], color=c0, linewidth=2.2,
+                    label="Duffing, integrated", zorder=3)
+    for S, c, lab in ((D2, c1, "two levels, $\\kappa = 1/2$"), (D3, c2, "three levels")):
+        T = [S.period(float(S.Vhat(a)) - S.depth)/(2*np.pi/wn) for a in amps]
+        axes[1, 1].plot(amps, T, color=c, linewidth=1.8, label=lab, zorder=4)
+    axes[1, 1].set_ylim(0.95, 2.6)
+    style(axes[1, 1], th, "inner amplitude, from the well towards the saddle", "$T / T_0$",
+          "Duffing backbone")
+    legend(axes[1, 1], th, loc="upper left")
+    fig.suptitle("The third stiffness level: a softer shoulder between the well's core and the saddle band",
+                 color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "duffing-three-level")
+
+
+def fig_three_drive(th, name, scans):
+    """Largest Lyapunov exponent against drive strength, three systems per family."""
+    fig, axes = newfig(th, 1, 2, figsize=(10.0, 3.9))
+    c0, c1, c2 = th["series"]
+    for ax, key, smooth, two, lab2, title in (
+            (axes[0], "beam", "duffing", "beam-depth", "two levels, $\\kappa = 1/3$",
+             "Beam family: Holmes' drive, $\\delta = 0.25$, $\\Omega = 1$"),
+            (axes[1], "pend", "pendulum", "pend-depth", "two levels, $\\kappa = 0.68$",
+             "Pendulum family: $q = 2$, $\\Omega = 2/3$")):
+        amps, sb, s3 = scans[key]
+        a = np.array([float(x) for x in amps])
+        three = "beam-three" if key == "beam" else "pend-three"
+        for kind, src, c, lab in ((smooth, sb, c0, "Duffing" if key == "beam" else "pendulum"),
+                                  (two, sb, c1, lab2), (three, s3, c2, "three levels")):
+            ax.plot(a, [src[kind][x] for x in a], "-o", color=c, linewidth=1.6, markersize=3.5, label=lab, zorder=3)
+        ax.axhline(0, color=th["ink2"], linewidth=1.0, linestyle=(0, (4, 3)), zorder=2)
+        style(ax, th, "drive strength $A$", "largest Lyapunov exponent", title)
+        legend(ax, th, loc="upper left")
+    fig.tight_layout()
+    save(fig, name, "duffing-three-drive")
+
+
 # ----------------------------------------------------------------- driver
 def _table(rows, header, fmt):
     print("| " + " | ".join(header) + " |")
@@ -986,6 +1279,74 @@ def checks(quick=False):
     print(f"  escape speed {np.sqrt(2*depth(k, x0)):.4f}; fast-rotation step 4 zeta wn xe = "
           f"{4*ZETA_PEND*np.pi:.4f}")
     out["capture"] = (vn, va)
+
+    print("\n## Third level: two-level closed forms recovered at sigma = 1")
+    m = 0.0
+    for kk, xx0, per in ((0.5, 2.0/3.0, False), (1.0, np.pi/2, True)):
+        S = Stiffness(kk, wells(kk, xx0))
+        for E in (-0.9*S.depth, -0.3*S.depth, -0.01*S.depth, 0.05*S.depth, 2.0*S.depth):
+            m = max(m, abs(S.period(E, per) - period(E, kk, xx0, per)))
+    print(f"  largest difference over ten orbits: {m:.1e}")
+
+    print("\n## Third level: the pendulum from four measurements")
+    P3 = three_level_pendulum()
+    print(f"  a = {P3.a:.4f} ({np.degrees(P3.a):.1f} deg), b = {P3.b:.4f} ({np.degrees(P3.b):.1f} deg), "
+          f"sigma = {P3.sigma:.4f}; peak {P3.peak:.4f}, depth {P3.depth:.4f}, x0 = {P3.x0:.4f}")
+    P2 = Stiffness(1.0, np.pi)
+    amps = np.radians(np.arange(5, 176, 5))
+    Tp = pendulum_period(amps)
+    T2 = np.array([P2.period(float(P2.Vhat(u)) - P2.depth, True) for u in amps])
+    T3 = np.array([P3.period(float(P3.Vhat(u)) - P3.depth, True) for u in amps])
+    rows = [(int(np.degrees(u)), tp/(2*np.pi), t2/(2*np.pi), t3/(2*np.pi))
+            for u, tp, t2, t3 in zip(amps, Tp, T2, T3) if int(np.degrees(u)) % 15 == 0]
+    _table(rows, ("amplitude", "pendulum", "two levels, kappa = 1", "three levels"),
+           ("{}", "{:.4f}", "{:.4f}", "{:.4f}"))
+    print(f"  worst relative error over 5..175 deg: two levels {np.max(np.abs(T2/Tp-1)):.4f}, "
+          f"three levels {np.max(np.abs(T3/Tp-1)):.4f}")
+    af, sf, ef = backbone_fit(Tp, amps, 1.0, np.pi, True)
+    Pf = Stiffness(1.0, np.pi, af, sf)
+    print(f"  best three level backbone: a = {af:.4f} ({np.degrees(af):.1f} deg), b = {Pf.b:.4f}, "
+          f"sigma = {sf:.4f}, worst error {ef:.4f}; peak {Pf.peak:.4f}, depth {Pf.depth:.4f}")
+    rows = []
+    for v in (2.05, 2.2, 2.5, 3.0, 4.0, 6.0):
+        rows.append((v, pendulum_rotation_period(v)/(2*np.pi),
+                     P2.period(0.5*v*v - P2.depth, True)/(2*np.pi) if 0.5*v*v > P2.depth else np.nan,
+                     P3.period(0.5*v*v - P3.depth, True)/(2*np.pi) if 0.5*v*v > P3.depth else np.nan))
+    _table(rows, ("bottom speed", "pendulum", "two levels, kappa = 1", "three levels"),
+           ("{:.2f}", "{:.4f}", "{:.4f}", "{:.4f}"))
+    f = P3.field(0.0, True)
+    print("  closed form against integration:")
+    for A in np.radians([50, 110, 170]):
+        E = float(P3.Vhat(A)) - P3.depth
+        ev = lambda t, y: y[0] - np.pi
+        ev.direction = 1
+        sol = solve_ivp(f, (0, 200), [np.pi, np.sqrt(2*(E + P3.depth))], events=ev, rtol=RTOL, atol=ATOL)
+        te = sol.t_events[0]
+        print(f"    swing {np.degrees(A):.0f} deg: {P3.period(E, True):.9f}  {te[te > 1e-6][0]:.9f}")
+
+    print("\n## Third level: Duffing's well, shoulder fitted to the backbone")
+    wn = np.sqrt(2.0)
+    amps = np.arange(0.05, 0.96, 0.05)
+    Td = np.array([duffing_well_period(x) for x in amps])
+    ad, sd, ed = backbone_fit(Td, amps, KAPPA_DUFF_SLOPE, 1.0, False, wn)
+    Df = Stiffness(KAPPA_DUFF_SLOPE, 1.0, ad, sd, wn)
+    print(f"  fit: a = {ad:.4f}, b = {Df.b:.4f}, sigma = {sd:.4f}, worst error {ed:.4f}; "
+          f"constants in use a = {A_DUFF_THREE}, sigma = {SIGMA_DUFF_THREE}")
+    D3, D2 = three_level_duffing(), Stiffness(KAPPA_DUFF_SLOPE, 1.0, wn=wn)
+    a4, s4 = four_point(KAPPA_DUFF_SLOPE, 1.0, 2.0/(3.0*np.sqrt(3.0)), 0.25, wn)
+    D4 = Stiffness(KAPPA_DUFF_SLOPE, 1.0, a4, s4, wn)
+    print(f"  four point construction instead: a = {a4:.4f}, b = {D4.b:.4f}, sigma = {s4:.4f}")
+    T2 = np.array([D2.period(float(D2.Vhat(u)) - D2.depth) for u in amps])
+    T3 = np.array([D3.period(float(D3.Vhat(u)) - D3.depth) for u in amps])
+    T4 = np.array([D4.period(float(D4.Vhat(u)) - D4.depth) for u in amps])
+    T0 = 2*np.pi/wn
+    rows = [(x, td/T0, t2/T0, t3/T0, t4/T0) for x, td, t2, t3, t4 in zip(amps, Td, T2, T3, T4)
+            if round(x*100) % 10 == 0]
+    _table(rows, ("inner amplitude", "Duffing", "two levels, kappa = 1/2", "three levels", "four point"),
+           ("{:.1f}", "{:.4f}", "{:.4f}", "{:.4f}", "{:.4f}"))
+    print(f"  worst relative error: two levels {np.max(np.abs(T2/Td-1)):.4f}, three levels "
+          f"{np.max(np.abs(T3/Td-1)):.4f}, four point {np.max(np.abs(T4/Td-1)):.4f}")
+    print(f"  three level peak {D3.peak:.4f} against Duffing {2/(3*np.sqrt(3)):.4f}, depth {D3.depth:.4f} against 0.25")
     return out
 
 
@@ -1025,6 +1386,14 @@ def figures_(quick=False, fresh=False, checks_out=None):
     print("\n## Largest Lyapunov exponent, forced pendulum family (q = 2, Om = 2/3)")
     _table([(a, sp["pendulum"][a], sp["pend-slope"][a], sp["pend-depth"][a]) for a in map(float, amps_p)],
            ("A", "pendulum", "kappa = 1", "kappa = 0.68"), ("{:.2f}", "{:+.4f}", "{:+.4f}", "{:+.4f}"))
+    s3b = scan(["beam-three"], amps_b, CACHE.format("lyap-beam-three" + ("-quick" if quick else "")), fresh=fresh)
+    s3p = scan(["pend-three"], amps_p, CACHE.format("lyap-pend-three" + ("-quick" if quick else "")), fresh=fresh)
+    print("\n## Largest Lyapunov exponent, the three level fits")
+    _table([(a, sb["duffing"][a], sb["beam-depth"][a], s3b["beam-three"][a]) for a in map(float, amps_b)],
+           ("A", "Duffing", "two levels, kappa = 1/3", "three levels"), ("{:.2f}", "{:+.4f}", "{:+.4f}", "{:+.4f}"))
+    _table([(a, sp["pendulum"][a], sp["pend-depth"][a], s3p["pend-three"][a]) for a in map(float, amps_p)],
+           ("A", "pendulum", "two levels, kappa = 0.68", "three levels"), ("{:.2f}", "{:+.4f}", "{:+.4f}", "{:+.4f}"))
+    scans = dict(beam=(amps_b, sb, s3b), pend=(amps_p, sp, s3p))
     nc = 800 if quick else 4000
     with Pool(4) as p:
         got = p.starmap(strobe, [("duffing", BEAM_SHOW, 300, nc), ("beam-depth", BEAM_SHOW, 300, nc),
@@ -1037,6 +1406,8 @@ def figures_(quick=False, fresh=False, checks_out=None):
         fig_period(th, name, checks_out)
         fig_basins(th, name, beam, pend)
         fig_forced(th, name, clouds)
+        fig_three_level(th, name)
+        fig_three_drive(th, name, scans)
 
 
 if __name__ == "__main__":
