@@ -32,9 +32,10 @@ the pendulum over the full circle with the hanging position treated as two
 wells; `duffing.py` is behind its numbers and its `figures/duffing-*`
 images. `LOTKA.md` is the seventh prototype and the first whose states are
 two populations rather than a position and a velocity: Lotka-Volterra in
-log coordinates with the exponential replaced by a line and a floor (and
-optionally a third, steeper piece above a knee), a centre with an exact
-period, the prey's density dependence as damping, a
+log coordinates with the exponential replaced by a line and a floor (with
+optional third and fourth pieces, a steeper slope above a knee and a soft
+slope below the origin, that together follow Lotka-Volterra's period and
+peak to a few percent), a centre with an exact period, the prey's density dependence as damping, a
 hump in it as the README's offset boundary cycle, and the same equation as
 chemistry, epidemiology, laser physics and economics write it; `lotka.py`
 is behind its numbers and its `figures/lotka-*` images. Each document's

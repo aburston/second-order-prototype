@@ -42,9 +42,12 @@ scarce, a straight line where both are. ``circuit`` walks those arcs with
 closed form transit times and is the exact period.
 
 A third piece, a steeper slope ``k`` above a knee ``s1``, refines the upper
-half of the law where the exponential is convex; the walk below handles any
-such piecewise linear law, and ``S1, K`` carry the fit the document leads
-with (period matched), ``S1_PEAK, K_PEAK`` the alternative (peak matched).
+half of the law where the exponential is convex, and a fourth, a soft slope
+``m`` from ``-s2`` down to the floor, its lower half where the exponential
+is concave. The walk below handles any such piecewise linear law. ``S1, K``
+carry the third piece's period matched fit, ``S1_PEAK, K_PEAK`` its peak
+matched one, and ``S2, M, S1_4, K_4`` the four piece law fitted to period
+and peak together, which is the one to use.
 
 Two extensions use the same pieces. ``c > 0`` adds the prey's own density
 dependence ``-c phi(xi)``, the log form of logistic growth, which is a linear
@@ -86,42 +89,89 @@ C_DAMP = 0.05
 FIT_TROUGHS = (-2.0, -8.0)      # the peak matched fit equates the prey peaks here
 PERIOD_TROUGHS = (-3.0, -8.0)   # the period matched fit equates the periods here
 S1_PEAK, K_PEAK = 0.446758, 3.675246     # fit_third_piece(); checks() re-derives both pairs
-S1, K = 1.606541, 8.370444               # fit_period_piece(); the fit the document leads with
+S1, K = 1.606541, 8.370444               # fit_period_piece(); the fit the third piece section leads with
+#: The fourth piece: a soft slope ``M`` from ``-S2`` down to where it meets the
+#: floor value ``-s0``, with the third piece ``S1_4, K_4`` above. Fitted jointly
+#: to Lotka-Volterra's period and prey peak over ``TABLE_TROUGHS`` by
+#: ``fit_fourth_piece``; checks() re-derives it.
+S2, M, S1_4, K_4 = 0.444934, 0.265023, 0.608818, 3.675146
+TABLE_TROUGHS = (-0.5, -1.0, -1.5, -2.0, -3.0, -5.0, -8.0)
 
 
-def pieces(s0=S0, s1=np.inf, k=1.0):
-    """The law as intervals ``(lo, hi, a, b)`` on which ``phi(s) = a s + b``."""
-    return ((-np.inf, -s0, 0.0, -s0), (-s0, s1, 1.0, 0.0), (s1, np.inf, k, s1*(1.0 - k)))
+def pieces(s0=S0, s1=np.inf, k=1.0, s2=None, m=1.0):
+    """The law as intervals ``(lo, hi, a, b)`` on which ``phi(s) = a s + b``.
+
+    ``s0`` is the floor *value*: below the floor ``phi = -s0``. With the
+    default ``s2 = s0``, ``m = 1`` the floor begins at ``-s0`` and the law is
+    the two piece one (three with a knee ``s1 < inf``). With ``m < 1`` the
+    slope softens to ``m`` from ``-s2`` down to ``-s3``, where the line
+    reaches ``-s0``: ``s3 = s2 + (s0 - s2)/m``. Empty intervals are dropped,
+    so the list has two, three or four entries.
+    """
+    if s2 is None or s2 >= s0:
+        s2 = s0
+    s3 = s2 + (s0 - s2)/m if m > 0 else np.inf
+    ps = [(-np.inf, -s3, 0.0, -s0), (-s3, -s2, m, -s2*(1.0 - m)), (-s2, s1, 1.0, 0.0),
+          (s1, np.inf, k, s1*(1.0 - k))]
+    return tuple(p for p in ps if p[1] > p[0])
 
 
-def phi(s, s0=S0, s1=np.inf, k=1.0):
-    """The rate law: a line through the origin, a floor at ``-s0``, slope ``k`` above ``s1``."""
+def breaks(s0=S0, s1=np.inf, k=1.0, s2=None, m=1.0):
+    """The breakpoints of the law, ascending."""
+    return tuple(p[1] for p in pieces(s0, s1, k, s2, m)[:-1])
+
+
+def _origin_piece(ps):
+    return next(i for i, p in enumerate(ps) if p[0] <= 0.0 <= p[1])
+
+
+def phi(s, s0=S0, s1=np.inf, k=1.0, s2=None, m=1.0):
+    """The rate law: piecewise linear, slope 1 through the origin, floored at ``-s0``."""
     s = np.asarray(s, float)
-    return np.where(s > s1, s1 + k*(s - s1), np.maximum(s, -s0))
+    ps = pieces(s0, s1, k, s2, m)
+    idx = np.searchsorted(np.array([p[1] for p in ps[:-1]]), s, side="right")
+    a = np.array([p[2] for p in ps])[idx]
+    b = np.array([p[3] for p in ps])[idx]
+    return a*s + b
 
 
-def Phi(s, s0=S0, s1=np.inf, k=1.0):
+def Phi(s, s0=S0, s1=np.inf, k=1.0, s2=None, m=1.0):
     """Integral of ``phi`` from zero: piecewise quadratic and continuous."""
     s = np.asarray(s, float)
-    low = -s0*s - 0.5*s0*s0
-    mid = 0.5*s*s
-    high = 0.5*s1*s1 + s1*(s - s1) + 0.5*k*(s - s1)**2
-    return np.where(s > s1, high, np.where(s >= -s0, mid, low))
+    ps = pieces(s0, s1, k, s2, m)
+    i0 = _origin_piece(ps)
+    prim = lambda i, x: 0.5*ps[i][2]*x*x + ps[i][3]*x
+    # Phi at the lower end of each piece, accumulated outward from the origin
+    base = [0.0]*len(ps)
+    base[i0] = -prim(i0, 0.0) if np.isfinite(ps[i0][0]) else 0.0
+    lo0 = ps[i0][0] if np.isfinite(ps[i0][0]) else 0.0
+    base[i0] = prim(i0, lo0) - prim(i0, 0.0)             # Phi(lo of origin piece), = 0 if lo is -inf
+    for i in range(i0 + 1, len(ps)):
+        base[i] = base[i - 1] + prim(i - 1, ps[i - 1][1]) - prim(i - 1, ps[i - 1][0] if np.isfinite(ps[i - 1][0]) else lo0)
+    for i in range(i0 - 1, -1, -1):
+        base[i] = base[i + 1] - (prim(i, ps[i][1]) - (prim(i, ps[i][0]) if np.isfinite(ps[i][0]) else 0.0))
+    idx = np.searchsorted(np.array([p[1] for p in ps[:-1]]), s, side="right")
+    a = np.array([p[2] for p in ps])[idx]
+    b = np.array([p[3] for p in ps])[idx]
+    lo = np.array([p[0] if np.isfinite(p[0]) else 0.0 for p in ps])[idx]
+    bs = np.array(base)[idx]
+    return bs + (0.5*a*s*s + b*s) - (0.5*a*lo*lo + b*lo)
 
 
-def Phi_inv(h, sign, s0=S0, s1=np.inf, k=1.0):
+def Phi_inv(h, sign, s0=S0, s1=np.inf, k=1.0, s2=None, m=1.0):
     """The ``s`` of the given sign with ``Phi(s) = h``."""
-    if sign < 0:
-        return -np.sqrt(2.0*h) if h <= 0.5*s0*s0 else -(h + 0.5*s0*s0)/s0
-    if h <= 0.5*s1*s1:
-        return np.sqrt(2.0*h)
-    # k/2 d^2 + s1 d + s1^2/2 - h = 0 for d = s - s1 > 0
-    return s1 + (-s1 + np.sqrt(s1*s1 - 2.0*k*(0.5*s1*s1 - h)))/k
+    if h <= 0.0:
+        return 0.0
+    f = lambda x: float(Phi(x, s0, s1, k, s2, m)) - h
+    hi = 1.0
+    while f(sign*hi) < 0.0:
+        hi *= 2.0
+    return brentq(f, 0.0, sign*hi, xtol=1e-14) if sign > 0 else brentq(f, -hi, 0.0, xtol=1e-14)
 
 
-def energy(xi, eta, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0):
+def energy(xi, eta, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0, s2=None, m=1.0):
     """The conserved quantity ``H = gamma Phi(xi) + alpha Phi(eta)``."""
-    return gamma*Phi(xi, s0, s1, k) + alpha*Phi(eta, s0, s1, k)
+    return gamma*Phi(xi, s0, s1, k, s2, m) + alpha*Phi(eta, s0, s1, k, s2, m)
 
 
 def lv_Phi(s):
@@ -139,8 +189,8 @@ def density(xi, alpha, gamma, s0, c=0.0, hump=None):
     ``c phi(xi)`` is logistic growth in log form, floored like every other
     rate. ``hump = (zp, zm, xi1)`` adds the tent ``2 w0 zeta (phi(xi) - xi1)``
     with ``zeta = zm`` below the best density ``xi1`` and ``zp`` above it.
-    Both use the two piece law: the third piece is a refinement of the
-    conservative model's upper half and is not carried into them.
+    Both use the two piece law: the extra pieces refine the conservative
+    model's rate law and are not carried into them.
     """
     p = float(phi(xi, s0))
     D = c*p
@@ -150,12 +200,12 @@ def density(xi, alpha, gamma, s0, c=0.0, hump=None):
     return D
 
 
-def field(alpha=ALPHA, gamma=GAMMA, s0=S0, c=0.0, hump=None, s1=np.inf, k=1.0):
+def field(alpha=ALPHA, gamma=GAMMA, s0=S0, c=0.0, hump=None, s1=np.inf, k=1.0, s2=None, m=1.0):
     """Right hand side of the prototype in ``y = [xi, eta]`` for ``solve_ivp``."""
     def f(t, y):
         xi, eta = y
-        return [-alpha*float(phi(eta, s0, s1, k)) - density(xi, alpha, gamma, s0, c, hump),
-                gamma*float(phi(xi, s0, s1, k))]
+        return [-alpha*float(phi(eta, s0, s1, k, s2, m)) - density(xi, alpha, gamma, s0, c, hump),
+                gamma*float(phi(xi, s0, s1, k, s2, m))]
     return f
 
 
@@ -185,19 +235,21 @@ def jacobian(f, y, h=1e-6):
 # zero it is a parabola, with both zero a straight line. The orbit runs
 # counterclockwise. Two piece regions are named 0 inner, 1 predators
 # scarce, 2 prey scarce, 3 both scarce, and ``region_name`` keeps those.
-def _piece_index(s, ds, s0, s1, k, tol=1e-9):
+def _piece_index(s, ds, law, tol=1e-9):
     """Which interval of the law ``s`` is in, resolved by its motion on a breakpoint."""
-    for j, b in enumerate((-s0, s1)):
+    bs = breaks(*law)
+    for j, b in enumerate(bs):
         if abs(s - b) < tol:
             return j + 1 if ds > 0 else j
-    return 0 if s < -s0 else (1 if s < s1 else 2)
+    return int(np.searchsorted(bs, s))
 
 
-def region(xi, eta, alpha, gamma, s0, s1=np.inf, k=1.0):
-    """The region as ``(i_xi, i_eta)``, piece indices 0 floor, 1 line, 2 steep."""
-    dxi = -alpha*float(phi(eta, s0, s1, k))
-    deta = gamma*float(phi(xi, s0, s1, k))
-    return _piece_index(xi, dxi, s0, s1, k), _piece_index(eta, deta, s0, s1, k)
+def region(xi, eta, alpha, gamma, s0, s1=np.inf, k=1.0, s2=None, m=1.0):
+    """The region as ``(i_xi, i_eta)``: piece indices 0 floor, 1 soft, 2 unit, 3 steep."""
+    law = (s0, s1, k, s2, m)
+    dxi = -alpha*float(phi(eta, *law))
+    deta = gamma*float(phi(xi, *law))
+    return _piece_index(xi, dxi, law), _piece_index(eta, deta, law)
 
 
 def region_name(reg):
@@ -218,23 +270,24 @@ def _roots(a, b, c, eps):
     return sorted(t for t in roots if t > eps)
 
 
-def _affine(reg, alpha, gamma, s0, s1, k):
+def _affine(reg, alpha, gamma, law):
     """``(p, q, r, s, bounds)``: the region's field and its rectangle."""
-    px = pieces(s0, s1, k)
+    px = pieces(*law)
     lo_x, hi_x, ax, bx = px[reg[0]]
     lo_y, hi_y, ay, by = px[reg[1]]
     return -alpha*by, -alpha*ay, gamma*bx, gamma*ax, (lo_x, hi_x, lo_y, hi_y)
 
 
-def step(xi, eta, alpha, gamma, s0, s1=np.inf, k=1.0, stop=None, eps=1e-12):
+def step(xi, eta, alpha, gamma, s0, s1=np.inf, k=1.0, s2=None, m=1.0, stop=None, eps=1e-12):
     """Cross one region exactly. Returns ``(region, dt, xi1, eta1, exit)``.
 
     ``exit`` names the boundary crossed (``'xi'`` or ``'eta'``), or
     ``'start'`` when the orbit returns to the section point given by
     ``stop = (region, angle)``, or ``'loop'`` after a full turn.
     """
-    reg = region(xi, eta, alpha, gamma, s0, s1, k)
-    p, q, r, s, (lo_x, hi_x, lo_y, hi_y) = _affine(reg, alpha, gamma, s0, s1, k)
+    law = (s0, s1, k, s2, m)
+    reg = region(xi, eta, alpha, gamma, *law)
+    p, q, r, s, (lo_x, hi_x, lo_y, hi_y) = _affine(reg, alpha, gamma, law)
     if q != 0.0 and s != 0.0:
         xc, yc = -r/s, -p/q
         W = np.sqrt(-q*s)
@@ -269,15 +322,16 @@ def step(xi, eta, alpha, gamma, s0, s1=np.inf, k=1.0, stop=None, eps=1e-12):
         elif kind == "start":
             eta1 = 0.0
         return reg, d/W, xi1, eta1, kind
-    # polynomial motion: xi(t) = xi + (p + q eta) t + q r t^2 / 2 when s == 0, etc.
-    cx = (xi, p + q*eta, 0.5*q*r if s == 0.0 else 0.0)
-    cy = (eta, r + s*xi, 0.5*s*p if q == 0.0 else 0.0)
-    if s != 0.0:          # eta linear in xi which is quadratic: xi is linear here
+    # polynomial motion: the coordinate whose slope is zero moves linearly,
+    # the other quadratically
+    if s != 0.0:
         cx = (xi, p + q*eta, 0.0)
         cy = (eta, r + s*xi, 0.5*s*(p + q*eta))
-    if q != 0.0:
+    elif q != 0.0:
         cy = (eta, r + s*xi, 0.0)
         cx = (xi, p + q*eta, 0.5*q*(r + s*xi))
+    else:
+        cx, cy = (xi, p, 0.0), (eta, r, 0.0)
     best = (np.inf, None, None)
     for coeffs, bounds, kind in ((cx, (lo_x, hi_x), "xi"), (cy, (lo_y, hi_y), "eta")):
         for b in bounds:
@@ -296,10 +350,10 @@ def step(xi, eta, alpha, gamma, s0, s1=np.inf, k=1.0, stop=None, eps=1e-12):
     return reg, dt, xi1, eta1, kind
 
 
-def sample(reg, xi, eta, dt, alpha, gamma, s0, s1=np.inf, k=1.0, n=200):
+def sample(reg, xi, eta, dt, alpha, gamma, s0, s1=np.inf, k=1.0, s2=None, m=1.0, n=200):
     """The closed form arc through one region, sampled at ``n`` times."""
     t = np.linspace(0.0, dt, n)
-    p, q, r, s, _ = _affine(reg, alpha, gamma, s0, s1, k)
+    p, q, r, s, _ = _affine(reg, alpha, gamma, (s0, s1, k, s2, m))
     if q != 0.0 and s != 0.0:
         xc, yc = -r/s, -p/q
         W = np.sqrt(-q*s)
@@ -313,15 +367,16 @@ def sample(reg, xi, eta, dt, alpha, gamma, s0, s1=np.inf, k=1.0, n=200):
     return t, xi + p*t, eta + r*t
 
 
-def circuit(H, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0):
+def circuit(H, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0, s2=None, m=1.0):
     """One period from the prey peak: ``(T, [(region, dt, xi, eta), ...])``."""
-    xi, eta = Phi_inv(H/gamma, +1, s0, s1, k), 0.0
-    reg0 = region(xi, eta, alpha, gamma, s0, s1, k)
-    p, q, r, s, _ = _affine(reg0, alpha, gamma, s0, s1, k)
+    law = (s0, s1, k, s2, m)
+    xi, eta = Phi_inv(H/gamma, +1, *law), 0.0
+    reg0 = region(xi, eta, alpha, gamma, *law)
+    p, q, r, s, _ = _affine(reg0, alpha, gamma, law)
     th0 = np.arctan2(np.sqrt(-q)*(eta + p/q), np.sqrt(s)*(xi + r/s))
     pieces_, total = [], 0.0
-    for _ in range(24):
-        reg, dt, xi1, eta1, kind = step(xi, eta, alpha, gamma, s0, s1, k, stop=(reg0, th0))
+    for _ in range(40):
+        reg, dt, xi1, eta1, kind = step(xi, eta, alpha, gamma, *law, stop=(reg0, th0))
         pieces_.append((reg, dt, xi, eta))
         total += dt
         xi, eta = xi1, eta1
@@ -330,12 +385,13 @@ def circuit(H, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0):
     return total, pieces_
 
 
-def orbit(H, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0, n=300):
+def orbit(H, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0, s2=None, m=1.0, n=300):
     """The closed orbit of energy ``H`` as arrays ``(t, xi, eta)``."""
-    T, pieces_ = circuit(H, alpha, gamma, s0, s1, k)
+    law = (s0, s1, k, s2, m)
+    T, pieces_ = circuit(H, alpha, gamma, *law)
     ts, xs, ys, t0 = [], [], [], 0.0
     for reg, dt, xi, eta in pieces_:
-        t, x, y = sample(reg, xi, eta, dt, alpha, gamma, s0, s1, k, n)
+        t, x, y = sample(reg, xi, eta, dt, alpha, gamma, *law, n=n)
         ts.append(t + t0)
         xs.append(x)
         ys.append(y)
@@ -343,9 +399,9 @@ def orbit(H, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0, n=300):
     return np.concatenate(ts), np.concatenate(xs), np.concatenate(ys)
 
 
-def period(H, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0):
+def period(H, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0, s2=None, m=1.0):
     """Exact period, the sum of the circuit's transit times."""
-    return circuit(H, alpha, gamma, s0, s1, k)[0]
+    return circuit(H, alpha, gamma, s0, s1, k, s2, m)[0]
 
 
 def period_formula(H, alpha=ALPHA, gamma=GAMMA, s0=S0):
@@ -376,31 +432,33 @@ def period_formula(H, alpha=ALPHA, gamma=GAMMA, s0=S0):
             + (H - Hc)/(alpha*gamma*s0*s0))
 
 
-def period_integrated(H, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0):
+def period_integrated(H, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0, s2=None, m=1.0):
     """The period by direct integration from the prey peak, for checking."""
-    f = field(alpha, gamma, s0, s1=s1, k=k)
-    xi0 = Phi_inv(H/gamma, +1, s0, s1, k)
+    law = (s0, s1, k, s2, m)
+    f = field(alpha, gamma, s0, s1=s1, k=k, s2=s2, m=m)
+    xi0 = Phi_inv(H/gamma, +1, *law)
 
     def ev(t, y):
         return y[1]
     ev.direction = 1
-    Tg = period(H, alpha, gamma, s0, s1, k)
+    Tg = period(H, alpha, gamma, *law)
     s = solve_ivp(f, (0.0, 1.5*Tg + 1.0), [xi0, 0.0], events=ev, rtol=RTOL, atol=ATOL,
-                  method="DOP853", max_step=0.02)
+                  method="DOP853", max_step=0.01)
     t = [t for t in s.t_events[0] if t > 1e-6]
     return t[0] if t else np.nan
 
 
 # ------------------------------------------------------- amplitudes
-def H_from_trough(xi_min, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0):
+def H_from_trough(xi_min, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0, s2=None, m=1.0):
     """Energy of the prototype orbit whose prey trough is ``xi_min``."""
-    return gamma*float(Phi(xi_min, s0, s1, k))
+    return gamma*float(Phi(xi_min, s0, s1, k, s2, m))
 
 
-def extremes(H, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0):
+def extremes(H, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0, s2=None, m=1.0):
     """``(xi_min, xi_max, eta_min, eta_max)`` of the prototype orbit."""
-    return (Phi_inv(H/gamma, -1, s0, s1, k), Phi_inv(H/gamma, +1, s0, s1, k),
-            Phi_inv(H/alpha, -1, s0, s1, k), Phi_inv(H/alpha, +1, s0, s1, k))
+    law = (s0, s1, k, s2, m)
+    return (Phi_inv(H/gamma, -1, *law), Phi_inv(H/gamma, +1, *law),
+            Phi_inv(H/alpha, -1, *law), Phi_inv(H/alpha, +1, *law))
 
 
 def fit_third_piece(troughs=FIT_TROUGHS, alpha=ALPHA, gamma=GAMMA, s0=S0):
@@ -442,6 +500,43 @@ def fit_period_piece(troughs=PERIOD_TROUGHS, alpha=ALPHA, gamma=GAMMA, s0=S0, lv
     return float(s1), float(k)
 
 
+def misfit(law, troughs, lv, alpha=ALPHA, gamma=GAMMA):
+    """Relative period error and relative prey peak error (in population) at each trough.
+
+    ``lv`` maps each trough to ``(T, xi_max, ...)`` of Lotka-Volterra.
+    """
+    out = []
+    for xm in troughs:
+        H = H_from_trough(xm, alpha, gamma, *law)
+        out.append((period(H, alpha, gamma, *law)/lv[xm][0] - 1.0,
+                    np.exp(extremes(H, alpha, gamma, *law)[1] - lv[xm][1]) - 1.0))
+    return np.array(out)
+
+
+def fit_fourth_piece(troughs=TABLE_TROUGHS, alpha=ALPHA, gamma=GAMMA, s0=S0, lv=None,
+                     starts=((0.45, 0.27, 0.6, 3.7), (0.3, 0.5, 1.0, 5.0), (0.7, 0.2, 0.4, 3.0))):
+    """``(s2, m, s1, k)`` minimising the period and peak misfits jointly, floor at ``-s0``.
+
+    Least squares over the relative period error and the relative peak
+    error at every trough, equally weighted, from several starting points.
+    """
+    from scipy.optimize import least_squares
+    if lv is None:
+        lv = {xm: (lv_run(xm, alpha, gamma)[0], lv_extremes(xm, alpha, gamma)[1]) for xm in troughs}
+
+    def cost(v):
+        s2, m, s1, k = v
+        return misfit((s0, s1, k, s2, m), troughs, lv, alpha, gamma).T.ravel()
+    best = None
+    for x0 in starts:
+        f = least_squares(cost, x0, bounds=([0.05, 0.05, 0.05, 1.0], [0.99*s0, 0.99, 3.0, 30.0]),
+                          max_nfev=300)
+        if best is None or f.cost < best.cost:
+            best = f
+    s2, m, s1, k = best.x
+    return float(s2), float(m), float(s1), float(k)
+
+
 def lv_extremes(xi_min, alpha=ALPHA, gamma=GAMMA):
     """``(H, xi_max, eta_min, eta_max)`` of the Lotka-Volterra orbit with that prey trough."""
     H = gamma*lv_Phi(xi_min)
@@ -479,14 +574,14 @@ def lv_run(xi_min, alpha=ALPHA, gamma=GAMMA, n=3000):
     return T, lag, t, y[0], y[1]
 
 
-def lag_integrated(H, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0):
+def lag_integrated(H, alpha=ALPHA, gamma=GAMMA, s0=S0, s1=np.inf, k=1.0, s2=None, m=1.0):
     """Prey peak to predator peak in the prototype, by integration."""
-    f = field(alpha, gamma, s0, s1=s1, k=k)
+    f = field(alpha, gamma, s0, s1=s1, k=k, s2=s2, m=m)
 
     def peak(t, y):
         return y[0]
     peak.direction = -1
-    s = solve_ivp(f, (0.0, 10.0/np.sqrt(alpha*gamma)), [Phi_inv(H/gamma, +1, s0, s1, k), 0.0],
+    s = solve_ivp(f, (0.0, 10.0/np.sqrt(alpha*gamma)), [Phi_inv(H/gamma, +1, s0, s1, k, s2, m), 0.0],
                   events=peak, rtol=RTOL, atol=ATOL, method="DOP853", max_step=0.02)
     return s.t_events[0][0]
 
@@ -682,7 +777,7 @@ def predicted(mapping):
     return w0, z, TWO_PI/(w0*np.sqrt(1.0 - z*z)), np.exp(-TWO_PI*z/np.sqrt(1.0 - z*z))
 
 
-def native_versus_prototype(f, eq, mapping, y0_log, T, n=4000, s0=S0, s1=np.inf, k=1.0):
+def native_versus_prototype(f, eq, mapping, y0_log, T, n=4000, s0=S0, s1=np.inf, k=1.0, s2=None, m=1.0):
     """Integrate the native system and the prototype from the same log start.
 
     Returns ``(t, native eta, prototype eta)``: the predator's log deviation
@@ -693,7 +788,8 @@ def native_versus_prototype(f, eq, mapping, y0_log, T, n=4000, s0=S0, s1=np.inf,
     t = np.linspace(0.0, T, n)
     s = solve_ivp(f, (0.0, T), y0, t_eval=t, rtol=1e-10, atol=[1e-14*ustar, 1e-14*vstar],
                   method="DOP853", max_step=T/2000)
-    p = solve_ivp(field(mapping["alpha"], mapping["gamma"], s0, c=mapping["c"], s1=s1, k=k), (0.0, T), y0_log,
+    p = solve_ivp(field(mapping["alpha"], mapping["gamma"], s0, c=mapping["c"], s1=s1, k=k, s2=s2, m=m),
+                  (0.0, T), y0_log,
                   t_eval=t, rtol=1e-10, atol=1e-12, method="DOP853", max_step=T/2000)
     return t, np.log(s.y[1]/vstar), p.y[1]
 
@@ -951,10 +1047,10 @@ def fig_examples(th, name):
         label, (f, eq, mapping) = EXAMPLES[k]
         w0, z, Td, dec = predicted(mapping)
         t, en, ep = native_versus_prototype(f, eq, mapping, list(y0), T)
-        _, _, e3 = native_versus_prototype(f, eq, mapping, list(y0), T, s1=S1, k=K)
+        _, _, e4 = native_versus_prototype(f, eq, mapping, list(y0), T, s1=S1_4, k=K_4, s2=S2, m=M)
         ax.plot(t/unit, np.exp(en), color=c0, linewidth=2.0, label="native equations", zorder=3)
         ax.plot(t/unit, np.exp(ep), color=c1, linewidth=1.5, label="prototype, two pieces", zorder=4)
-        ax.plot(t/unit, np.exp(e3), color=c2, linewidth=1.5, label="prototype, three pieces", zorder=5)
+        ax.plot(t/unit, np.exp(e4), color=c2, linewidth=1.5, label="prototype, four pieces", zorder=5)
         ax.axhline(np.exp(-S0), color=th["ink2"], linewidth=1.0, linestyle=(0, (5, 3)), zorder=2)
         ax.set_yscale("log")
         style(ax, th, ulab, "observable / its equilibrium value", title)
@@ -1023,6 +1119,51 @@ def fig_three(th, name, data):
     save(fig, name, "lotka-three")
 
 
+def fig_four(th, name, data):
+    """The four piece law against the exponential, and its period, peak and lag."""
+    fig, axes = newfig(th, 2, 2, figsize=(10.4, 8.0))
+    c0, c1, c2 = th["series"]
+    T0 = TWO_PI/np.sqrt(ALPHA*GAMMA)
+    law4 = dict(s1=S1_4, k=K_4, s2=S2, m=M)
+    ax = axes[0, 0]
+    s = np.linspace(-4.0, 2.6, 800)
+    ax.plot(s, np.expm1(s), color=c0, linewidth=2.0, label="Lotka-Volterra  $e^s - 1$", zorder=3)
+    ax.plot(s, phi(s), color=c1, linewidth=1.6, label="two pieces", zorder=4)
+    ax.plot(s, phi(s, S0, **law4), color=c2, linewidth=1.9, label="four pieces", zorder=5)
+    for x in breaks(S0, **law4):
+        ax.axvline(x, color=th["ink2"], linewidth=0.9, linestyle=(0, (5, 3)), zorder=2)
+    ax.annotate(f"slope {M:.2f}", xy=(-1.6, -0.55), xytext=(0, 14), textcoords="offset points", ha="center",
+                fontsize=8, color=th["ink2"])
+    ax.annotate(f"slope {K_4:.2f}", xy=(1.9, float(phi(1.9, S0, **law4))), xytext=(-40, 4), textcoords="offset points",
+                fontsize=8, color=th["ink2"])
+    ax.set_ylim(-1.4, 8.5)
+    style(ax, th, "$s$", "rate law", "Floor, soft slope, unit slope, steep slope")
+    legend(ax, th, loc="upper left")
+
+    xm = data["xm_dense"]
+    four, three = data["four"], data["three"]
+    for ax, key3, key4, lv, pr, ylab, title, loc in (
+            (axes[0, 1], "period_T", "T", data["lv_T"]/T0, data["pr_T"]/T0, "period  $T / T_0$",
+             "Period: within 5% over the fitted range", "upper left"),
+            (axes[1, 0], "period_xmax", "xmax", data["lv_xmax"], data["pr_xmax"], "prey peak  $\\xi_{max}$",
+             "Prey peak: within 7% in population", "upper left"),
+            (axes[1, 1], "period_lag", "lag", data["lv_lag"]/T0, data["pr_lag"]/T0, "lag  $/\\,T_0$",
+             "Predator lag", "upper right")):
+        scale = T0 if key4 in ("T", "lag") else 1.0
+        ax.plot(-xm, lv, color=c0, linewidth=2.0, label="Lotka-Volterra", zorder=3)
+        ax.plot(-xm, pr, color=c1, linewidth=1.4, label="two pieces", zorder=4)
+        ax.plot(-xm, three[key3]/scale, color=c2, linewidth=1.4, linestyle=(0, (3, 2)),
+                label="three pieces, period matched", zorder=4)
+        ax.plot(-xm, four[key4]/scale, color=c2, linewidth=2.0, label="four pieces", zorder=5)
+        style(ax, th, "prey trough  $-\\xi_{min}$", ylab, title)
+        legend(ax, th, loc=loc)
+    axes[1, 1].set_ylim(0, 0.3)
+    fig.suptitle("The fourth piece: the exponential's softness below the origin, "
+                 f"$s_2 = {S2:.2f}$, $m = {M:.2f}$, $s_1 = {S1_4:.2f}$, $k = {K_4:.2f}$", color=th["ink"], fontsize=11)
+    fig.tight_layout()
+    save(fig, name, "lotka-four")
+
+
 # ----------------------------------------------------------------- driver
 def _table(rows, header, fmt):
     print("| " + " | ".join(header) + " |")
@@ -1030,8 +1171,6 @@ def _table(rows, header, fmt):
     for r in rows:
         print("| " + " | ".join(f.format(v) for f, v in zip(fmt, r)) + " |")
 
-
-TABLE_TROUGHS = (-0.5, -1.0, -1.5, -2.0, -3.0, -5.0, -8.0)
 
 
 def checks():
@@ -1177,6 +1316,62 @@ def checks():
         out["three"][tag + "_xmax"] = np.array([extremes(H, s1=s1, k=k)[1] for H in Hs])
         out["three"][tag + "_lag"] = np.array([lag_integrated(H, s1=s1, k=k) for H in Hs])
 
+    print("\n## The fourth piece: a soft slope between the floor and the origin")
+    lv_fit = {xm: (lv_rows[xm][0], lv_rows[xm][1]) for xm in TABLE_TROUGHS}
+    s2f, mf, s1f, kf = fit_fourth_piece(lv=lv_fit)
+    print(f"  joint fit over troughs {TABLE_TROUGHS}: s2 = {s2f:.6f}, m = {mf:.6f}, s1 = {s1f:.6f}, "
+          f"k = {kf:.6f} (constants {S2}, {M}, {S1_4}, {K_4})")
+    law4 = (S0, S1_4, K_4, S2, M)
+    print("  the law:")
+    for lo, hi, a, b in pieces(*law4):
+        print(f"    slope {a:.4f} on ({lo:+.4f}, {hi:+.4f}), intercept {b:+.4f}")
+    print("  e^s - 1 against the law at a few points:")
+    for s_ in (-4.0, -2.54, -2.0, -1.0, -0.445, 0.609, 1.0, 1.5, 2.336):
+        print(f"    s = {s_:+.3f}: exponential {np.expm1(s_):+.3f}, law {float(phi(s_, *law4)):+.3f}")
+    f4 = field(s1=S1_4, k=K_4, s2=S2, m=M)
+    print(f"  Jacobian eigenvalues at the origin: {np.round(np.linalg.eigvals(jacobian(f4, [0.0, 0.0])), 9)}")
+    for xm in (-1.5, -5.0):
+        H = H_from_trough(xm, *((ALPHA, GAMMA) + law4))
+        Tk = period(H, ALPHA, GAMMA, *law4)
+        s = solve_ivp(f4, (0.0, 3*Tk), [Phi_inv(H/GAMMA, +1, *law4), 0.0],
+                      t_eval=np.linspace(0, 3*Tk, 600), rtol=RTOL, atol=ATOL, method="DOP853", max_step=0.01)
+        Hs = energy(s.y[0], s.y[1], ALPHA, GAMMA, *law4)
+        print(f"  H drift over three periods from prey trough {xm}: {np.abs(Hs - H).max():.1e} on H = {H:.4f}")
+    rows = []
+    for xm in TABLE_TROUGHS:
+        H = H_from_trough(xm, ALPHA, GAMMA, *law4)
+        Tw, Ti = period(H, ALPHA, GAMMA, *law4), period_integrated(H, ALPHA, GAMMA, *law4)
+        rows.append((xm, len(circuit(H, ALPHA, GAMMA, *law4)[1]), Tw, Ti, abs(Tw - Ti)))
+    _table(rows, ("prey trough", "arcs", "walk", "integrated", "difference"),
+           ("{:+.1f}", "{}", "{:.9f}", "{:.9f}", "{:.1e}"))
+    rows = []
+    for xm in TABLE_TROUGHS:
+        Tl, xmaxl, lagl = lv_rows[xm]
+        H = H_from_trough(xm, ALPHA, GAMMA, *law4)
+        Tp, xp, lp = period(H, ALPHA, GAMMA, *law4), extremes(H, ALPHA, GAMMA, *law4)[1], lag_integrated(H, ALPHA, GAMMA, *law4)
+        rows.append((xm, Tl/T0, Tp/T0, 100*(Tp/Tl - 1), xmaxl, xp, 100*(np.exp(xp - xmaxl) - 1), lagl/T0, lp/T0))
+    _table(rows, ("prey trough", "T/T0 LV", "T/T0 four pieces", "period error %", "peak LV", "peak four pieces",
+                  "peak error % (population)", "lag/T0 LV", "lag/T0 four pieces"),
+           ("{:+.1f}", "{:.4f}", "{:.4f}", "{:+.1f}", "{:.3f}", "{:.3f}", "{:+.1f}", "{:.4f}", "{:.4f}"))
+    print("  outside the fitted range:")
+    for xm in (-10.0, -12.0, -16.0, -20.0):
+        Tl, lagl, *_ = lv_run(xm)
+        xmaxl = lv_extremes(xm)[1]
+        H = H_from_trough(xm, ALPHA, GAMMA, *law4)
+        Tp, xp = period(H, ALPHA, GAMMA, *law4), extremes(H, ALPHA, GAMMA, *law4)[1]
+        print(f"    trough {xm:+.0f}: period error {100*(Tp/Tl - 1):+.1f}%, peak {xp:.3f} against {xmaxl:.3f}, "
+              f"{100*(np.exp(xp - xmaxl) - 1):+.1f}% in population")
+    print("  the same four pieces at alpha = 2, gamma = 0.5, walk against integration:")
+    for xm in (-1.0, -3.0, -6.0):
+        H = H_from_trough(xm, 2.0, 0.5, *law4)
+        Tw, Ti = period(H, 2.0, 0.5, *law4), period_integrated(H, 2.0, 0.5, *law4)
+        print(f"    trough {xm:+.1f}: {len(circuit(H, 2.0, 0.5, *law4)[1])} arcs, walk {Tw:.9f}, integrated {Ti:.9f}")
+    out["four"] = {}
+    Hs = [H_from_trough(x, ALPHA, GAMMA, *law4) for x in xm_dense]
+    out["four"]["T"] = np.array([period(H, ALPHA, GAMMA, *law4) for H in Hs])
+    out["four"]["xmax"] = np.array([extremes(H, ALPHA, GAMMA, *law4)[1] for H in Hs])
+    out["four"]["lag"] = np.array([lag_integrated(H, ALPHA, GAMMA, *law4) for H in Hs])
+
     print(f"\n## Logistic prey as damping, c = {C_DAMP}")
     zeta = C_DAMP/(2*w0)
     fd = field(c=C_DAMP)
@@ -1242,10 +1437,11 @@ def checks():
         label, (f, eq, mapping) = EXAMPLES[k]
         t, en, ep = native_versus_prototype(f, eq, mapping, list(y0), T)
         _, _, e3 = native_versus_prototype(f, eq, mapping, list(y0), T, s1=S1, k=K)
-        i, j, m = np.argmax(en), np.argmax(ep), np.argmax(e3)
+        _, _, e4 = native_versus_prototype(f, eq, mapping, list(y0), T, s1=S1_4, k=K_4, s2=S2, m=M)
+        i, j, m_, q = np.argmax(en), np.argmax(ep), np.argmax(e3), np.argmax(e4)
         print(f"    {label}: start eta = {y0[1]:.3f}; first peak native e^{en[i]:.3f} at t = {t[i]/unit:.4g}, "
-              f"two pieces e^{ep[j]:.3f} at t = {t[j]/unit:.4g}, three pieces e^{e3[m]:.3f} at "
-              f"t = {t[m]/unit:.4g} {ulab.split()[0]}")
+              f"two pieces e^{ep[j]:.3f} at t = {t[j]/unit:.4g}, three pieces e^{e3[m_]:.3f} at "
+              f"t = {t[m_]/unit:.4g}, four pieces e^{e4[q]:.3f} at t = {t[q]/unit:.4g} {ulab.split()[0]}")
     return out
 
 
@@ -1260,6 +1456,7 @@ def figures_(out=None):
         fig_damped(th, name, out[f"cyc_{XI1_SMALL}"], out[f"cyc_{XI1_LARGE}"])
         fig_examples(th, name)
         fig_three(th, name, out)
+        fig_four(th, name, out)
 
 
 if __name__ == "__main__":
